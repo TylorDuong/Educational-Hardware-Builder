@@ -46,3 +46,11 @@ pass; all other work remains explicitly deferred.
 - [X] T008 Add the internal OpenSCAD HTTP compiler in `infra/openscad/Dockerfile` and `infra/openscad/server.py`.
 - [X] T009 Add model-init and OpenSCAD services to `infra/docker-compose.yml`.
 - [X] T010 Validate a fresh-volume database migration, model-init pulls, and `/health` on the OpenSCAD service.
+
+## A4 Continuation: Curated knowledge corpus
+
+- [X] T011 Create an idempotent ESP32/BME280 seed corpus with at least 50 cited chunks in `ingestion/seed_weather_station.py`.
+- [X] T012 Embed the corpus with local `nomic-embed-text`; use the temporary direct-PostgreSQL fallback while `POST /api/ingest/v1/upsert` is unavailable, and verify cited rows in PostgreSQL.
+- [X] T013 Re-run the seed and confirm it upserts without duplicate chunks.
+
+<!-- TODO(reconcile A4): Replace the generic ESP32/BME280 chunk set with claims aligned to C2's golden StepPlan once C2 lands. -->
