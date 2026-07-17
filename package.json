@@ -1,0 +1,12 @@
+{
+  "name": "educational-hardware-builder",
+  "version": "1.0.0",
+  "description": "Local-first educational hardware builder monorepo.",
+  "private": true,
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@11.9.0",
+  "type": "module"
+}
