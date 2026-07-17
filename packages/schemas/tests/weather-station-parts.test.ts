@@ -4,8 +4,8 @@ import { CadAssetRecordSchema } from "../src/index.js";
 import { weatherStationCadAssets } from "../fixtures/weather-station-parts.js";
 
 describe("weather-station CAD metadata", () => {
-  it("provides five source-linked, schema-valid records", () => {
-    expect(weatherStationCadAssets).toHaveLength(5);
+  it("provides ten source-linked, schema-valid records", () => {
+    expect(weatherStationCadAssets).toHaveLength(10);
     expect(CadAssetRecordSchema.array().parse(weatherStationCadAssets)).toEqual(weatherStationCadAssets);
     for (const asset of weatherStationCadAssets) {
       expect(asset.sourceUrl).toMatch(/^https:\/\//);

@@ -20,3 +20,10 @@ compile/validate work, MechView, Storybook, and Draco conversion are assigned to
 ## B2 MVP
 
 The delivery is complete when five source-linked records validate through the shared contract.
+
+## B3 Continuation: Full metadata and deterministic solver
+
+- [X] T004 Complete the ten-part source-linked metadata set in `packages/schemas/fixtures/weather-station-parts.ts`.
+- [X] T005 Add the deterministic symbolic mating solver and typed error taxonomy in `packages/solver/src/index.ts`.
+- [X] T006 Add golden-file and fixture-set property tests in `packages/solver/tests/solver.test.ts`.
+- [X] T007 Validate all schema and solver tests plus TypeScript checks in `packages/schemas/` and `packages/solver/`.
