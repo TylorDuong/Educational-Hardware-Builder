@@ -27,3 +27,9 @@ The delivery is complete when five source-linked records validate through the sh
 - [X] T005 Add the deterministic symbolic mating solver and typed error taxonomy in `packages/solver/src/index.ts`.
 - [X] T006 Add golden-file and fixture-set property tests in `packages/solver/tests/solver.test.ts`.
 - [X] T007 Validate all schema and solver tests plus TypeScript checks in `packages/schemas/` and `packages/solver/`.
+
+## B4 Continuation: L-bracket compile and validation
+
+- [X] T008 Add the printable L-bracket source in `assets/templates/l_bracket.scad`.
+- [X] T009 Add bounded parameter validation, compile handling, and mesh validation in `packages/scad-service/src/index.ts`.
+- [X] T010 Add rejection-path and printable-STL tests in `packages/scad-service/tests/l-bracket.test.ts`.
