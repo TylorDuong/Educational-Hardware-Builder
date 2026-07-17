@@ -40,7 +40,22 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] Physical outputs use deterministic CAD-metadata solvers and parameterized,
+      headless-OpenSCAD-validated templates; lesson claims retain cited sources.
+- [ ] Every LLM boundary has shared JSON/Zod schemas, JSON mode, one validation-error
+      retry, deterministic/user-facing fallback, and temperature <= 0.3 for structure.
+- [ ] Deployment is local Docker Compose, inference is local Ollama within detected VRAM,
+      embeddings are CPU-based, and no prohibited runtime external calls are introduced.
+- [ ] Research classifies hazards; Beginner mode hard-blocks flagged work and places
+      safety callouts before instructions.
+- [ ] PostgreSQL with pgvector remains the sole datastore; n8n uses versioned upsert APIs;
+      API and SSE payloads use one shared Zod schema package.
+- [ ] Required CAD fixtures, deterministic unit tests, LLM contract/live-smoke tests,
+      OpenSCAD negative tests, and GPU-free CI coverage are planned.
+- [ ] UX preserves the five fixed tabs, unskippable Beginner Socratic checkpoints, a
+      single mode flag, and SSE progress for work over two seconds.
+- [ ] The plan measures applicable 3D, first-token, retrieval, and clean-start targets.
+- [ ] CAD ingestion records source URL and license and rejects unidentified licenses.
 
 ## Project Structure
 

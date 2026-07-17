@@ -98,6 +98,21 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
+### Constitution Compliance *(mandatory where applicable)*
+
+- **Physical accuracy and provenance**: State the deterministic CAD/geometry boundary and
+  how factual lesson claims retain retrieved-source citations.
+- **LLM contract**: Identify the shared JSON/Zod schema, JSON-mode call, one-retry fallback,
+  and structural-output temperature requirement.
+- **Safety**: Identify the safety category, research classification, Beginner-mode hard
+  block behavior, and the pre-instruction callout requirement.
+- **Local operation and typed boundaries**: State the local Docker Compose/Ollama resource
+  assumptions, PostgreSQL/pgvector ownership, and typed API/SSE contracts.
+- **Licensing**: For CAD ingestion or assets, require source URL, identifiable license, and
+  seed-library redistribution eligibility.
+- **Verification and performance**: Define applicable fixture, GPU-free CI, live-smoke,
+  3D-frame-rate, first-token, retrieval, or clean-start acceptance criteria.
+
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
