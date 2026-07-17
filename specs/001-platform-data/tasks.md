@@ -46,3 +46,19 @@ pass; all other work remains explicitly deferred.
 - [X] T008 Add the internal OpenSCAD HTTP compiler in `infra/openscad/Dockerfile` and `infra/openscad/server.py`.
 - [X] T009 Add model-init and OpenSCAD services to `infra/docker-compose.yml`.
 - [X] T010 Validate a fresh-volume database migration, model-init pulls, and `/health` on the OpenSCAD service.
+
+## A4 Continuation: Curated knowledge corpus
+
+- [X] T011 Create an idempotent ESP32/BME280 seed corpus with at least 50 cited chunks in `ingestion/seed_weather_station.py`.
+- [X] T012 Embed the corpus with local `nomic-embed-text`; use the temporary direct-PostgreSQL fallback while `POST /api/ingest/v1/upsert` is unavailable, and verify cited rows in PostgreSQL.
+- [X] T013 Re-run the seed and confirm it upserts without duplicate chunks.
+
+<!-- TODO(reconcile A4): Replace the generic ESP32/BME280 chunk set with claims aligned to C2's golden StepPlan once C2 lands. -->
+
+## A5 Continuation: Retrieval API and JSON health endpoint
+
+- [X] T014 Add the local API service and Compose wiring in `apps/web/` and `infra/docker-compose.yml`.
+- [X] T015 Implement validated pgvector retrieval with mandatory citations in `apps/web/src/server.ts`.
+- [X] T016 Implement JSON health reporting for PostgreSQL, Ollama models, and model-tier recommendation in `apps/web/src/server.ts`.
+- [X] T017 Add mocked unit tests for retrieval and health behavior in `apps/web/tests/server.test.ts`.
+- [X] T018 Validate fresh-volume seed plus BME280-to-ESP32 retrieval and health curls with `infra/docker-compose.yml`.

@@ -25,3 +25,19 @@ docker compose -f infra/docker-compose.yml exec ollama ollama list
 ```powershell
 docker compose -f infra/docker-compose.yml down
 ```
+
+## A5 retrieval and health validation
+
+After A4 has seeded the cited ESP32/BME280 corpus, start the API service and exercise both
+machine-readable endpoints:
+
+```powershell
+docker compose -f infra/docker-compose.yml up -d --build web
+Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/retrieve -ContentType application/json -Body '{"query":"connect BME280 to ESP32","limit":3}'
+Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/health
+```
+
+The retrieval response contains relevant BME280 wiring guidance and a citation for each result.
+Health reports `database: "ok"`, `ollama: "ok"`, locally available model names, and the selected
+model tier. The A5 acceptance run repeats these commands against a clean Compose volume after
+running `python ingestion/seed_weather_station.py`.
