@@ -39,3 +39,10 @@ deferred to A3–A5 and are not implementation tasks in this A2 slice.
 
 Complete T001 through T006 only. The foundation is ready when the two documented service checks
 pass; all other work remains explicitly deferred.
+
+## A3 Continuation: Migrations, model init, and OpenSCAD
+
+- [X] T007 Add the core pgvector migration in `infra/postgres/init/0001-core-schema.sql`.
+- [X] T008 Add the internal OpenSCAD HTTP compiler in `infra/openscad/Dockerfile` and `infra/openscad/server.py`.
+- [X] T009 Add model-init and OpenSCAD services to `infra/docker-compose.yml`.
+- [ ] T010 Validate a fresh-volume database migration, model-init pulls, and `/health` on the OpenSCAD service.
