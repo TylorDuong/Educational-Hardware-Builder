@@ -1,6 +1,22 @@
 name: educational-hardware-builder
 
 services:
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://hardware_builder:hardware_builder_dev@postgres:5432/hardware_builder
+      OLLAMA_URL: http://ollama:11434
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
   postgres:
     image: pgvector/pgvector:pg16
     restart: unless-stopped

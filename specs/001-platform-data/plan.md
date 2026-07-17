@@ -55,3 +55,26 @@ package as the only cross-subsystem contract dependency for this slice.
 ## Complexity Tracking
 
 No constitution exceptions are required.
+
+## A5 Continuation: Retrieval API and JSON health endpoint
+
+**Scope**: Add a small local HTTP service that validates the shared retrieval contract, embeds the
+query with local Ollama, ranks cited `embeddings` rows by pgvector cosine similarity, and exposes a
+machine-readable health report. The service is intentionally API-only; the rendered health page and
+n8n remain deferred.
+
+**Design decisions**:
+
+- Reuse `RetrievalQuerySchema` and `RetrievalResultSchema` from `packages/schemas`; reject invalid
+  requests before database access.
+- Serve `POST /api/retrieve` and `GET /api/health` only within the Compose network. The retrieval
+  response maps each database citation to the required shared citation shape.
+- Query embeddings through the pgvector cosine-distance operator and cap results to the contract
+  limit. Inventory filtering is accepted by the contract and applies when a chunk has a matching
+  parts-catalog relation; the A4 generic corpus remains unscoped.
+- Health reports database reachability, Ollama model names, detected NVIDIA VRAM when available,
+  and a conservative recommended model tier without calling cloud services.
+
+**A5 validation**: With a fresh Compose volume, seed the corpus, then curl `POST /api/retrieve` with
+`connect BME280 to ESP32`; it returns cited results. Curl `GET /api/health`; it returns JSON and
+reports database and model-runtime status. Unit tests mock database/Ollama boundaries so CI needs no GPU.

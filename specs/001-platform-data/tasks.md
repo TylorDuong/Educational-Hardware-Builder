@@ -54,3 +54,11 @@ pass; all other work remains explicitly deferred.
 - [X] T013 Re-run the seed and confirm it upserts without duplicate chunks.
 
 <!-- TODO(reconcile A4): Replace the generic ESP32/BME280 chunk set with claims aligned to C2's golden StepPlan once C2 lands. -->
+
+## A5 Continuation: Retrieval API and JSON health endpoint
+
+- [X] T014 Add the local API service and Compose wiring in `apps/web/` and `infra/docker-compose.yml`.
+- [X] T015 Implement validated pgvector retrieval with mandatory citations in `apps/web/src/server.ts`.
+- [X] T016 Implement JSON health reporting for PostgreSQL, Ollama models, and model-tier recommendation in `apps/web/src/server.ts`.
+- [X] T017 Add mocked unit tests for retrieval and health behavior in `apps/web/tests/server.test.ts`.
+- [X] T018 Validate fresh-volume seed plus BME280-to-ESP32 retrieval and health curls with `infra/docker-compose.yml`.
