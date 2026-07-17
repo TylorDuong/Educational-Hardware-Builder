@@ -1,0 +1,9 @@
+solid esp32_devkit_placeholder
+  facet normal 0 0 1
+    outer loop
+      vertex 0 0 0
+      vertex 36 0 0
+      vertex 0 25 0
+    endloop
+  endfacet
+endsolid esp32_devkit_placeholder
