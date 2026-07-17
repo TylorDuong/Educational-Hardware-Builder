@@ -1,0 +1,9 @@
+solid l_bracket_placeholder
+  facet normal 0 0 1
+    outer loop
+      vertex 0 0 0
+      vertex 30 0 0
+      vertex 0 30 0
+    endloop
+  endfacet
+endsolid l_bracket_placeholder
