@@ -45,4 +45,4 @@ pass; all other work remains explicitly deferred.
 - [X] T007 Add the core pgvector migration in `infra/postgres/init/0001-core-schema.sql`.
 - [X] T008 Add the internal OpenSCAD HTTP compiler in `infra/openscad/Dockerfile` and `infra/openscad/server.py`.
 - [X] T009 Add model-init and OpenSCAD services to `infra/docker-compose.yml`.
-- [ ] T010 Validate a fresh-volume database migration, model-init pulls, and `/health` on the OpenSCAD service.
+- [X] T010 Validate a fresh-volume database migration, model-init pulls, and `/health` on the OpenSCAD service.
