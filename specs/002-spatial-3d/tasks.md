@@ -33,3 +33,9 @@ The delivery is complete when five source-linked records validate through the sh
 - [X] T008 Add the printable L-bracket source in `assets/templates/l_bracket.scad`.
 - [X] T009 Add bounded parameter validation, compile handling, and mesh validation in `packages/scad-service/src/index.ts`.
 - [X] T010 Add rejection-path and printable-STL tests in `packages/scad-service/tests/l-bracket.test.ts`.
+
+## B5 Continuation: MechView sandbox
+
+- [X] T011 Add the typed React Three Fiber component in `apps/web/src/components/MechView.tsx`.
+- [X] T012 Add the `/sandbox` Vite entry, controls, and ten-part fixture assembly in `apps/web/src/sandbox.tsx`.
+- [X] T013 Add local viewer dependencies and a production sandbox build command in `apps/web/package.json`.
