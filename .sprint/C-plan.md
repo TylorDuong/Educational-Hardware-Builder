@@ -50,7 +50,7 @@ Cursor: `.sprint/C.cursor`
 - Merge: yes — reviewed and merged to `main` by EOD.
 - Required Spec-Kit sequence: implement only symbolic Assembly-to-solver retry, coordinate-leak lint, checkpoint grading, UI polish, and the golden path on mocks.
 - Done when (copied): the full weather-station flow runs start to completion on mocks; Assembly→solver→retry works against B's mock; coordinate-leak lint is green; merged to main alongside A5 and B5.
-- Status: pending
+- Status: done (completed by Arveen at 2026-07-18T01:35:51Z)
 
 ## C6 — Merge last in the train
 
