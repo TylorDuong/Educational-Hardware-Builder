@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { health, retrieve, type ApiDependencies } from "../src/server.js";
+import { createApiServer, health, retrieve, type ApiDependencies } from "../src/server.js";
 
 const citation = {
   sourceUrl: "https://example.test/bme280",
@@ -49,4 +49,47 @@ test("reports a degraded health state when local dependencies are unavailable", 
     vramMb: null,
     recommendedModelTier: "cpu-safe",
   });
+});
+
+test("streams typed agent progress over the SSE endpoint", async () => {
+  const server = createApiServer(dependencies());
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/agents/progress`);
+    assert.equal(response.headers.get("content-type"), "text/event-stream");
+    assert.match(await response.text(), /event: progress/);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("server-side workshop gating rejects a locked reference step and unlocks it after a correct answer", async () => {
+  const server = createApiServer(dependencies());
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const root = `http://127.0.0.1:${address.port}`;
+    const sessionId = "c4-server-gate";
+    const locked = await fetch(`${root}/api/workshop/steps/10000000-0000-4000-8000-000000000006?sessionId=${sessionId}`);
+    assert.equal(locked.status, 403);
+    const wrong = await fetch(`${root}/api/workshop/checkpoints`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId, checkpointId: "20000000-0000-4000-8000-000000000001", answer: "Mains outlet" }),
+    });
+    assert.deepEqual(await wrong.json(), { correct: false, reexplanation: "Revisit the idea: The reference build uses the regulated 3.3 V rail." });
+    const correct = await fetch(`${root}/api/workshop/checkpoints`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId, checkpointId: "20000000-0000-4000-8000-000000000001", answer: "3V3" }),
+    });
+    assert.deepEqual(await correct.json(), { correct: true });
+    const unlocked = await fetch(`${root}/api/workshop/steps/10000000-0000-4000-8000-000000000006?sessionId=${sessionId}`);
+    assert.equal(unlocked.status, 200);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });

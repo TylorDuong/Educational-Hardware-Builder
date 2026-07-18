@@ -10,7 +10,7 @@ Cursor: `.sprint/C.cursor`
 - Soft waits / fallback: none.
 - Merge: yes — shared constitution, schemas, mocks, and fixtures land on `main`; C1 is C's share of G1.
 - Done when (copied): `StepPlan`, `Lesson`, `Checkpoint`, `AgentProgressEvent`, cited factual outputs, and symbolic-only `MatingSelection` are agreed and represented in the shared schemas/mocks; Constitution + schemas + mocks + fixtures are on main; three feature branches exist; G1 and C1 are Done.
-- Status: pending
+- Status: done (completed by Arveen at 2026-07-17T21:50:22Z)
 
 ## C2 — Scaffold and hand-write the golden StepPlan
 
@@ -20,7 +20,7 @@ Cursor: `.sprint/C.cursor`
 - Merge: yes — golden fixture and approved Spec-Kit artifacts land on `main`.
 - Required Spec-Kit sequence: specify with the guide's agents/workshop prompt; plan with its architecture prompt; tasks (prune Beginner/Intermediate variants, visual polish, and Playwright if needed); do not implement beyond scaffolding and the hand-written fixture.
 - Done when (copied): the golden StepPlan fixture is on main, passes Zod validation, and its mating selections reference real B fixture IDs; spec/plan/tasks are committed; A knows to align real chunks to the golden path.
-- Status: pending
+- Status: done (completed by Arveen at 2026-07-18T00:22:00Z)
 
 ## C3 — callModel helper and first agents on mocks
 
@@ -30,7 +30,7 @@ Cursor: `.sprint/C.cursor`
 - Merge: no.
 - Required Spec-Kit sequence: continue implement only callModel, Router, Research, Lesson, mock retrieval, SSE progress, retry/fallback, and DEMO_SAFE_MODE work.
 - Done when (copied): 20 consecutive live calls either schema-validate or cleanly fall back with no unhandled failures; citations render in Research/Lesson output; DEMO_SAFE_MODE forces fixtures when set.
-- Status: pending
+- Status: done (completed by Arveen at 2026-07-18T00:29:34Z)
 
 ## C4 — Workshop and server-side checkpoint gating
 
@@ -40,7 +40,7 @@ Cursor: `.sprint/C.cursor`
 - Merge: no.
 - Required Spec-Kit sequence: implement only split-screen Workshop, fixture transforms, five MVP tabs, state/SSE wiring, and server-side checkpoint gating.
 - Done when (copied): a direct API call for a locked step returns 403; Workshop renders MechView, lesson, and checkpoint in fixture step-sync.
-- Status: pending
+- Status: done (completed by Arveen at 2026-07-18T00:33:55Z)
 
 ## C5 — Assembly agent and full mock flow
 

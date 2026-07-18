@@ -1,0 +1,227 @@
+import { z } from "zod";
+
+import {
+  AgentProgressEventSchema,
+  CitationSchema,
+  LessonSchema,
+  type AgentProgressEvent,
+  type Lesson,
+  type RetrievalResult,
+  type StepPlan,
+} from "@educational-hardware-builder/schemas";
+
+import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
+
+export type ModelSource = "live" | "fallback";
+
+export interface ModelCallResult<T> {
+  value: T;
+  source: ModelSource;
+  attempts: 0 | 1 | 2;
+}
+
+export interface CallModelOptions<T> {
+  schema: z.ZodType<T>;
+  jsonSchema: Record<string, unknown>;
+  prompt: string;
+  model: string;
+  temperature: number;
+  fallback: () => T;
+  fetcher: typeof fetch;
+  ollamaUrl: string;
+  demoSafeMode?: boolean;
+}
+
+function modelError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function requestModel<T>(options: CallModelOptions<T>, prompt: string): Promise<T> {
+  const response = await options.fetcher(`${options.ollamaUrl}/api/generate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      model: options.model,
+      prompt,
+      format: options.jsonSchema,
+      stream: false,
+      options: { temperature: options.temperature },
+    }),
+  });
+  if (!response.ok) throw new Error(`Ollama returned ${response.status}.`);
+
+  const payload = await response.json() as { response?: unknown };
+  if (typeof payload.response !== "string") throw new Error("Ollama response did not contain JSON text.");
+  let output: unknown;
+  try {
+    output = JSON.parse(payload.response);
+  } catch {
+    throw new Error("Ollama response was not valid JSON.");
+  }
+  return options.schema.parse(output);
+}
+
+/**
+ * The sole local-model boundary: structured JSON, one validation-aware retry,
+ * then a deterministic fixture. Safe mode deliberately skips the live model.
+ */
+export async function callModel<T>(options: CallModelOptions<T>): Promise<ModelCallResult<T>> {
+  if (options.demoSafeMode) return { value: options.fallback(), source: "fallback", attempts: 0 };
+
+  try {
+    return { value: await requestModel(options, options.prompt), source: "live", attempts: 1 };
+  } catch (firstError) {
+    const retryPrompt = `${options.prompt}\n\nThe previous response failed validation: ${modelError(firstError)}\nReturn only a corrected JSON value that satisfies the supplied schema.`;
+    try {
+      return { value: await requestModel(options, retryPrompt), source: "live", attempts: 2 };
+    } catch {
+      return { value: options.fallback(), source: "fallback", attempts: 2 };
+    }
+  }
+}
+
+export const RouterResultSchema = z.object({
+  projectType: z.literal("weather-station"),
+  summary: z.string().min(1),
+  safetyCategory: z.enum(["none", "soldering", "lipo", "mains_ac", "mechanical"]),
+});
+export type RouterResult = z.infer<typeof RouterResultSchema>;
+
+export const ResearchResultSchema = z.object({
+  summary: z.string().min(1),
+  findings: z.array(z.object({ claim: z.string().min(1), citation: CitationSchema })).min(1),
+});
+export type ResearchResult = z.infer<typeof ResearchResultSchema>;
+
+const routerJsonSchema = {
+  type: "object",
+  required: ["projectType", "summary", "safetyCategory"],
+  properties: {
+    projectType: { const: "weather-station" },
+    summary: { type: "string", minLength: 1 },
+    safetyCategory: { enum: ["none", "soldering", "lipo", "mains_ac", "mechanical"] },
+  },
+  additionalProperties: false,
+} as const;
+
+const researchJsonSchema = {
+  type: "object",
+  required: ["summary", "findings"],
+  properties: {
+    summary: { type: "string", minLength: 1 },
+    findings: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        required: ["claim", "citation"],
+        properties: {
+          claim: { type: "string", minLength: 1 },
+          citation: {
+            type: "object",
+            required: ["sourceUrl", "locator", "title"],
+            properties: {
+              sourceUrl: { type: "string", format: "uri" },
+              locator: { type: "string", minLength: 1 },
+              title: { type: "string", minLength: 1 },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+const lessonJsonSchema = {
+  type: "object",
+  required: ["title", "content", "citations"],
+  properties: {
+    title: { type: "string", minLength: 1 },
+    content: { type: "string", minLength: 1 },
+    citations: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        required: ["sourceUrl", "locator", "title"],
+        properties: {
+          sourceUrl: { type: "string", format: "uri" },
+          locator: { type: "string", minLength: 1 },
+          title: { type: "string", minLength: 1 },
+        },
+      },
+    },
+  },
+} as const;
+
+export interface AgentDependencies {
+  fetcher: typeof fetch;
+  ollamaUrl: string;
+  demoSafeMode?: boolean;
+  retrieve: (query: string) => Promise<RetrievalResult[]>;
+}
+
+export async function runRouter(request: string, dependencies: AgentDependencies): Promise<ModelCallResult<RouterResult>> {
+  return callModel({
+    schema: RouterResultSchema,
+    jsonSchema: routerJsonSchema,
+    prompt: `Classify this beginner hardware project request: ${request}`,
+    model: "llama3.2:3b",
+    temperature: 0.2,
+    fallback: () => ({ projectType: "weather-station", summary: "Build the authored ESP32 weather station.", safetyCategory: "none" }),
+    fetcher: dependencies.fetcher,
+    ollamaUrl: dependencies.ollamaUrl,
+    demoSafeMode: dependencies.demoSafeMode,
+  });
+}
+
+export async function runResearch(query: string, dependencies: AgentDependencies): Promise<ModelCallResult<ResearchResult>> {
+  const chunks = await dependencies.retrieve(query);
+  const fallback = (): ResearchResult => ({
+    summary: "Use the recorded BME280 wiring guidance.",
+    findings: chunks.flatMap((chunk) => chunk.citations.map((citation) => ({ claim: chunk.content, citation }))),
+  });
+  return callModel({
+    schema: ResearchResultSchema,
+    jsonSchema: researchJsonSchema,
+    prompt: `Summarize only these grounded retrieval chunks, retaining citations: ${JSON.stringify(chunks)}`,
+    model: "llama3.1:8b",
+    temperature: 0.2,
+    fallback,
+    fetcher: dependencies.fetcher,
+    ollamaUrl: dependencies.ollamaUrl,
+    demoSafeMode: dependencies.demoSafeMode,
+  });
+}
+
+export async function runLesson(step: StepPlan, dependencies: AgentDependencies): Promise<ModelCallResult<Lesson>> {
+  return callModel({
+    schema: LessonSchema,
+    jsonSchema: lessonJsonSchema,
+    prompt: `Write a concise beginner lesson for this cited reference step: ${JSON.stringify(step)}`,
+    model: "llama3.1:8b",
+    temperature: 0.7,
+    fallback: () => step.lesson,
+    fetcher: dependencies.fetcher,
+    ollamaUrl: dependencies.ollamaUrl,
+    demoSafeMode: dependencies.demoSafeMode,
+  });
+}
+
+export function goldenLessonStep(): StepPlan {
+  const step = weatherStationGoldenSteps[0];
+  if (!step) throw new Error("The weather-station fixture has no steps.");
+  return step;
+}
+
+export function progressSse(events: readonly AgentProgressEvent[]): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const event of events) {
+        controller.enqueue(encoder.encode(`event: progress\ndata: ${JSON.stringify(AgentProgressEventSchema.parse(event))}\n\n`));
+      }
+      controller.close();
+    },
+  });
+}
