@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/server.ts",
-    "test": "tsx --test tests/server.test.ts tests/weather-station.fixture.test.ts tests/agents.test.ts",
+    "test": "tsx --test tests/server.test.ts tests/weather-station.fixture.test.ts tests/agents.test.ts tests/integration.test.ts tests/spatial-integration.test.ts",
     "typecheck": "tsc --noEmit",
     "sandbox": "vite --host 0.0.0.0",
     "build:sandbox": "vite build"
   },
   "dependencies": {
+    "@educational-hardware-builder/scad-service": "workspace:*",
     "@educational-hardware-builder/schemas": "workspace:*",
+    "@educational-hardware-builder/solver": "workspace:*",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@types/react": "^19.2.17",

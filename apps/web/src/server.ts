@@ -3,13 +3,15 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { Pool } from "pg";
 import {
   CitationSchema,
+  InventoryPartSchema,
   RetrievalQuerySchema,
   RetrievalResultSchema,
   type RetrievalQuery,
   type RetrievalResult,
 } from "@educational-hardware-builder/schemas";
 
-import { progressSse } from "./agents.js";
+import { progressSse, runResearch } from "./agents.js";
+import { listInventoryParts } from "./integration.js";
 import { WorkshopAccessError, WorkshopSessions } from "./workshop.js";
 
 type Queryable = Pick<Pool, "query">;
@@ -20,12 +22,18 @@ export interface ApiDependencies {
   fetcher: Fetcher;
   ollamaUrl: string;
   vramMb?: number;
+  demoSafeMode?: boolean;
 }
 
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
   }
+}
+
+/** Parse the demo operator's explicit fallback switch without treating arbitrary text as true. */
+export function demoSafeModeFromEnv(value = process.env.DEMO_SAFE_MODE): boolean {
+  return value === "1" || value?.toLowerCase() === "true";
 }
 
 const vectorLiteral = (values: number[]) => `[${values.join(",")}]`;
@@ -139,6 +147,31 @@ export function createApiServer(dependencies: ApiDependencies) {
       if (request.method === "POST" && request.url === "/api/retrieve") {
         return respond(response, 200, await retrieve(await readJson(request), dependencies));
       }
+      if (request.method === "POST" && request.url === "/api/integration/research") {
+        const body = await readJson(request) as { query?: unknown };
+        if (typeof body.query !== "string" || body.query.trim().length === 0) {
+          throw new ApiError(400, "Integrated research requires a query.");
+        }
+        const result = await runResearch(body.query, {
+          fetcher: dependencies.fetcher,
+          ollamaUrl: dependencies.ollamaUrl,
+          demoSafeMode: dependencies.demoSafeMode,
+          retrieve: (query) => retrieve({ query }, dependencies),
+        });
+        return respond(response, 200, result);
+      }
+      if (request.method === "GET" && url.pathname.startsWith("/api/inventory/")) {
+        const userId = decodeURIComponent(url.pathname.slice("/api/inventory/".length));
+        if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(userId)) {
+          throw new ApiError(400, "Inventory requests require a user UUID.");
+        }
+        try {
+          const inventory = await listInventoryParts(userId, { pool: dependencies.pool });
+          return respond(response, 200, inventory.map((row) => InventoryPartSchema.parse(row)));
+        } catch {
+          throw new ApiError(503, "Inventory database is unavailable.");
+        }
+      }
       if (request.method === "GET" && request.url === "/api/health") {
         const report = await health(dependencies);
         return respond(response, report.status === "ok" ? 200 : 503, report);
@@ -178,6 +211,7 @@ if (isMainModule) {
     fetcher: fetch,
     ollamaUrl: process.env.OLLAMA_URL ?? "http://ollama:11434",
     vramMb: process.env.VRAM_MB ? Number(process.env.VRAM_MB) : undefined,
+    demoSafeMode: demoSafeModeFromEnv(),
   });
   server.listen(Number(process.env.PORT ?? 3000), "0.0.0.0");
 }
