@@ -59,7 +59,7 @@ Cursor: `.sprint/C.cursor`
 - Soft waits / fallback: rebase and keep the golden-path E2E green while waiting.
 - Merge: yes — third, after A6 then B6.
 - Done when (copied): branch is rebased after A6/B6; full golden path on main confirms the three subsystems compose; C6 is Done and integration begins.
-- Status: pending
+- Status: done (completed by Arveen at 2026-07-18T05:56:47Z)
 
 ## C7 — Integration seams and live-vs-fixture decision
 
@@ -69,7 +69,7 @@ Cursor: `.sprint/C.cursor`
 - Merge: seams-only fixes may merge; no new scope.
 - Required Spec-Kit sequence: use the guide's shared G2 checklist; close all six seams and make the per-step live/fixture call.
 - Done when (copied): all six seams are closed; real retrieval, inventory, solver, transforms, template validation, and live models are verified; each step is confirmed live or pinned; G2 is Done.
-- Status: pending
+- Status: done (completed by Arveen at 2026-07-18T07:28:12Z; all golden-path steps pinned to fixtures because the required live-model tags are unavailable)
 
 ## C8 — Tune prompts, demo script, and rehearsals
 

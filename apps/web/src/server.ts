@@ -31,6 +31,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Parse the demo operator's explicit fallback switch without treating arbitrary text as true. */
+export function demoSafeModeFromEnv(value = process.env.DEMO_SAFE_MODE): boolean {
+  return value === "1" || value?.toLowerCase() === "true";
+}
+
 const vectorLiteral = (values: number[]) => `[${values.join(",")}]`;
 
 async function embedQuery(query: string, dependencies: ApiDependencies): Promise<number[]> {
@@ -206,6 +211,7 @@ if (isMainModule) {
     fetcher: fetch,
     ollamaUrl: process.env.OLLAMA_URL ?? "http://ollama:11434",
     vramMb: process.env.VRAM_MB ? Number(process.env.VRAM_MB) : undefined,
+    demoSafeMode: demoSafeModeFromEnv(),
   });
   server.listen(Number(process.env.PORT ?? 3000), "0.0.0.0");
 }

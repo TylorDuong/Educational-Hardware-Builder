@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { createApiServer, type ApiDependencies } from "../src/server.js";
+import { createApiServer, demoSafeModeFromEnv, type ApiDependencies } from "../src/server.js";
 
 const userId = "40000000-0000-4000-8000-000000000001";
 const citation = {
@@ -102,4 +102,13 @@ test("demo reset script resets, reseeds, warms models, and names the safe-mode f
   assert.match(script, /ingestion\/demo_seed\.sql/);
   assert.match(script, /seed_weather_station\.py/);
   assert.match(script, /DEMO_SAFE_MODE/);
+});
+
+test("the production safe-mode switch accepts only explicit true values", () => {
+  assert.equal(demoSafeModeFromEnv("1"), true);
+  assert.equal(demoSafeModeFromEnv("true"), true);
+  assert.equal(demoSafeModeFromEnv("TRUE"), true);
+  assert.equal(demoSafeModeFromEnv("false"), false);
+  assert.equal(demoSafeModeFromEnv("enabled"), false);
+  assert.equal(demoSafeModeFromEnv(undefined), false);
 });

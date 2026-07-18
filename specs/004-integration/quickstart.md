@@ -52,3 +52,16 @@ marks G2 done.
 - SCAD service: its three L-bracket tests and strict typecheck pass through the workspace
   toolchain. Package-local scripts remain unavailable because its manifest has no `vitest` or
   `typescript` dependency; this pre-existing manifest gap is not changed by G2.
+
+## C7 readiness decision (2026-07-18)
+
+- All deterministic seams pass on the integration branch: 20 web tests and strict web
+  typecheck pass; the production sandbox build, 3 solver tests/typecheck, and 3 focused SCAD
+  service tests/typecheck pass.
+- The demo machine has Ollama available, but only `llama3.2:latest` is installed. The required
+  `llama3.2:3b` router and `llama3.1:8b` lesson/assembly model tags are unavailable.
+- Pin golden-path steps 1–12 to the authored fixture by starting the demo server with
+  `DEMO_SAFE_MODE=true`. The server entrypoint now forwards that explicit switch to the agent
+  boundary; the test suite rejects ambiguous values such as `enabled`.
+- This is an all-fixture decision for the current demo machine. Reconsider individual steps only
+  after the required model tags are installed and a live end-to-end rehearsal is completed.

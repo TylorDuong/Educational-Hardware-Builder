@@ -62,3 +62,11 @@ without changing the already-completed owner-A work above.
 - [X] T014 [US4] Replace sandbox fixture transforms with solver-traced transforms in `apps/web/src/sandbox.tsx`.
 - [X] T015 [US4] Add solver and scad-service workspace dependencies in `apps/web/package.json`.
 - [X] T016 [US4] Run web tests, typecheck, sandbox build, solver tests, and scad-service tests; record B7 verification in `specs/004-integration/quickstart.md`.
+
+## C7 — Live Readiness and Fixture Control
+
+**Scope**: Close seam 6 after the deterministic seams pass. The server entrypoint must honor
+`DEMO_SAFE_MODE`, and C records a live-or-fixture decision for every golden-path step.
+
+- [X] T017 [US5] Wire `DEMO_SAFE_MODE` from the server environment into the agent boundary and add a focused regression test.
+- [X] T018 [US5] Verify required local model availability, record each golden-path step as live or fixture-pinned, and run the focused integration verification.
