@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { retrievalResultMock } from "@educational-hardware-builder/schemas/mocks";
+import { bme280ToEsp32Selection, mockSolveMatingSelection, retrievalResultMock } from "@educational-hardware-builder/schemas/mocks";
 
 import {
   callModel,
+  assertNoCoordinateLeak,
   goldenLessonStep,
   progressSse,
   runLesson,
+  runAssembly,
   runResearch,
   type AgentDependencies,
 } from "../src/agents.js";
@@ -90,4 +92,19 @@ test("progress events are typed and available as SSE frames", async () => {
   const chunk = await reader.read();
   assert.match(new TextDecoder().decode(chunk.value), /^event: progress\ndata: /);
   assert.match(new TextDecoder().decode(chunk.value), /"stage":"retrieving"/);
+});
+
+test("assembly retries a rejected symbolic mate against B's mock solver", async () => {
+  const unknownSelection = { ...bme280ToEsp32Selection, movingFeatureId: "unknown-feature" };
+  const result = await runAssembly("Choose a symbolic BME280 mate.", bme280ToEsp32Selection, {
+    ...agents(fetchResponses(JSON.stringify(unknownSelection), JSON.stringify(bme280ToEsp32Selection))),
+    solve: mockSolveMatingSelection,
+  });
+  assert.equal(result.attempts, 2);
+  assert.deepEqual(result.selection, bme280ToEsp32Selection);
+});
+
+test("coordinate-leak lint rejects model-shaped geometry fields", () => {
+  assert.throws(() => assertNoCoordinateLeak({ movingFeatureId: "bme280-mount-1", positionMm: [0, 0, 0] }), /prohibited geometry/);
+  assert.doesNotThrow(() => assertNoCoordinateLeak(bme280ToEsp32Selection));
 });

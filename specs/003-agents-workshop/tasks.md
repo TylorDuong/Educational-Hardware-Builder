@@ -14,8 +14,8 @@
 
 - [X] T008 [US3] Implement validated local-model calls, retry, fallback, and demo-safe pinning in apps/web/src/
 - [X] T009 [US2] Implement workshop progress and server-side checkpoint gating in apps/web/
-- [ ] T010 [US3] Implement symbolic assembly-to-solver retry and coordinate-leak protection in apps/web/src/
-- [ ] T011 [US3] Validate the full mock golden path in apps/web/tests/
+- [X] T010 [US3] Implement symbolic assembly-to-solver retry and coordinate-leak protection in apps/web/src/
+- [X] T011 [US3] Validate the full mock golden path in apps/web/tests/
 
 ## Pruned This Week
 

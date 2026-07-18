@@ -4,8 +4,11 @@ import {
   AgentProgressEventSchema,
   CitationSchema,
   LessonSchema,
+  MatingSelectionSchema,
+  type AssemblyTransform,
   type AgentProgressEvent,
   type Lesson,
+  type MatingSelection,
   type RetrievalResult,
   type StepPlan,
 } from "@educational-hardware-builder/schemas";
@@ -159,6 +162,48 @@ export interface AgentDependencies {
   ollamaUrl: string;
   demoSafeMode?: boolean;
   retrieve: (query: string) => Promise<RetrievalResult[]>;
+}
+
+export class CoordinateLeakError extends Error {}
+
+/** Reject model-shaped geometry before it can ever reach the solver boundary. */
+export function assertNoCoordinateLeak(value: unknown): void {
+  if (!value || typeof value !== "object") return;
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    if (/position|coordinate|quaternion|transform|matrix/i.test(key)) {
+      throw new CoordinateLeakError(`Model output contains prohibited geometry field: ${key}`);
+    }
+    assertNoCoordinateLeak(nested);
+  }
+}
+
+export interface AssemblyDependencies extends AgentDependencies {
+  solve: (selection: MatingSelection) => { ok: true; transform: AssemblyTransform } | { ok: false; error: { message: string } };
+}
+
+export async function runAssembly(prompt: string, fallback: MatingSelection, dependencies: AssemblyDependencies): Promise<{ selection: MatingSelection; transform: AssemblyTransform; attempts: 1 | 2 }> {
+  const model = "llama3.1:8b";
+  const generate = (instruction: string) => callModel({
+    schema: MatingSelectionSchema.strict(),
+    jsonSchema: { type: "object", required: ["movingPartId", "movingFeatureId", "targetPartId", "targetFeatureId"], additionalProperties: false },
+    prompt: instruction,
+    model,
+    temperature: 0.2,
+    fallback: () => fallback,
+    fetcher: dependencies.fetcher,
+    ollamaUrl: dependencies.ollamaUrl,
+    demoSafeMode: dependencies.demoSafeMode,
+  });
+  const first = await generate(prompt);
+  assertNoCoordinateLeak(first.value);
+  const firstSolve = dependencies.solve(first.value);
+  if (firstSolve.ok) return { selection: first.value, transform: firstSolve.transform, attempts: 1 };
+
+  const second = await generate(`${prompt}\n\nThe solver rejected the symbolic mating selection: ${firstSolve.error.message}\nChoose a corrected symbolic selection; never emit coordinates.`);
+  assertNoCoordinateLeak(second.value);
+  const secondSolve = dependencies.solve(second.value);
+  if (!secondSolve.ok) throw new Error(`Solver rejected the retry: ${secondSolve.error.message}`);
+  return { selection: second.value, transform: secondSolve.transform, attempts: 2 };
 }
 
 export async function runRouter(request: string, dependencies: AgentDependencies): Promise<ModelCallResult<RouterResult>> {
