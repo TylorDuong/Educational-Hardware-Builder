@@ -83,6 +83,8 @@ Invoke-RestMethod http://localhost:3000/api/health
 
 Launch Codex in the repository root, then send exactly one of these prompts. The runner reads `.sprint/status.yml`, the matching plan, and the owner execution guide before taking action.
 
+Fresh B and C contributors should start with the dedicated [fresh-clone B/C guide](docs/fresh-clone-b-c.md).
+
 | Person | Prompt | Active branch | Current sprint position |
 | --- | --- | --- | --- |
 | Tylor (A) | `$sprint-run ME=A NAME=Tylor` | `Tylor-A` | A6, waiting for C5 |
