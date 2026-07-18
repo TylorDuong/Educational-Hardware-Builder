@@ -3,13 +3,15 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { Pool } from "pg";
 import {
   CitationSchema,
+  InventoryPartSchema,
   RetrievalQuerySchema,
   RetrievalResultSchema,
   type RetrievalQuery,
   type RetrievalResult,
 } from "@educational-hardware-builder/schemas";
 
-import { progressSse } from "./agents.js";
+import { progressSse, runResearch } from "./agents.js";
+import { listInventoryParts } from "./integration.js";
 import { WorkshopAccessError, WorkshopSessions } from "./workshop.js";
 
 type Queryable = Pick<Pool, "query">;
@@ -20,6 +22,7 @@ export interface ApiDependencies {
   fetcher: Fetcher;
   ollamaUrl: string;
   vramMb?: number;
+  demoSafeMode?: boolean;
 }
 
 export class ApiError extends Error {
@@ -138,6 +141,31 @@ export function createApiServer(dependencies: ApiDependencies) {
       const url = new URL(request.url ?? "/", "http://localhost");
       if (request.method === "POST" && request.url === "/api/retrieve") {
         return respond(response, 200, await retrieve(await readJson(request), dependencies));
+      }
+      if (request.method === "POST" && request.url === "/api/integration/research") {
+        const body = await readJson(request) as { query?: unknown };
+        if (typeof body.query !== "string" || body.query.trim().length === 0) {
+          throw new ApiError(400, "Integrated research requires a query.");
+        }
+        const result = await runResearch(body.query, {
+          fetcher: dependencies.fetcher,
+          ollamaUrl: dependencies.ollamaUrl,
+          demoSafeMode: dependencies.demoSafeMode,
+          retrieve: (query) => retrieve({ query }, dependencies),
+        });
+        return respond(response, 200, result);
+      }
+      if (request.method === "GET" && url.pathname.startsWith("/api/inventory/")) {
+        const userId = decodeURIComponent(url.pathname.slice("/api/inventory/".length));
+        if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(userId)) {
+          throw new ApiError(400, "Inventory requests require a user UUID.");
+        }
+        try {
+          const inventory = await listInventoryParts(userId, { pool: dependencies.pool });
+          return respond(response, 200, inventory.map((row) => InventoryPartSchema.parse(row)));
+        } catch {
+          throw new ApiError(503, "Inventory database is unavailable.");
+        }
       }
       if (request.method === "GET" && request.url === "/api/health") {
         const report = await health(dependencies);

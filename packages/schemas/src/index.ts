@@ -34,6 +34,15 @@ export const PartRecordSchema = z.object({
   cadAssetIds: z.array(z.string().uuid()).default([]),
 });
 
+/** A persisted inventory row joined to its canonical part when available. */
+export const InventoryPartSchema = z.object({
+  inventoryId: z.string().uuid(),
+  quantity: z.number().int().positive(),
+  rawLabel: z.string().min(1).nullable(),
+  verified: z.boolean(),
+  part: PartRecordSchema.nullable(),
+});
+
 export const CadAssetRecordSchema = z.object({
   id: z.string().uuid(),
   partId: z.string().uuid(),
@@ -129,6 +138,7 @@ export const IngestUpsertSchema = z.object({
 
 export type Citation = z.infer<typeof CitationSchema>;
 export type PartRecord = z.infer<typeof PartRecordSchema>;
+export type InventoryPart = z.infer<typeof InventoryPartSchema>;
 export type CadAssetRecord = z.infer<typeof CadAssetRecordSchema>;
 export type MatingSelection = z.infer<typeof MatingSelectionSchema>;
 export type AssemblyTransform = z.infer<typeof AssemblyTransformSchema>;
