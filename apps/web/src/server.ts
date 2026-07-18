@@ -9,6 +9,9 @@ import {
   type RetrievalResult,
 } from "@educational-hardware-builder/schemas";
 
+import { progressSse } from "./agents.js";
+import { WorkshopAccessError, WorkshopSessions } from "./workshop.js";
+
 type Queryable = Pick<Pool, "query">;
 type Fetcher = typeof fetch;
 
@@ -110,9 +113,29 @@ function respond(response: ServerResponse, status: number, payload: unknown): vo
   response.end(JSON.stringify(payload));
 }
 
+async function respondSse(response: ServerResponse): Promise<void> {
+  const operationId = "fb5f4c45-fb24-4690-b785-a306e857a373";
+  const stream = progressSse([
+    { operationId, stage: "queued", message: "Preparing the guided build", percent: 0 },
+    { operationId, stage: "retrieving", message: "Finding cited guidance", percent: 35 },
+    { operationId, stage: "generating", message: "Creating typed lesson content", percent: 70 },
+    { operationId, stage: "complete", message: "Guidance is ready", percent: 100 },
+  ]);
+  response.writeHead(200, {
+    "content-type": "text/event-stream",
+    "cache-control": "no-cache",
+    connection: "keep-alive",
+  });
+  const reader = stream.getReader();
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) response.write(chunk.value);
+  response.end();
+}
+
 export function createApiServer(dependencies: ApiDependencies) {
+  const workshopSessions = new WorkshopSessions();
   return createServer(async (request, response) => {
     try {
+      const url = new URL(request.url ?? "/", "http://localhost");
       if (request.method === "POST" && request.url === "/api/retrieve") {
         return respond(response, 200, await retrieve(await readJson(request), dependencies));
       }
@@ -120,9 +143,28 @@ export function createApiServer(dependencies: ApiDependencies) {
         const report = await health(dependencies);
         return respond(response, report.status === "ok" ? 200 : 503, report);
       }
+      if (request.method === "GET" && request.url === "/api/agents/progress") {
+        return await respondSse(response);
+      }
+      if (request.method === "GET" && url.pathname.startsWith("/api/workshop/steps/")) {
+        const stepId = decodeURIComponent(url.pathname.slice("/api/workshop/steps/".length));
+        const step = workshopSessions.accessStep(url.searchParams.get("sessionId") ?? "demo", stepId);
+        const { checkpoint, ...withoutCheckpoint } = step;
+        return respond(response, 200, {
+          ...withoutCheckpoint,
+          checkpoint: checkpoint ? { id: checkpoint.id, prompt: checkpoint.prompt, choices: checkpoint.choices } : undefined,
+        });
+      }
+      if (request.method === "POST" && request.url === "/api/workshop/checkpoints") {
+        const body = await readJson(request) as { sessionId?: unknown; checkpointId?: unknown; answer?: unknown };
+        if (typeof body.sessionId !== "string" || typeof body.checkpointId !== "string" || typeof body.answer !== "string") {
+          throw new ApiError(400, "Checkpoint responses require a session, checkpoint, and answer.");
+        }
+        return respond(response, 200, workshopSessions.gradeCheckpoint(body.sessionId, body.checkpointId, body.answer));
+      }
       return respond(response, 404, { error: "Not found" });
     } catch (error) {
-      const apiError = error instanceof ApiError ? error : new ApiError(500, "Unexpected server error.");
+      const apiError = error instanceof ApiError ? error : error instanceof WorkshopAccessError ? new ApiError(403, error.message) : new ApiError(500, "Unexpected server error.");
       return respond(response, apiError.status, { error: apiError.message });
     }
   });
