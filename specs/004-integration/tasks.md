@@ -50,3 +50,15 @@ T001-T002 precede T003-T008. T003-T004 implement retrieval; T005-T006 implement 
 ## Pruned This Week
 
 The solver collision retry loop, real solver transforms in the viewer, template compile/validation error UX, and live-GPU sign-off are other G2 owners' seams. No new product features are permitted.
+
+## B7 — Ani's Spatial and Template Seams
+
+**Scope**: Execute after C6 is done on `feature/004-integration`. These tasks close seams 3–5
+without changing the already-completed owner-A work above.
+
+- [X] T011 [P] Add real-solver and safe-template adapter tests in `apps/web/tests/spatial-integration.test.ts`.
+- [X] T012 [US4] Add fixture asset lookup, typed solver-error presentation, transform trace checks, and L-bracket compile adapter in `apps/web/src/spatial-integration.ts`.
+- [X] T013 [US4] Route assembly retries through typed solver feedback in `apps/web/src/agents.ts`.
+- [X] T014 [US4] Replace sandbox fixture transforms with solver-traced transforms in `apps/web/src/sandbox.tsx`.
+- [X] T015 [US4] Add solver and scad-service workspace dependencies in `apps/web/package.json`.
+- [X] T016 [US4] Run web tests, typecheck, sandbox build, solver tests, and scad-service tests; record B7 verification in `specs/004-integration/quickstart.md`.

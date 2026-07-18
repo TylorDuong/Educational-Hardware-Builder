@@ -96,6 +96,24 @@ A demonstrator can reset the local environment to known seeded data and warmed m
 - **SC-003**: The demo reset operation restores seeded data and attempts model warmup in under one minute on the demo machine.
 - **SC-004**: In all automated model-service failure drills, the active build remains usable with deterministic fixture content and no unhandled error.
 
+## B7 Addendum — Spatial and Template Seams
+
+Ani's B7 share closes the three deterministic seams intentionally excluded from the owner-A
+task list above. The integration must replace the fixture solver boundary with the real
+solver, render only solver-traced assembly transforms in MechView, and route the L-bracket
+request through the real compile/validation service. A rejected symbolic mate must expose
+its typed, actionable details to the retry prompt and UI; raw compiler stderr must not be
+shown to learners.
+
+### B7 Success Criteria
+
+- A deliberately invalid symbolic mate produces an actionable retry message containing the
+  solver's typed facts, while coordinate-shaped model output remains rejected.
+- The sandbox uses real solver output for its MechView transform inputs and asserts a solver
+  trace exists for every rendered part.
+- An invalid L-bracket request displays a readable typed rejection, and a valid request
+  returns the validated printable STL through the scad-service boundary.
+
 ## Assumptions
 
 - The merged A5 retrieval API, database schema, corpus seed, and C5 agent fallback path are the integration authorities.

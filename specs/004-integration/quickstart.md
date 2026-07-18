@@ -43,3 +43,12 @@ marks G2 done.
   tooling. Its package-local `pnpm test` and `pnpm typecheck` currently cannot resolve
   `vitest` or `tsc` because `packages/scad-service/package.json` declares neither tool;
   this pre-existing package manifest issue is outside the seams-only G2 scope.
+
+## B7 verification (2026-07-17)
+
+- Web: 19 tests, including three real-solver/trace/template tests, pass; strict typecheck and
+  production sandbox build pass.
+- Solver: 3 tests and typecheck pass.
+- SCAD service: its three L-bracket tests and strict typecheck pass through the workspace
+  toolchain. Package-local scripts remain unavailable because its manifest has no `vitest` or
+  `typescript` dependency; this pre-existing manifest gap is not changed by G2.

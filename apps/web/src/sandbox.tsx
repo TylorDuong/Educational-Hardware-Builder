@@ -1,29 +1,15 @@
 import { lazy, StrictMode, Suspense, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
-import { weatherStationCadAssets } from "../../../packages/schemas/fixtures/weather-station-parts.js";
 import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
 import type { MechViewPart } from "./components/MechView.js";
+import { assertSolverTraces, solverTracedFixtureParts } from "./spatial-integration.js";
 
 import "./sandbox.css";
 
 const sessionId = "workshop-demo";
 const tabs = ["Dashboard", "Inventory", "Workshop", "Gallery"] as const;
 const LazyMechView = lazy(async () => ({ default: (await import("./components/MechView.js")).MechView }));
-
-const fixtureParts: MechViewPart[] = weatherStationCadAssets.map((asset, index) => ({
-  id: asset.id,
-  cadAssetUrl: asset.filePath,
-  color: index % 2 ? "#22c55e" : "#38bdf8",
-  transform: {
-    partId: asset.partId,
-    stepId: weatherStationGoldenSteps[Math.min(index, weatherStationGoldenSteps.length - 1)]!.id,
-    positionMm: [(index % 5) * 28, Math.floor(index / 5) * 32, index === 1 ? 8 : 0],
-    quaternion: [0, 0, 0, 1],
-    parentFrame: "weather-station-root",
-    coordinateConvention: "z-up-parent-relative",
-  },
-}));
 
 type Progress = { stage: string; message: string; percent?: number };
 
@@ -42,7 +28,12 @@ function Workshop() {
   const [message, setMessage] = useState("Choose a step to begin the guided build.");
   const [progress, setProgress] = useState<Progress>({ stage: "queued", message: "Waiting to start", percent: 0 });
   const step = weatherStationGoldenSteps[activeIndex]!;
-  const highlightedPart = fixtureParts[activeIndex % fixtureParts.length]!;
+  const mechViewParts: MechViewPart[] = useMemo(() => {
+    const parts = solverTracedFixtureParts(step.id);
+    assertSolverTraces(parts);
+    return parts;
+  }, [step.id]);
+  const highlightedPart = mechViewParts[activeIndex % mechViewParts.length]!;
   const cameraTarget = useMemo(() => highlightedPart.transform.positionMm, [highlightedPart]);
 
   useEffect(() => {
@@ -91,7 +82,7 @@ function Workshop() {
         {step.checkpoint ? <section className="checkpoint"><h3>Checkpoint</h3><p>{step.checkpoint.prompt}</p><div>{step.checkpoint.choices?.map((choice) => <button key={choice} onClick={() => void answer(choice)}>{choice}</button>)}</div></section> : null}
         <p className="message" aria-live="polite">{message}</p><div className="pagination"><button disabled={activeIndex === 0} onClick={() => void moveTo(activeIndex - 1)}>Previous</button><button disabled={activeIndex === weatherStationGoldenSteps.length - 1} onClick={() => void moveTo(activeIndex + 1)}>Next</button></div>
       </section>
-      <section className="viewer panel"><h2>3D Mech View</h2><div className="canvas"><Suspense fallback={<p>Loading the 3D fixture…</p>}><LazyMechView parts={fixtureParts} highlightIds={[highlightedPart.id]} explodeFactor={0} cameraTarget={cameraTarget} /></Suspense></div><p>Fixture transform synchronized to step {step.order}.</p></section>
+      <section className="viewer panel"><h2>3D Mech View</h2><div className="canvas"><Suspense fallback={<p>Loading the 3D fixture…</p>}><LazyMechView parts={mechViewParts} highlightIds={[highlightedPart.id]} explodeFactor={0} cameraTarget={cameraTarget} /></Suspense></div><p>Deterministic solver transform synchronized to step {step.order}.</p></section>
     </section>}
   </main>;
 }

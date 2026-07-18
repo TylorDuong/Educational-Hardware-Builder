@@ -178,7 +178,7 @@ export function assertNoCoordinateLeak(value: unknown): void {
 }
 
 export interface AssemblyDependencies extends AgentDependencies {
-  solve: (selection: MatingSelection) => { ok: true; transform: AssemblyTransform } | { ok: false; error: { message: string } };
+  solve: (selection: MatingSelection) => { ok: true; transform: AssemblyTransform } | { ok: false; error: { message: string; code?: string } };
 }
 
 export async function runAssembly(prompt: string, fallback: MatingSelection, dependencies: AssemblyDependencies): Promise<{ selection: MatingSelection; transform: AssemblyTransform; attempts: 1 | 2 }> {
@@ -199,7 +199,8 @@ export async function runAssembly(prompt: string, fallback: MatingSelection, dep
   const firstSolve = dependencies.solve(first.value);
   if (firstSolve.ok) return { selection: first.value, transform: firstSolve.transform, attempts: 1 };
 
-  const second = await generate(`${prompt}\n\nThe solver rejected the symbolic mating selection: ${firstSolve.error.message}\nChoose a corrected symbolic selection; never emit coordinates.`);
+  const reason = firstSolve.error.code ? `[${firstSolve.error.code}] ${firstSolve.error.message}` : firstSolve.error.message;
+  const second = await generate(`${prompt}\n\nThe solver rejected the symbolic mating selection: ${reason}\nChoose a corrected symbolic selection; never emit coordinates.`);
   assertNoCoordinateLeak(second.value);
   const secondSolve = dependencies.solve(second.value);
   if (!secondSolve.ok) throw new Error(`Solver rejected the retry: ${secondSolve.error.message}`);
