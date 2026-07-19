@@ -1,4 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { readFile, stat } from "node:fs/promises";
+import { extname, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Pool } from "pg";
 import {
@@ -23,6 +26,7 @@ export interface ApiDependencies {
   ollamaUrl: string;
   vramMb?: number;
   demoSafeMode?: boolean;
+  staticDir?: string;
 }
 
 export class ApiError extends Error {
@@ -121,6 +125,28 @@ function respond(response: ServerResponse, status: number, payload: unknown): vo
   response.end(JSON.stringify(payload));
 }
 
+const staticContentTypes: Record<string, string> = {
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".svg": "image/svg+xml",
+};
+
+async function serveStatic(pathname: string, response: ServerResponse, staticDir: string): Promise<boolean> {
+  const root = resolve(staticDir);
+  const relativePath = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  const target = resolve(root, relativePath);
+  if (target !== root && !target.startsWith(`${root}${sep}`)) return false;
+  try {
+    if (!(await stat(target)).isFile()) return false;
+    response.writeHead(200, { "content-type": staticContentTypes[extname(target)] ?? "application/octet-stream" });
+    response.end(await readFile(target));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function respondSse(response: ServerResponse): Promise<void> {
   const operationId = "fb5f4c45-fb24-4690-b785-a306e857a373";
   const stream = progressSse([
@@ -194,6 +220,9 @@ export function createApiServer(dependencies: ApiDependencies) {
           throw new ApiError(400, "Checkpoint responses require a session, checkpoint, and answer.");
         }
         return respond(response, 200, workshopSessions.gradeCheckpoint(body.sessionId, body.checkpointId, body.answer));
+      }
+      if (request.method === "GET" && await serveStatic(url.pathname, response, dependencies.staticDir ?? fileURLToPath(new URL("../dist/", import.meta.url)))) {
+        return;
       }
       return respond(response, 404, { error: "Not found" });
     } catch (error) {

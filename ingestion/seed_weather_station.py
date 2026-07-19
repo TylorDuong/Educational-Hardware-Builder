@@ -8,6 +8,7 @@ claims, then route the seed through POST /api/ingest/v1/upsert in A5.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import subprocess
@@ -112,8 +113,25 @@ def escape(value: str) -> str:
 
 def embedding(content: str, ollama_url: str) -> list[float]:
     if ollama_url == "docker":
+        # The Ollama image has no HTTP client and `ollama run` waits for generated
+        # text, which embedding-only models do not produce.  The web container is
+        # already on the Compose network and receives OLLAMA_URL=http://ollama:11434.
+        encoded_content = base64.b64encode(content.encode("utf-8")).decode("ascii")
+        embed_program = """
+const input = Buffer.from(process.argv[1], "base64").toString("utf8");
+(async () => {
+  const response = await fetch(`${process.env.OLLAMA_URL}/api/embed`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "nomic-embed-text", input }),
+  });
+  if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+  const payload = await response.json();
+  process.stdout.write(JSON.stringify(payload.embeddings[0]));
+})().catch((error) => { console.error(error); process.exit(1); });
+"""
         result = subprocess.run(
-            ["docker", "compose", "-f", "infra/docker-compose.yml", "exec", "-T", "ollama", "ollama", "run", "nomic-embed-text", content],
+            ["docker", "compose", "-f", "infra/docker-compose.yml", "exec", "-T", "web", "node", "-e", embed_program, encoded_content],
             capture_output=True, text=True, check=True,
         )
         values = json.loads(result.stdout)

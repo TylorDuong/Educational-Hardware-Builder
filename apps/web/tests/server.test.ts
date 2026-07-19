@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import test from "node:test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { createApiServer, health, retrieve, type ApiDependencies } from "../src/server.js";
 
@@ -62,6 +65,24 @@ test("streams typed agent progress over the SSE endpoint", async () => {
     assert.match(await response.text(), /event: progress/);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("serves the built workshop at the root route", async () => {
+  const staticDir = await mkdtemp(join(tmpdir(), "hardware-builder-workshop-"));
+  await writeFile(join(staticDir, "index.html"), "<!doctype html><title>Workshop</title>");
+  const server = createApiServer(dependencies({ staticDir }));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const response = await fetch(`http://127.0.0.1:${address.port}/`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "text/html; charset=utf-8");
+    assert.match(await response.text(), /Workshop/);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await rm(staticDir, { recursive: true, force: true });
   }
 });
 

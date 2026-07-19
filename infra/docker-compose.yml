@@ -9,6 +9,7 @@ services:
     environment:
       DATABASE_URL: postgresql://hardware_builder:hardware_builder_dev@postgres:5432/hardware_builder
       OLLAMA_URL: http://ollama:11434
+      DEMO_SAFE_MODE: ${DEMO_SAFE_MODE:-false}
     ports:
       - "3000:3000"
     depends_on:

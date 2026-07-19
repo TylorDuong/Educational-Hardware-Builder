@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [string]$ComposeFile = "infra/docker-compose.yml",
-  [string]$OllamaUrl = "http://localhost:11434",
+  [string]$OllamaUrl = "docker",
   [switch]$SkipModelWarmup
 )
 
@@ -28,7 +28,7 @@ if ($LASTEXITCODE -ne 0) { throw "Could not seed cited weather-station guidance.
 
 if (-not $SkipModelWarmup) {
   Write-Host "Warming local models..."
-  foreach ($model in @("llama3.2:3b", "llama3.1:8b", "qwen2.5-coder:7b", "nomic-embed-text")) {
+  foreach ($model in @("llama3.2:3b", "llama3.1:8b", "qwen2.5-coder:7b")) {
     try {
       Invoke-Compose @("exec", "-T", "ollama", "ollama", "run", $model, "Respond with OK")
     } catch {
@@ -36,6 +36,7 @@ if (-not $SkipModelWarmup) {
       break
     }
   }
+  Write-Host "nomic-embed-text was warmed while seeding the cited corpus."
 }
 
 Write-Host "Demo reset complete. Use DEMO_SAFE_MODE if model warmup was unavailable."

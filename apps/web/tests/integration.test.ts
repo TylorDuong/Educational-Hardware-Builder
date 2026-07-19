@@ -101,7 +101,13 @@ test("demo reset script resets, reseeds, warms models, and names the safe-mode f
   assert.match(script, /TRUNCATE TABLE/);
   assert.match(script, /ingestion\/demo_seed\.sql/);
   assert.match(script, /seed_weather_station\.py/);
+  assert.match(script, /\[string\]\$OllamaUrl = "docker"/);
   assert.match(script, /DEMO_SAFE_MODE/);
+});
+
+test("Compose forwards the explicit safe-mode switch to the web service", async () => {
+  const compose = await readFile(new URL("../../../infra/docker-compose.yml", import.meta.url), "utf8");
+  assert.match(compose, /DEMO_SAFE_MODE: \$\{DEMO_SAFE_MODE:-false\}/);
 });
 
 test("the production safe-mode switch accepts only explicit true values", () => {
