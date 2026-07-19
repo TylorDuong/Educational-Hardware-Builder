@@ -80,20 +80,11 @@ Cursor: `.sprint/A.cursor`
 - Done when (copied): real retrieval replaces the agent mock and displays honest citations; inventory/parts mocks use real tables; `scripts/demo-reset.sh` wipes, reseeds, and warms models in under one minute; stopping Ollama mid-build degrades to fixture content instead of crashing; all six team seams are closed and C has made the live/fixture call, then G2 is Done.
 - Status: pending
 
-## A8 — Demo operations and backup recording
+## A8 — Runtime reset and resilience acceptance
 
 - Cell / day: H27 (G3) / Day 6
 - Hard waits: G2 (H26)
-- Soft waits / fallback: pin unreliable steps to fixture via `DEMO_SAFE_MODE`; if rehearsal 1 fails, capture the backup in rehearsal 2.
+- Soft waits / fallback: keep unavailable live-model steps pinned through `DEMO_SAFE_MODE`; do not substitute a manual database edit for the documented reset path.
 - Merge: no.
-- Done when (copied): all four models are pre-pulled; reset script and `DEMO_SAFE_MODE` work end-to-end on the demo machine; two rehearsals run; a screen-and-audio backup is stored locally and in drive/cloud; B's 3D print has started; G3 is Done.
-- Status: pending
-
-## G4 — Presentation day
-
-- Cell / day: H28 / Day 7
-- Hard waits: G3 (H27)
-- Soft waits / fallback: `DEMO_SAFE_MODE` or backup video.
-- Merge: no.
-- Done when (copied): A opens the local-first pitch, runs reset/demo-safe operations during C's demo, has the backup video ready, and hands off for B's 3D moment.
+- Done when: the documented reset flow runs twice against the local stack and restores seeded golden-path data without manual database edits; unavailable model warmup is reported honestly; `DEMO_SAFE_MODE` keeps the app usable with fixture content; compose configuration and the reset/fallback integration tests pass; the group G3 acceptance evidence is complete.
 - Status: pending

@@ -71,20 +71,11 @@ Cursor: `.sprint/C.cursor`
 - Done when (copied): all six seams are closed; real retrieval, inventory, solver, transforms, template validation, and live models are verified; each step is confirmed live or pinned; G2 is Done.
 - Status: done (completed by Arveen at 2026-07-18T07:28:12Z; all golden-path steps pinned to fixtures because the required live-model tags are unavailable)
 
-## C8 — Tune prompts, demo script, and rehearsals
+## C8 — Learner-flow end-to-end acceptance
 
 - Cell / day: H27 (G3) / Day 6
 - Hard waits: G2 (H26)
-- Soft waits / fallback: pin unreliable steps through DEMO_SAFE_MODE; do not rehearse before the live/fixture decision is locked.
+- Soft waits / fallback: use the locked fixture/live decision from G2; do not bypass a failed live model by skipping a learner-flow step.
 - Merge: no.
-- Done when (copied): prompts are tuned or pinned, the demo script covers the golden path, both rehearsals run, and A records the backup video; G3 is Done.
-- Status: pending
-
-## G4 — Presentation day
-
-- Cell / day: H28 / Day 7
-- Hard waits: G3 (H27)
-- Soft waits / fallback: DEMO_SAFE_MODE and the backup video.
-- Merge: no.
-- Done when (copied): C drives the five-to-six-minute demo through prompt, plan, parts, gated checkpoint, retry/3D beat, and completion, while A holds the fallback controls.
+- Done when: the weather-station flow reaches completion using the configured fixture/live decisions and displays cited research/lessons, plan, parts/substitutions, Workshop, and 3D state; direct locked-step access is denied server-side; wrong checkpoint answers receive re-explanation and correct answers unlock progress; solver rejection/retry produces solver-traced transforms without model-facing raw coordinates or matrices; the group G3 acceptance evidence is complete.
 - Status: pending

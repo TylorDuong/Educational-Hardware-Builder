@@ -48,6 +48,14 @@ If any file is missing, say so and stop — do not invent its contents.
 
 ## 3. Ground rules (the behavioral contract)
 
+### Functional-MVP override
+
+For the remaining G3 work, read
+`.agents/skills/sprint-run/references/functional-mvp-plan.md`. It supersedes
+legacy guide instructions about presentation, recordings, rehearsals, camera paths,
+3D prints, and presenter roles. G3/H27 is the final functional-MVP acceptance gate;
+G4/H28 is retired and must not be created, updated, or awaited.
+
 - **One task at a time, in ME's order.** Never run ahead.
 - **Gate check is mandatory and comes first.** Before starting any task, read `.sprint/status.yml`
   and confirm every dependency's status is `done`.
@@ -95,13 +103,12 @@ Owner · tracker cell · day · **wait-for** (H=hard, S=soft) · unblocks · mer
 | B6 | B | H24 | 5 AM | **A6 (H)** | C6 | Yes (**2nd**) | rebase while waiting |
 | C6 | C | H25 | 5 AM | **B6 (H)** | G2 seams | Yes (**3rd**) | rebase, keep golden E2E green |
 | G2 | ALL | H26 | 5 | merge train done (H) | G3 | seam fixes only | pin flaky steps via DEMO_SAFE_MODE |
-| G3 | ALL | H27 | 6 | G2 (H) | G4 | No | — |
-| G4 | ALL | H28 | 7 | G3 (H) | — | No | DEMO_SAFE_MODE / backup video |
+| G3 | ALL | H27 | 6 | G2 (H) | **final** | No | Functional MVP acceptance; fixture-pinned steps are valid when live models are unavailable |
 
 ME's ordered sequence:
-- **A:** A1 → G1 → A2 → A3 → A4 → A5 → A6 → A7(=G2) → A8(=G3) → G4
-- **B:** G1 → B1 → B2 → B3 → B4 → B5 → B6 → B7(=G2) → B8(=G3) → G4
-- **C:** G1(+C1) → C2 → C3 → C4 → C5 → C6 → C7(=G2) → C8(=G3) → G4
+- **A:** A1 → G1 → A2 → A3 → A4 → A5 → A6 → A7(=G2) → A8(=G3, final)
+- **B:** G1 → B1 → B2 → B3 → B4 → B5 → B6 → B7(=G2) → B8(=G3, final)
+- **C:** G1(+C1) → C2 → C3 → C4 → C5 → C6 → C7(=G2) → C8(=G3, final)
 
 ---
 
@@ -199,8 +206,7 @@ codes:
   B6: {cell: H24, status: pending}
   C6: {cell: H25, status: pending}
   G2: {cell: H26, status: pending}   # flip only when all 6 seams closed
-  G3: {cell: H27, status: pending}   # flip only after both rehearsals + backup recording
-  G4: {cell: H28, status: pending}
+  G3: {cell: H27, status: pending}   # flip only after all functional-MVP acceptance evidence passes
 ```
 
 ---

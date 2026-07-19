@@ -4,9 +4,9 @@ Use this reference for shared sequencing and gate state only. Use the owner exec
 
 ## Owner sequences
 
-- A: A1 → G1 → A2 → A3 → A4 → A5 → A6 → A7 (= G2) → A8 (= G3) → G4
-- B: G1 → B1 → B2 → B3 → B4 → B5 → B6 → B7 (= G2) → B8 (= G3) → G4
-- C: G1 (plus C1) → C2 → C3 → C4 → C5 → C6 → C7 (= G2) → C8 (= G3) → G4
+- A: A1 → G1 → A2 → A3 → A4 → A5 → A6 → A7 (= G2) → A8 (= G3, final)
+- B: G1 → B1 → B2 → B3 → B4 → B5 → B6 → B7 (= G2) → B8 (= G3, final)
+- C: G1 (plus C1) → C2 → C3 → C4 → C5 → C6 → C7 (= G2) → C8 (= G3, final)
 
 For C, keep C1 inside G1 setup as directed by the guide; do not add a tracker row.
 
@@ -34,8 +34,7 @@ For C, keep C1 inside G1 setup as directed by the guide; do not add a tracker ro
 | B6 | B | H24 | 5 AM | A6 (H) | second | rebase while waiting |
 | C6 | C | H25 | 5 AM | B6 (H) | third | rebase; keep golden E2E green |
 | G2 | all | H26 | 5 | merge train done (H) | seams only | pin flaky steps with `DEMO_SAFE_MODE` |
-| G3 | all | H27 | 6 | G2 (H) | no | — |
-| G4 | all | H28 | 7 | G3 (H) | no | `DEMO_SAFE_MODE` or backup video |
+| G3 | all | H27 | 6 | G2 (H) | no | Functional MVP acceptance; fixture-pinned steps remain valid when live models are unavailable |
 
 Treat B1, C2, A/B/C-5, A6/B6/C6, and G1 as merge tasks. A6/B6/C6 must merge in order.
 
@@ -67,5 +66,4 @@ codes:
   C6: {cell: H25, status: pending}
   G2: {cell: H26, status: pending}
   G3: {cell: H27, status: pending}
-  G4: {cell: H28, status: pending}
 ```

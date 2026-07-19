@@ -11,7 +11,6 @@ Cursor: `.sprint/B.cursor`
 - Merge: yes — constitution, schemas, mocks, and fixtures land on `main`.
 - Done when (copied): `CadAssetRecord.matingFeatures`, symbolic `MatingSelection`, `AssemblyTransform` (Z-up, parent-relative), and bounded `TemplateParams` are agreed in code; Constitution + schemas + mocks + fixtures are on main; three feature branches exist; G1 is Done.
 - Status: pending
-
 ## B1 — Fixture STLs, expected outputs, and mock solver
 
 - Cell / day: H9 / Day 1, by lunch
@@ -80,20 +79,11 @@ Cursor: `.sprint/B.cursor`
 - Done when (copied): all six seams are closed; real retrieval, inventory, solver, transforms, template validation, and live models are verified; C has made the live/fixture call; G2 is Done.
 - Status: pending
 
-## B8 — Performance pass, camera path, and 3D print
+## B8 — Spatial and template acceptance
 
 - Cell / day: H27 (G3) / Day 6
 - Hard waits: G2 (H26)
-- Soft waits / fallback: pin unreliable steps through `DEMO_SAFE_MODE`.
+- Soft waits / fallback: fixture-pinned agent steps are acceptable; solver-traced transforms and typed template errors are not optional.
 - Merge: no.
-- Done when (copied): the L-bracket print has started; MechView is smooth on the demo machine; camera path is rehearsed; both rehearsals run; A records the backup video; G3 is Done.
-- Status: pending
-
-## G4 — Presentation day
-
-- Cell / day: H28 / Day 7
-- Hard waits: G3 (H27)
-- Soft waits / fallback: `/sandbox` stays open as B's fallback; `DEMO_SAFE_MODE` and backup video remain available.
-- Merge: no.
-- Done when (copied): B delivers the 3–4 minute 3D moment — exploded view, step-synced highlight, collision/retry story, compile loop, and printed L-bracket.
+- Done when: solver golden/property tests and SCAD-service validation tests pass; `/sandbox` builds and the weather-station viewer uses solver-traced transforms with normal interaction controls; the template happy path works; invalid parameters, compile failure, and zero-volume output are surfaced as typed readable rejections; the group G3 acceptance evidence is complete.
 - Status: pending
