@@ -84,6 +84,24 @@ test("integrated research uses cited retrieval and falls back safely when the lo
   });
 });
 
+test("the kill switch serves authored research when Ollama is stopped", async () => {
+  await withServer(async (root) => {
+    const response = await fetch(`${root}/api/integration/research`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "BME280 wiring" }),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json() as { source: string; attempts: number; value: { findings: unknown[] } };
+    assert.equal(payload.source, "fallback");
+    assert.equal(payload.attempts, 0);
+    assert.ok(payload.value.findings.length > 0);
+  }, dependencies({
+    demoSafeMode: true,
+    fetcher: (async () => { throw new Error("Ollama stopped"); }) as ApiDependencies["fetcher"],
+  }));
+});
+
 test("inventory endpoint returns catalog-backed records and preserves unverified rows", async () => {
   await withServer(async (root) => {
     const response = await fetch(`${root}/api/inventory/${userId}`);

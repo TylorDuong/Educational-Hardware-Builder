@@ -25,6 +25,7 @@ function AppTabs({ active, onSelect }: { active: typeof tabs[number]; onSelect: 
 function Workshop() {
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>("Workshop");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [explodeFactor, setExplodeFactor] = useState(0);
   const [message, setMessage] = useState("Choose a step to begin the guided build.");
   const [progress, setProgress] = useState<Progress>({ stage: "queued", message: "Waiting to start", percent: 0 });
   const step = weatherStationGoldenSteps[activeIndex]!;
@@ -82,7 +83,7 @@ function Workshop() {
         {step.checkpoint ? <section className="checkpoint"><h3>Checkpoint</h3><p>{step.checkpoint.prompt}</p><div>{step.checkpoint.choices?.map((choice) => <button key={choice} onClick={() => void answer(choice)}>{choice}</button>)}</div></section> : null}
         <p className="message" aria-live="polite">{message}</p><div className="pagination"><button disabled={activeIndex === 0} onClick={() => void moveTo(activeIndex - 1)}>Previous</button><button disabled={activeIndex === weatherStationGoldenSteps.length - 1} onClick={() => void moveTo(activeIndex + 1)}>Next</button></div>
       </section>
-      <section className="viewer panel"><h2>3D Mech View</h2><div className="canvas"><Suspense fallback={<p>Loading the 3D fixture…</p>}><LazyMechView parts={mechViewParts} highlightIds={[highlightedPart.id]} explodeFactor={0} cameraTarget={cameraTarget} /></Suspense></div><p>Deterministic solver transform synchronized to step {step.order}.</p></section>
+      <section className="viewer panel"><h2>3D Mech View</h2><label className="explode-control" htmlFor="explode-view">Exploded view <input id="explode-view" type="range" min="0" max="1" step="0.05" value={explodeFactor} onChange={(event) => setExplodeFactor(Number(event.target.value))} /></label><div className="canvas"><Suspense fallback={<p>Loading the 3D fixture…</p>}><LazyMechView parts={mechViewParts} highlightIds={[highlightedPart.id]} explodeFactor={explodeFactor} cameraTarget={cameraTarget} /></Suspense></div><p>Deterministic solver transform synchronized to step {step.order}.</p></section>
     </section>}
   </main>;
 }
