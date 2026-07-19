@@ -2,7 +2,7 @@
 
 **Feature Branch**: `codex/authored-build`  
 **Created**: 2026-07-18  
-**Status**: Planned
+**Status**: Superseded by `specs/006-agentic-build-discovery/` on 2026-07-19
 
 ## Purpose
 

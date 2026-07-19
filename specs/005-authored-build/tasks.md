@@ -2,7 +2,7 @@
 
 **Input**: `specs/005-authored-build/spec.md`, `specs/005-authored-build/plan.md`, and the repository constitution.  
 **Owner**: One developer on `codex/authored-build`.  
-**Source of truth**: This file is the active task queue for `$sprint-run`. The completed A/B/C queue in `.sprint/status.yml` is historical and must not be changed.
+**Status**: Superseded historical queue. The active task queue for `$sprint-run` is `specs/006-agentic-build-discovery/tasks.md`. The completed A/B/C queue in `.sprint/status.yml` is historical and must not be changed.
 
 **Tests**: Write or update focused tests with each governed behavior. The full verification set must run without Docker, a GPU, or live Ollama.
 
@@ -10,9 +10,9 @@
 
 **Purpose**: Choose one supportable beginner project before code or instructional content is authored.
 
-- [ ] T001 Create `specs/005-authored-build/build-brief.md` with the chosen low-voltage beginner project, learner outcome, approved parts, per-step hazards, at least two primary cited sources, required CAD/source licenses, and explicit exclusions.
-- [ ] T002 Validate the T001 brief against `specs/005-authored-build/spec.md` and record the selected build slug, stable UUIDs, and acceptance evidence in `specs/005-authored-build/build-brief.md`.
-- [ ] T003 Verify `.sprint/authored-build.cursor` points to `T001` after the runner initializes it and retain `.sprint/status.yml` unchanged as historical evidence.
+- [x] T001 Create `specs/005-authored-build/build-brief.md` with the chosen low-voltage beginner project, learner outcome, approved parts, per-step hazards, at least two primary cited sources, required CAD/source licenses, and explicit exclusions.
+- [x] T002 Validate the T001 brief against `specs/005-authored-build/spec.md` and record the selected build slug, stable UUIDs, and acceptance evidence in `specs/005-authored-build/build-brief.md`.
+- [x] T003 Verify `.sprint/authored-build.cursor` points to `T001` after the runner initializes it and retain `.sprint/status.yml` unchanged as historical evidence.
 
 ---
 
@@ -20,7 +20,7 @@
 
 **Purpose**: Establish a typed selection boundary shared by fixtures, the server, and the Workshop.
 
-- [ ] T004 Add shared authored-build manifest, build identifier, and build-selection schemas in `packages/schemas/src/index.ts` without weakening existing `StepPlanSchema` validation.
+- [x] T004 Add shared authored-build manifest, build identifier, and build-selection schemas in `packages/schemas/src/index.ts` without weakening existing `StepPlanSchema` validation.
 - [ ] T005 Add registry contract tests for valid manifests, duplicate/unknown build identifiers, citations, safety metadata, and coordinate-leak rejection in `packages/schemas/tests/authored-build.test.ts`.
 - [ ] T006 Create a typed authored-build registry and migrate the existing weather-station fixture into `apps/web/fixtures/index.ts` while retaining `apps/web/fixtures/weather-station.ts` as its authored source.
 - [ ] T007 Add fixture-registry tests in `apps/web/tests/authored-builds.test.ts` proving that the weather station still resolves through the registry.

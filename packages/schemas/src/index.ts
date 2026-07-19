@@ -15,6 +15,10 @@ export const CitationSchema = z.object({
   title: z.string().min(1),
 });
 
+/** Stable internal identity and client-safe route identifier for an authored build. */
+export const BuildIdSchema = z.string().uuid();
+export const BuildSlugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
 export const MatingFeatureSchema = z.object({
   id: z.string().min(1),
   kind: z.enum(["mounting_hole", "connector", "edge", "face", "axis"]),
@@ -60,7 +64,7 @@ export const MatingSelectionSchema = z.object({
   targetPartId: z.string().uuid(),
   targetFeatureId: z.string().min(1),
   fastener: z.string().min(1).optional(),
-});
+}).strict();
 
 /** Solver-owned output. Z-up and parent-relative are the project convention. */
 export const AssemblyTransformSchema = z.object({
@@ -99,6 +103,46 @@ export const StepPlanSchema = z.object({
   lesson: LessonSchema,
   checkpoint: CheckpointSchema.optional(),
   matingSelections: z.array(MatingSelectionSchema).default([]),
+}).strict();
+
+/** A complete, fixture-backed beginner build available to the Workshop. */
+export const AuthoredBuildManifestSchema = z.object({
+  id: BuildIdSchema,
+  slug: BuildSlugSchema,
+  title: z.string().min(1),
+  description: z.string().min(1),
+  steps: z.array(StepPlanSchema).min(1),
+}).strict();
+
+/** Client input chooses a build by its stable, URL-safe slug. */
+export const BuildSelectionSchema = z.object({
+  buildSlug: BuildSlugSchema,
+}).strict();
+
+/** Registry validation prevents ambiguous build selection before server lookup. */
+export const AuthoredBuildRegistrySchema = z.array(AuthoredBuildManifestSchema).min(1).superRefine((manifests, context) => {
+  const ids = new Set<string>();
+  const slugs = new Set<string>();
+
+  manifests.forEach((manifest, index) => {
+    if (ids.has(manifest.id)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Duplicate authored build id: ${manifest.id}`,
+        path: [index, "id"],
+      });
+    }
+    ids.add(manifest.id);
+
+    if (slugs.has(manifest.slug)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Duplicate authored build slug: ${manifest.slug}`,
+        path: [index, "slug"],
+      });
+    }
+    slugs.add(manifest.slug);
+  });
 });
 
 export const AgentProgressEventSchema = z.object({
@@ -137,6 +181,8 @@ export const IngestUpsertSchema = z.object({
 });
 
 export type Citation = z.infer<typeof CitationSchema>;
+export type BuildId = z.infer<typeof BuildIdSchema>;
+export type BuildSlug = z.infer<typeof BuildSlugSchema>;
 export type PartRecord = z.infer<typeof PartRecordSchema>;
 export type InventoryPart = z.infer<typeof InventoryPartSchema>;
 export type CadAssetRecord = z.infer<typeof CadAssetRecordSchema>;
@@ -146,6 +192,9 @@ export type TemplateParams = z.infer<typeof TemplateParamsSchema>;
 export type Checkpoint = z.infer<typeof CheckpointSchema>;
 export type Lesson = z.infer<typeof LessonSchema>;
 export type StepPlan = z.infer<typeof StepPlanSchema>;
+export type AuthoredBuildManifest = z.infer<typeof AuthoredBuildManifestSchema>;
+export type BuildSelection = z.infer<typeof BuildSelectionSchema>;
+export type AuthoredBuildRegistry = z.infer<typeof AuthoredBuildRegistrySchema>;
 export type AgentProgressEvent = z.infer<typeof AgentProgressEventSchema>;
 export type RetrievalQuery = z.infer<typeof RetrievalQuerySchema>;
 export type RetrievalResult = z.infer<typeof RetrievalResultSchema>;
