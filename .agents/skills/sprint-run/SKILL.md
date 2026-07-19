@@ -1,106 +1,75 @@
 ---
 name: sprint-run
-description: Execute or resume one owner’s gated task sequence for the Educational Hardware Builder 7-day MVP sprint. Use when coordinating sprint owner A/Tylor, B/Ani, or C/Arveen: gate checks, guide-driven Spec-Kit work, merge review stops, verified completion-result intake, and .sprint/status.yml updates.
+description: Execute or resume the single-developer Second Authored Beginner Build task queue from specs/005-authored-build/tasks.md.
 ---
 
-# Sprint Runner
+# Single-Developer Authored-Build Runner
 
-Run exactly one owner’s sequence. Do not infer gates, read external trackers, contact teammates, or start future tasks. Do state the exact message the owner must send; the human, not the agent, sends it.
+Run the active authored-build queue for one developer. The source of truth is `specs/005-authored-build/tasks.md`; do not infer work from the completed A/B/C sprint, old execution guides, or `.sprint/status.yml`.
 
 ## Context
 
-Obtain `ME` (`A`, `B`, or `C`) and `NAME`; ask if either is absent. Before every run, read the project blueprint, matching execution guide, `references/functional-mvp-plan.md`, `.sprint/status.yml`, and any `.sprint/<ME>-plan.md` / `.sprint/<ME>.cursor`. Stop and name a missing blueprint or guide.
+Obtain `NAME`; ask for it if absent. Before every run, read:
 
-The guide is authoritative for historical tasks and their verbatim Spec-Kit prompts. `references/functional-mvp-plan.md` supersedes guide content for G3/A8/B8/C8 and retires G4; do not schedule presentation, recording, rehearsal, camera-path, printer, or presenter work. Read [coordination reference](references/sprint-coordination.md) for sequences, dependencies, merge tasks, and the status template.
+1. `AGENTS.md`
+2. `.specify/memory/constitution.md`
+3. `specs/005-authored-build/spec.md`
+4. `specs/005-authored-build/plan.md`
+5. `specs/005-authored-build/tasks.md`
+6. `specs/005-authored-build/build-brief.md` when it exists
+7. `.sprint/authored-build.cursor` when it exists
 
-## Owner branches and GitHub workflow
+The historical `.sprint/status.yml`, `A/B/C` plans, owner guides, and G1-G3 artifacts are read-only history. Never update them, recreate their gates, or request a teammate handoff.
 
-Use this active branch roster. The feature-named branches from the original planning documents are historical unless explicitly listed here; do not silently switch to them.
+## Work branch and scope
 
-| Owner | Name | Active branch | History branches not for new sprint work |
-| --- | --- | --- | --- |
-| A | Tylor | `Tylor-A` | `feature/001-platform-data` |
-| B | Ani | `Ani-B` | `feature/002-spatial-3d` |
-| C | Arveen | `feature/003-agents-ux` | `Arveen-C`, `feature/003-agents-workshop` |
+Use `codex/authored-build` for implementation and target `main` for a final pull request. If the branch does not exist, tell the developer to create it from current `main`; do not silently work on an old owner branch.
 
-Before executing a code, emit this work order and require its branch:
+Before implementation, emit:
 
 ```
-WORK ORDER  <CODE> — <owner name>
-  Complete: <current task goal from the owner guide>.
-  Work branch: <active owner branch>; GitHub PR target: main.
-  Before coding: git fetch origin; git switch <branch>; git rebase origin/main.
+WORK ORDER  <TASK ID> — <developer name>
+  Complete: <task text from specs/005-authored-build/tasks.md>.
+  Work branch: codex/authored-build; eventual PR target: main.
+  Before coding: git fetch origin; git switch codex/authored-build; git rebase origin/main.
 ```
 
-For every merge task, stop after the active branch is rebased and checks pass. Tell the owner to push it, open a GitHub PR **from the listed work branch into `main`**, obtain the guide’s reviewer approval, and only then merge. After a GitHub merge, tell the owner to run `git switch main` and `git pull --ff-only origin main` before updating the tracker. A non-merge task remains on the owner branch and is pushed for recovery/review; it is not merged to `main` early.
-
-For G2, use `feature/004-integration` created from current `main`; integration changes are seams-only. Do not create it before C6 completes. For the final G3 acceptance work, use current `main` unless a narrowly scoped fix needs a reviewed branch.
-
-## Mandatory human handoffs
-
-Every `DONE`, `BLOCKED`, and `NEEDS REVIEW` notice must name a person, their next code, and the branch they must use. Use these exact merge-train messages:
-
-| Event | Tell the completing owner to message | Required next task and branch |
-| --- | --- | --- |
-| C5 merged | Tylor | `C5 is merged to main. Complete A6 — first merge in the train — on Tylor-A; rebase on main first.` |
-| A6 merged | Ani | `A6 is merged to main. Complete B6 — second merge in the train — on Ani-B; rebase on main first.` |
-| B6 merged | Arveen | `B6 is merged to main. Complete C6 — final merge in the train — on feature/003-agents-ux; rebase on main first.` |
-| C6 merged | Tylor, Ani, and Arveen | `The merge train is complete. Begin your G2 share only after switching to main; use feature/004-integration only for seams-only fixes.` |
-| G2 done | Tylor, Ani, and Arveen | `G2 is done. Complete your final G3 share from current main: A8 runtime reset/fallback, B8 spatial/template acceptance, C8 learner-flow acceptance.` |
-
-For earlier dependency completions, use the coordination reference to identify every downstream owner, then state: `Message <name>: <CODE> is done on main / ready. Your next task is <NEXT CODE> on <branch>.` If a dependency blocks the cursor, state: `Message <blocking owner>: please complete <DEP CODE> on <branch>, push it, and merge its reviewed PR into main; I will resume <CODE> after that.`
+Do not expand the feature beyond one additional authored beginner build. Preserve the weather-station path, the five-tab UI, cited content, server-side checkpoint gating, `DEMO_SAFE_MODE`, symbolic model boundaries, and solver-owned transforms.
 
 ## First run
 
-If the plan is missing, create `.sprint/<ME>-plan.md` from the owner sequence and guide. Each code needs cell, day, hard/soft waits, copied Done-when list, fallback, and `status: pending`. Set `.sprint/<ME>.cursor` to its first code, show the plan, and stop for explicit approval.
+If `.sprint/authored-build.cursor` is missing, create it with the first unchecked task ID in `specs/005-authored-build/tasks.md`. Report the task outline and stop for explicit approval before changing implementation files.
 
-## Execution
+If `T001` is unchecked, the build brief is the only work allowed. Do not invent the build's components, citations, hazards, CAD metadata, or license; record validated choices in `specs/005-authored-build/build-brief.md` first.
 
-At the cursor:
+## Execution loop
 
-1. Announce the required `WORK ORDER`, then `▶ <CODE> — <goal> (cell <Hxx>, day <n>)`.
-2. Re-read the status file. If any hard gate is not `done`, emit `BLOCKED` and end without code changes. For a soft gate, announce and use its fallback; add `TODO(reconcile <CODE>)` at the integration point.
-3. For merge tasks, verify the listed active branch is rebased on `origin/main` and green, emit `NEEDS REVIEW` with the PR source branch and `main` target, then stop. Never merge without review. Enforce A6 → B6 → C6.
-4. Run the guide’s exact current-task-only Spec-Kit sequence: specify, plan, tasks (prune as directed), implement. Verify every Done-when item and fix failures.
-5. Apply the completion-evidence rules below whenever the user returns test results, reports a completed run, or asks for a status update. If the criteria pass, mark the code `done` in `.sprint/status.yml` with `by: <NAME>` and an ISO-8601 `at` timestamp; advance the cursor and emit `DONE`.
-6. Continue only when the next code’s hard gates are done; otherwise emit `BLOCKED` and end.
+1. Read the cursor and locate its unchecked checklist item in `specs/005-authored-build/tasks.md`. If it is checked, advance to the next unchecked item.
+2. Confirm all prior, non-parallel checklist items are checked. If a prerequisite is incomplete, emit `BLOCKED`, name its task ID, and end without code changes.
+3. Emit the `WORK ORDER`, then complete only the current checklist item. Read the files named in the task before editing.
+4. Run the narrowest task-relevant verification. For schema, solver, SCAD, web, server, workshop, safety, fixture, or model-boundary changes, add or update the focused test required by the task and preserve GPU-free execution.
+5. Require evidence before completion: command output for local checks; explicit developer confirmation for browser, Docker, hardware, or pull-request checks. Never substitute a unit test for a required human confirmation.
+6. When evidence passes, change only the current task marker from `- [ ]` to `- [x]` in `specs/005-authored-build/tasks.md`, write the next unchecked ID (or `DONE`) to `.sprint/authored-build.cursor`, and emit `DONE`.
+7. Continue to the next task only if it is a documentation or planning task with no new approval boundary. After implementation, test, browser, Docker, or pull-request tasks, stop and ask the developer to re-run `$sprint-run` after reviewing the evidence.
 
-Do not add tracker rows: A7/B7/C7 = G2/H26; A8/B8/C8 = G3/H27. G3 is final; leave the cursor at `DONE` after its group acceptance criteria pass. Finish with codes done today, cursor, and precise human action to resume.
+## Completion evidence
 
-## Completion evidence and automatic status updates
+When the developer returns results, treat them as evidence for the current task. Re-read the task text, map every stated result to its acceptance need, and run any safe narrow local verification that is still missing. If a required command fails, leave the checklist and cursor unchanged. If all required evidence is explicit and passing, update the checklist and cursor in the same turn.
 
-Treat a user’s returned test results as a completion-evidence intake, not as a request to restart the task. Before reporting a task as blocked or pending:
-
-1. Re-read the current cursor, status file, and the guide’s exact Done-when list for that code.
-2. Map each supplied result to a Done-when item. A vague statement such as “testing is finished” is not enough; name the missing item and ask for the specific result only when it cannot be verified locally.
-3. Automatically run the narrowest available local verification for each testable item: the guide’s named command, focused tests/typecheck, the relevant endpoint or script, and `git diff --check` where code changed. Accept current command logs supplied by the user when the commands and passing outcomes are explicit; do not rerun hardware-, Docker-, GPU-, or cloud-dependent checks that the user has already reported successfully unless a local check is safe and needed to resolve a contradiction.
-4. For inherently human or environment-dependent checks (review approval, a GitHub merge, a local-stack run, browser interaction, or hardware-dependent model availability), accept an explicit user confirmation that names the check and outcome. Do not fabricate that evidence or use a passing unit test as a substitute.
-5. If every Done-when item has passing command evidence, valid user-provided results, or an explicit human confirmation, immediately update `.sprint/status.yml`, the applicable owner cursor, and the user-facing tracker instruction in the same turn. If any item fails, leave the status unchanged, report the failing evidence, and fix or ask only for the missing confirmation.
-
-For merge tasks, successful tests alone never mark the task done: require the reviewed merge into `main` and the post-merge pull described above. For G2 and G3, a single owner’s report is only that owner’s share. Mark H26/H27 done and advance all three cursors only after evidence covers every owner’s Done-when checks and the group acceptance criteria. When reconciling an older owner branch, use the latest local `main` state and its `.sprint/status.yml` as evidence for already-merged tasks; preserve authors and timestamps from that record.
-
-G3 is the final functional-MVP gate. After all three owner shares and the group acceptance criteria pass, mark H27 done, leave every owner cursor at `DONE`, and do not create or wait on G4.
+T027 requires an explicit browser confirmation for both authored paths in `DEMO_SAFE_MODE=true`. T028 requires an explicit developer confirmation that the pull request was prepared; do not claim it was merged unless the developer says so.
 
 ## Notices
 
 ```
-✅ DONE  <CODE>  (tracker <Hxx>)
-   Update the sheet: set <Hxx> = Done.
-   Human message to send: <named teammate> → <CODE> is on main / ready. Complete <NEXT CODE> on <branch>.
-   Next up: <NEXT CODE> — gates: <list + done/pending each>
+✅ DONE  <TASK ID>
+   Evidence: <commands or explicit confirmation>.
+   Updated: specs/005-authored-build/tasks.md and .sprint/authored-build.cursor.
+   Next: <next task ID and exact checklist text, or DONE>.
 ```
 
 ```
-⛔ BLOCKED  <CODE>  cannot start.
-   Waiting on (HARD): <DEP CODE> — owner <X> — tracker cell <Hyy> currently <status>.
-   What to do: check <Hyy> in the sheet; if <X> has not finished, message <X>: complete <DEP CODE> on <branch>, push it, and merge its reviewed PR into main.
-   Resume: when <Hyy> = Done, set <DEP CODE> = done in .sprint/status.yml, commit/pull,
-           and re-run $sprint-run. I will continue from <CODE>.
-```
-
-```
-🔄 NEEDS REVIEW  <CODE>  is rebased, green, and ready to merge.
-   Reviewer: <pre-assigned name>. PR: <branch> → main. After GitHub merge, switch to main and pull `origin/main`.
-   Merge-train order reminder: A6 → B6 → C6.
-   After merge: set <Hxx> = Done, tell <downstream teammates>.
+⛔ BLOCKED  <TASK ID>
+   Waiting on: <prior task ID or named approval/evidence>.
+   What to do: <one concrete developer action>.
+   Resume: re-run $sprint-run NAME=<developer name> after it is complete.
 ```

@@ -58,6 +58,6 @@ docker compose -f infra/docker-compose.yml down
 4. For Compose changes, validate with `docker compose -f infra/docker-compose.yml config` before starting services.
 5. Preserve existing user changes. Do not reset, overwrite, or reformat unrelated files.
 
-## Sprint work
+## Authored-build work
 
-For sprint work, follow `.agents/skills/sprint-run/SKILL.md` and the matching owner execution guide. Respect hard gates in `.sprint/status.yml`, work only on the assigned branch, and do not merge without the required review.
+The completed A/B/C sprint is historical. For the active single-developer authored-build work, follow `.agents/skills/sprint-run/SKILL.md` and `specs/005-authored-build/tasks.md`. Use `codex/authored-build`, preserve `.sprint/status.yml` unchanged, and do not mark a task complete without its recorded verification evidence. Prepare a focused PR to `main` only after the task queue's final verification phase is complete.

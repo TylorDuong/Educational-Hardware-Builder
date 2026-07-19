@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "Local-first educational hardware builder monorepo.",
   "private": true,
-  "scripts": {},
+  "scripts": {
+    "build": "pnpm --filter @educational-hardware-builder/web build:sandbox",
+    "dev": "pnpm --filter @educational-hardware-builder/web sandbox",
+    "quickstart": "node scripts/quickstart.mjs",
+    "start": "pnpm --filter @educational-hardware-builder/web start",
+    "test": "pnpm --filter @educational-hardware-builder/web test && pnpm --filter @educational-hardware-builder/schemas test && pnpm --filter @educational-hardware-builder/solver test && pnpm --filter @educational-hardware-builder/scad-service test",
+    "typecheck": "pnpm --filter @educational-hardware-builder/web typecheck && pnpm --filter @educational-hardware-builder/schemas typecheck && pnpm --filter @educational-hardware-builder/solver typecheck && pnpm --filter @educational-hardware-builder/scad-service typecheck"
+  },
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",

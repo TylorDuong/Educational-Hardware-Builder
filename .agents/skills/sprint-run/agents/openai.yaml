@@ -1,4 +1,4 @@
 interface:
   display_name: "Sprint Runner"
-  short_description: "Run one owner gated MVP sprint tasks"
-  default_prompt: "Use $sprint-run to resume the sprint for owner A as Tylor."
+  short_description: "Run the single-developer authored-build task queue"
+  default_prompt: "Use $sprint-run NAME=Tylor to resume specs/005-authored-build/tasks.md."
