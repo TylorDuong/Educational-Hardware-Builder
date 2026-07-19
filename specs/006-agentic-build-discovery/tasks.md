@@ -11,7 +11,7 @@ tasks require explicit developer confirmation.
 **Purpose**: Establish the source, safety, persistence, and schema boundaries
 before learner-facing discovery.
 
-- [ ] T001 Create an approved source-policy fixture with allowlisted documentation/vendor sources, refresh limits, and terms/license rules in `ingestion/source-policy.yml`.
+- [x] T001 Create an approved source-policy fixture with allowlisted documentation/vendor sources, refresh limits, and terms/license rules in `ingestion/source-policy.yml`.
 - [ ] T002 Add strict discovery, safety, source-policy, ingestion, catalog-offer, proposal, guided-lesson, and operation/SSE schemas to `packages/schemas/src/index.ts`.
 - [ ] T003 Add contract fixtures/tests for malformed requests, citations, licenses, stale offers, raw-coordinate rejection, and forbidden hazards in `packages/schemas/tests/agentic-build-discovery.test.ts`.
 - [ ] T004 Add source, ingestion-run, catalog-offer, compatibility, discovery, and generated-build migration tables/indexes in `infra/postgres/init/0002-agentic-build-discovery.sql`.

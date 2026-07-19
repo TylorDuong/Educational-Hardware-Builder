@@ -1,0 +1,106 @@
+version: v1
+defaultPolicy:
+  externalAccess: background-ingestion-only
+  requireHttps: true
+  rejectUnknownSources: true
+  rejectUnlicensedCadAssets: true
+  rejectMissingProvenance: true
+
+policies:
+  - id: espressif-documentation
+    revision: 1
+    enabled: true
+    sourceClass: documentation
+    allowedUrlPatterns:
+      - https://www.espressif.com/sites/default/files/documentation/**
+      - https://docs.espressif.com/**
+    allowedFacts:
+      - citation
+      - documentation
+      - part_metadata
+      - cad_metadata
+    refresh:
+      intervalHours: 720
+      maxStalenessHours: 2160
+    terms:
+      evidenceRequired: true
+      acceptedStatuses:
+        - public-documentation
+        - redistribution-permitted
+      prohibitedUses:
+        - automated-login
+        - browser-automation
+        - unapproved-scraping
+    cadAssets:
+      sourceUrlRequired: true
+      identifiableLicenseRequired: true
+      allowedLicenses:
+        - CC0-1.0
+        - CC-BY-4.0
+        - CC-BY-SA-4.0
+      rejectAmbiguousLicense: true
+
+  - id: bosch-sensortec-documentation
+    revision: 1
+    enabled: true
+    sourceClass: documentation
+    allowedUrlPatterns:
+      - https://www.bosch-sensortec.com/products/environmental-sensors/**
+      - https://www.bosch-sensortec.com/media/**
+    allowedFacts:
+      - citation
+      - documentation
+      - part_metadata
+      - cad_metadata
+    refresh:
+      intervalHours: 720
+      maxStalenessHours: 2160
+    terms:
+      evidenceRequired: true
+      acceptedStatuses:
+        - public-documentation
+        - redistribution-permitted
+      prohibitedUses:
+        - automated-login
+        - browser-automation
+        - unapproved-scraping
+    cadAssets:
+      sourceUrlRequired: true
+      identifiableLicenseRequired: true
+      allowedLicenses:
+        - CC0-1.0
+        - CC-BY-4.0
+        - CC-BY-SA-4.0
+      rejectAmbiguousLicense: true
+
+  - id: adafruit-catalog
+    revision: 1
+    enabled: true
+    sourceClass: vendor_catalog
+    allowedUrlPatterns:
+      - https://www.adafruit.com/product/**
+      - https://cdn-shop.adafruit.com/datasheets/**
+    allowedFacts:
+      - citation
+      - catalog_offer
+      - part_metadata
+      - datasheet
+    refresh:
+      intervalHours: 24
+      maxStalenessHours: 72
+    terms:
+      evidenceRequired: true
+      acceptedStatuses:
+        - public-catalog
+        - redistribution-permitted
+      prohibitedUses:
+        - checkout
+        - credentialed-purchase
+        - browser-automation
+        - unapproved-scraping
+    offers:
+      cachedLinksOnly: true
+      checkoutAllowed: false
+      requireObservedAt: true
+      requireExpiresAt: true
+      requireProviderSku: true
