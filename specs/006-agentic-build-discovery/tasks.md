@@ -12,12 +12,12 @@ tasks require explicit developer confirmation.
 before learner-facing discovery.
 
 - [x] T001 Create an approved source-policy fixture with allowlisted documentation/vendor sources, refresh limits, and terms/license rules in `ingestion/source-policy.yml`.
-- [ ] T002 Add strict discovery, safety, source-policy, ingestion, catalog-offer, proposal, guided-lesson, and operation/SSE schemas to `packages/schemas/src/index.ts`.
-- [ ] T003 Add contract fixtures/tests for malformed requests, citations, licenses, stale offers, raw-coordinate rejection, and forbidden hazards in `packages/schemas/tests/agentic-build-discovery.test.ts`.
-- [ ] T004 Add source, ingestion-run, catalog-offer, compatibility, discovery, and generated-build migration tables/indexes in `infra/postgres/init/0002-agentic-build-discovery.sql`.
-- [ ] T005 Add migration/catalog SQL tests with idempotency, freshness, licensing, and inventory-match coverage in `apps/web/tests/agentic-build-discovery.persistence.test.ts`.
-- [ ] T006 Add application-owned authenticated `POST /api/ingest/v2/upsert` validation, transactional upsert, audit, and typed failure handling in `apps/web/src/ingest.ts` and `apps/web/src/server.ts`.
-- [ ] T007 Add ingest API tests for policy denial, idempotency, last-known-good retention, and no partial writes in `apps/web/tests/ingest.test.ts`.
+- [x] T002 Add strict discovery, safety, source-policy, ingestion, catalog-offer, proposal, guided-lesson, and operation/SSE schemas to `packages/schemas/src/index.ts`.
+- [x] T003 Add contract fixtures/tests for malformed requests, citations, licenses, stale offers, raw-coordinate rejection, and forbidden hazards in `packages/schemas/tests/agentic-build-discovery.test.ts`.
+- [x] T004 Add source, ingestion-run, catalog-offer, compatibility, discovery, and generated-build migration tables/indexes in `infra/postgres/init/0002-agentic-build-discovery.sql`.
+- [x] T005 Add migration/catalog SQL tests with idempotency, freshness, licensing, and inventory-match coverage in `apps/web/tests/agentic-build-discovery.persistence.test.ts`.
+- [x] T006 Add application-owned authenticated `POST /api/ingest/v2/upsert` validation, transactional upsert, audit, and typed failure handling in `apps/web/src/ingest.ts` and `apps/web/src/server.ts`.
+- [x] T007 Add ingest API tests for policy denial, idempotency, last-known-good retention, and no partial writes in `apps/web/tests/ingest.test.ts`.
 
 **Checkpoint**: Only the application can write source/catalog data; unlicensed,
 uncited, stale, or unsafe records cannot enter approved discovery results.
@@ -28,9 +28,9 @@ uncited, stale, or unsafe records cannot enter approved discovery results.
 
 **Purpose**: Refresh approved sources without permitting runtime external calls.
 
-- [ ] T008 Add the n8n background service with API-only credentials and no domain-table database access in `infra/docker-compose.yml`.
-- [ ] T009 Add allowlisted documentation/vendor workflow definitions with bounded retry/backoff and source-policy input in `ingestion/workflows/`.
-- [ ] T010 Add deterministic ingestion payload fixtures and an n8n-to-upsert smoke harness in `ingestion/fixtures/` and `scripts/ingestion-smoke.mjs`.
+- [x] T008 Add the n8n background service with API-only credentials and no domain-table database access in `infra/docker-compose.yml`.
+- [x] T009 Add allowlisted documentation/vendor workflow definitions with bounded retry/backoff and source-policy input in `ingestion/workflows/`.
+- [x] T010 Add deterministic ingestion payload fixtures and an n8n-to-upsert smoke harness in `ingestion/fixtures/` and `scripts/ingestion-smoke.mjs`.
 
 **Checkpoint**: A scheduled workflow can refresh only allowlisted data through the
 versioned API; the learner request path has no external HTTP dependency.
@@ -46,12 +46,12 @@ proposal or a hard block.
 request; verify the safe request yields a typed cited proposal and the
 forbidden request blocks before parts or instructions.
 
-- [ ] T011 [US1] Add recorded local-model and deterministic-fallback tests for intent extraction, one retry, and safety blocks in `apps/web/tests/discovery-agents.test.ts`.
-- [ ] T012 [US1] Implement typed intent extraction, server-owned safety preflight, local retrieval, and proposal validation in `apps/web/src/discovery.ts` and `apps/web/src/agents.ts`.
-- [ ] T013 [US1] Add `POST /api/discovery`, discovery status, and typed discovery SSE endpoints in `apps/web/src/server.ts`.
-- [ ] T014 [US1] Add discovery API integration tests for safe, vague, blocked, malformed-model, and fallback responses in `apps/web/tests/discovery.test.ts`.
-- [ ] T015 [US1] Add Dashboard free-form discovery input and typed progress/error states without adding a sixth tab in `apps/web/src/sandbox.tsx`.
-- [ ] T016 [US1] Render the interpreted request, safety outcome, and cited proposal summary in existing Dashboard/Research areas in `apps/web/src/sandbox.tsx`.
+- [x] T011 [US1] Add recorded local-model and deterministic-fallback tests for intent extraction, one retry, and safety blocks in `apps/web/tests/discovery-agents.test.ts`.
+- [x] T012 [US1] Implement typed intent extraction, server-owned safety preflight, local retrieval, and proposal validation in `apps/web/src/discovery.ts` and `apps/web/src/agents.ts`.
+- [x] T013 [US1] Add `POST /api/discovery`, discovery status, and typed discovery SSE endpoints in `apps/web/src/server.ts`.
+- [x] T014 [US1] Add discovery API integration tests for safe, vague, blocked, malformed-model, and fallback responses in `apps/web/tests/discovery.test.ts`.
+- [x] T015 [US1] Add Dashboard free-form discovery input and typed progress/error states without adding a sixth tab in `apps/web/src/sandbox.tsx`.
+- [x] T016 [US1] Render the interpreted request, safety outcome, and cited proposal summary in existing Dashboard/Research areas in `apps/web/src/sandbox.tsx`.
 
 **Checkpoint**: A fixture-backed learner can obtain a safe, cited proposal from
 free-form input without a live internet, database, or model dependency.
@@ -67,9 +67,9 @@ links, licensing, and freshness before selecting a build.
 offers, and missing-license records renders only valid choices and labels stale
 data.
 
-- [ ] T017 [US2] Add catalog repository queries for verified inventory matching, compatible alternatives, and freshness filtering in `apps/web/src/catalog.ts`.
-- [ ] T018 [US2] Add offer/compatibility API and ranking tests in `apps/web/tests/catalog.test.ts` and `apps/web/tests/discovery.test.ts`.
-- [ ] T019 [US2] Extend proposal generation to return validated BOM entries, alternatives, cached offers, source links, and freshness state in `apps/web/src/discovery.ts`.
+- [x] T017 [US2] Add catalog repository queries for verified inventory matching, compatible alternatives, and freshness filtering in `apps/web/src/catalog.ts`.
+- [x] T018 [US2] Add offer/compatibility API and ranking tests in `apps/web/tests/catalog.test.ts` and `apps/web/tests/discovery.test.ts`.
+- [x] T019 [US2] Extend proposal generation to return validated BOM entries, alternatives, cached offers, source links, and freshness state in `apps/web/src/discovery.ts`.
 - [ ] T020 [US2] Render parts, inventory gaps, alternatives, shop links, source provenance, and stale labels in existing Inventory/Research panels in `apps/web/src/sandbox.tsx`.
 
 **Checkpoint**: Every displayed choice is attributable, locally cached, and

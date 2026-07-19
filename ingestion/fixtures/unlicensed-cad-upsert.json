@@ -1,0 +1,21 @@
+{
+  "version": "v2",
+  "sourcePolicyId": "adafruit-catalog",
+  "sourcePolicyRevision": 1,
+  "idempotencyKey": "fixture:adafruit:unlicensed-cad:v1",
+  "source": {
+    "externalId": "adafruit:unlicensed-cad",
+    "canonicalUrl": "https://www.adafruit.com/product/3269",
+    "title": "Rejected CAD fixture",
+    "locator": "fixture rejection",
+    "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "license": "public catalog terms recorded",
+    "termsStatus": "public-catalog",
+    "fetchedAt": "2026-07-19T00:00:00.000Z",
+    "expiresAt": "2026-07-20T00:00:00.000Z"
+  },
+  "chunks": [{ "externalId": "adafruit:unlicensed-cad:summary", "content": "Fixture must be rejected before any CAD write.", "citation": { "sourceUrl": "https://www.adafruit.com/product/3269", "locator": "fixture rejection", "title": "Rejected CAD fixture" } }],
+  "catalogFacts": [],
+  "offers": [],
+  "cadAssets": [{ "id": "90000000-0000-4000-8000-000000000001", "partId": "7e893f29-068e-43e2-9c3c-b9ba2d9ed6db", "filePath": "fixtures/unlicensed.stl", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "sourceUrl": "https://www.adafruit.com/product/3269", "license": "unknown", "matingFeatures": [] }]
+}

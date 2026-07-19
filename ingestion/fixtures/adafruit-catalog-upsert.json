@@ -1,0 +1,65 @@
+{
+  "version": "v2",
+  "sourcePolicyId": "adafruit-catalog",
+  "sourcePolicyRevision": 1,
+  "idempotencyKey": "fixture:adafruit:esp32-devkit:v1",
+  "source": {
+    "externalId": "adafruit:3269",
+    "canonicalUrl": "https://www.adafruit.com/product/3269",
+    "title": "Adafruit ESP32 DevKit catalog listing",
+    "locator": "fixture product 3269",
+    "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "license": "public catalog terms recorded",
+    "termsStatus": "public-catalog",
+    "fetchedAt": "2026-07-19T00:00:00.000Z",
+    "expiresAt": "2026-07-20T00:00:00.000Z"
+  },
+  "chunks": [
+    {
+      "externalId": "adafruit:3269:summary",
+      "content": "Deterministic fixture catalog description for the ESP32 DevKit.",
+      "citation": {
+        "sourceUrl": "https://www.adafruit.com/product/3269",
+        "locator": "fixture product 3269",
+        "title": "Adafruit ESP32 DevKit catalog listing"
+      }
+    }
+  ],
+  "catalogFacts": [
+    {
+      "externalId": "adafruit:3269:part",
+      "partId": "7e893f29-068e-43e2-9c3c-b9ba2d9ed6db",
+      "slug": "esp32-devkit",
+      "name": "ESP32 DevKit",
+      "category": "compute",
+      "sourceUrl": "https://www.adafruit.com/product/3269",
+      "license": "public catalog terms recorded",
+      "citation": {
+        "sourceUrl": "https://www.adafruit.com/product/3269",
+        "locator": "fixture product 3269",
+        "title": "Adafruit ESP32 DevKit catalog listing"
+      }
+    }
+  ],
+  "offers": [
+    {
+      "externalId": "adafruit:3269:offer:v1",
+      "partId": "7e893f29-068e-43e2-9c3c-b9ba2d9ed6db",
+      "provider": "Adafruit",
+      "providerSku": "3269",
+      "purchaseUrl": "https://www.adafruit.com/product/3269",
+      "availability": "in_stock",
+      "price": 9.95,
+      "currency": "USD",
+      "observedAt": "2026-07-19T00:00:00.000Z",
+      "expiresAt": "2026-07-20T00:00:00.000Z",
+      "sourceUrl": "https://www.adafruit.com/product/3269",
+      "citation": {
+        "sourceUrl": "https://www.adafruit.com/product/3269",
+        "locator": "fixture product 3269",
+        "title": "Adafruit ESP32 DevKit catalog listing"
+      }
+    }
+  ],
+  "cadAssets": []
+}

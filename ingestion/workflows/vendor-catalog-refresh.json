@@ -1,0 +1,23 @@
+{
+  "name": "Allowlisted vendor catalog refresh",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "days", "daysInterval": 1 }] } }, "id": "vendor-schedule", "name": "Scheduled vendor refresh", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [0, 0] },
+    { "parameters": { "assignments": { "assignments": [
+      { "name": "sourcePolicyId", "value": "adafruit-catalog", "type": "string" },
+      { "name": "sourcePolicyRevision", "value": 1, "type": "number" },
+      { "name": "canonicalUrl", "value": "https://www.adafruit.com/product/3269", "type": "string" }
+    ] } }, "id": "vendor-policy", "name": "Approved source-policy input", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [220, 0] },
+    { "parameters": { "url": "={{ $json.canonicalUrl }}", "options": { "response": { "response": { "responseFormat": "text" } } } }, "id": "vendor-fetch", "name": "Fetch allowlisted vendor catalog", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [440, 0], "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 1000 },
+    { "parameters": { "jsCode": "const policy = $('Approved source-policy input').first().json;\nreturn [{ json: { version: 'v2', sourcePolicyId: policy.sourcePolicyId, sourcePolicyRevision: policy.sourcePolicyRevision, idempotencyKey: `catalog:${policy.canonicalUrl}`, source: { externalId: policy.canonicalUrl, canonicalUrl: policy.canonicalUrl, title: 'Adafruit catalog listing', locator: 'configured product', contentHash: 'REPLACE_WITH_SHA256', license: 'public catalog terms recorded', termsStatus: 'public-catalog', fetchedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }, chunks: [{ externalId: `${policy.canonicalUrl}:listing`, content: $json.body, citation: { sourceUrl: policy.canonicalUrl, locator: 'configured product', title: 'Adafruit catalog listing' } }] } }];" }, "id": "vendor-payload", "name": "Build typed vendor payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [660, 0] },
+    { "parameters": { "method": "POST", "url": "={{ $env.INGEST_API_URL }}", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify($json) }}" }, "id": "vendor-upsert", "name": "Application ingest upsert", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [880, 0], "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 1000 }
+  ],
+  "connections": {
+    "Scheduled vendor refresh": { "main": [[{ "node": "Approved source-policy input", "type": "main", "index": 0 }]] },
+    "Approved source-policy input": { "main": [[{ "node": "Fetch allowlisted vendor catalog", "type": "main", "index": 0 }]] },
+    "Fetch allowlisted vendor catalog": { "main": [[{ "node": "Build typed vendor payload", "type": "main", "index": 0 }]] },
+    "Build typed vendor payload": { "main": [[{ "node": "Application ingest upsert", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "4e820d84-3aef-4c32-89c3-42ee06dfe002"
+}

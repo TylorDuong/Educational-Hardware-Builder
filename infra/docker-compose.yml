@@ -10,6 +10,7 @@ services:
       DATABASE_URL: postgresql://hardware_builder:hardware_builder_dev@postgres:5432/hardware_builder
       OLLAMA_URL: http://ollama:11434
       DEMO_SAFE_MODE: ${DEMO_SAFE_MODE:-false}
+      INGEST_API_TOKEN: ${INGEST_API_TOKEN:-local-dev-ingest-token}
     ports:
       - "3000:3000"
     depends_on:
@@ -64,6 +65,24 @@ services:
         ollama pull qwen2.5-coder:7b
         ollama pull nomic-embed-text
 
+  n8n:
+    image: n8nio/n8n:1.112.0
+    restart: unless-stopped
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-local-dev-n8n-encryption-key-change-me}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      INGEST_API_URL: http://web:3000/api/ingest/v2/upsert
+      INGEST_API_TOKEN: ${INGEST_API_TOKEN:-local-dev-ingest-token}
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      web:
+        condition: service_started
+
   openscad:
     build:
       context: ./openscad
@@ -80,3 +99,4 @@ services:
 volumes:
   postgres-data:
   ollama-data:
+  n8n-data:

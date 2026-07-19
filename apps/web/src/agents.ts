@@ -3,9 +3,11 @@ import { z } from "zod";
 import {
   AgentProgressEventSchema,
   CitationSchema,
+  BuildIntentSchema,
   LessonSchema,
   MatingSelectionSchema,
   type AssemblyTransform,
+  type BuildIntent,
   type AgentProgressEvent,
   type Lesson,
   type MatingSelection,
@@ -157,6 +159,12 @@ const lessonJsonSchema = {
   },
 } as const;
 
+const intentJsonSchema = {
+  type: "object",
+  required: ["normalizedGoal", "capabilities", "exclusions", "constraints", "retrievalTerms", "safety"],
+  additionalProperties: false,
+} as const;
+
 export interface AgentDependencies {
   fetcher: typeof fetch;
   ollamaUrl: string;
@@ -215,6 +223,28 @@ export async function runRouter(request: string, dependencies: AgentDependencies
     model: "llama3.2:3b",
     temperature: 0.2,
     fallback: () => ({ projectType: "weather-station", summary: "Build the authored ESP32 weather station.", safetyCategory: "none" }),
+    fetcher: dependencies.fetcher,
+    ollamaUrl: dependencies.ollamaUrl,
+    demoSafeMode: dependencies.demoSafeMode,
+  });
+}
+
+/** Extracts only a typed intent; server-side policy owns the final safety decision. */
+export async function runDiscoveryIntent(request: string, dependencies: AgentDependencies): Promise<ModelCallResult<BuildIntent>> {
+  return callModel({
+    schema: BuildIntentSchema as z.ZodType<BuildIntent>,
+    jsonSchema: intentJsonSchema,
+    prompt: `Interpret this learner hardware request as a structured intent: ${request}`,
+    model: "llama3.2:3b",
+    temperature: 0.2,
+    fallback: () => ({
+      normalizedGoal: request.trim() || "Build a beginner low-voltage project.",
+      capabilities: ["low-voltage assembly"],
+      exclusions: ["mains power", "LiPo charging"],
+      constraints: ["local catalog only"],
+      retrievalTerms: ["beginner low-voltage hardware project"],
+      safety: { outcome: "approved", categories: ["none"], blockReasons: [], callout: "Use only verified low-voltage parts." },
+    }),
     fetcher: dependencies.fetcher,
     ollamaUrl: dependencies.ollamaUrl,
     demoSafeMode: dependencies.demoSafeMode,

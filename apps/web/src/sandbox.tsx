@@ -1,10 +1,19 @@
 import { lazy, StrictMode, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
+import {
+  BuildProposalSchema,
+  DiscoveryProgressEventSchema,
+  DiscoveryRequestSchema,
+  SafetyDecisionSchema,
+  type BuildProposal,
+  type DiscoveryProgressEvent,
+  type SafetyDecision,
+} from "@educational-hardware-builder/schemas";
+
 import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
 import {
   demoParts,
-  demoPipelineStages,
   demoSubstitution,
   runSolverRetryDemo,
   type SolverRetryDemo,
@@ -15,11 +24,22 @@ import { assertSolverTraces, solverTracedFixtureParts } from "./spatial-integrat
 import "./sandbox.css";
 
 const sessionId = "workshop-demo";
+const discoveryUserId = "40000000-0000-4000-8000-000000000001";
 const tabs = ["Dashboard", "Research", "Build", "Parts", "Workshop"] as const;
 const LazyMechView = lazy(async () => ({ default: (await import("./components/MechView.js")).MechView }));
 
 type Tab = typeof tabs[number];
-type Progress = { stage: string; message: string; percent?: number };
+type Progress = Omit<DiscoveryProgressEvent, "operationId">;
+type DiscoveryView = { prompt: string; safety: SafetyDecision; proposal: BuildProposal | null };
+
+const discoveryPipelineStages: readonly Progress[] = [
+  { stage: "queued", message: "Queueing your discovery request", percent: 0 },
+  { stage: "safety", message: "Applying the server safety policy", percent: 20 },
+  { stage: "intent", message: "Interpreting your build goal", percent: 40 },
+  { stage: "retrieving", message: "Retrieving local cited knowledge", percent: 65 },
+  { stage: "catalog", message: "Validating the local proposal", percent: 85 },
+  { stage: "complete", message: "Discovery proposal is ready", percent: 100 },
+];
 
 async function requestStep(stepId: string): Promise<{ error?: string }> {
   const response = await fetch(`/api/workshop/steps/${stepId}?sessionId=${sessionId}`);
@@ -31,41 +51,61 @@ function AppTabs({ active, hasStarted, onSelect }: { active: Tab; hasStarted: bo
 }
 
 function Pipeline({ stages }: { stages: readonly Progress[] }) {
-  return <ol className="pipeline" aria-label="Guided build pipeline">{demoPipelineStages.map((definition) => {
+  return <ol className="pipeline" aria-label="Discovery pipeline">{discoveryPipelineStages.map((definition) => {
     const stage = stages.find((entry) => entry.stage === definition.stage);
     const state = stage ? "done" : "pending";
     return <li key={definition.stage} className={state}><strong>{definition.stage}</strong><span>{stage?.message ?? definition.message}</span></li>;
   })}</ol>;
 }
 
-function Dashboard({ prompt, progress, stages, onPromptChange, onStart, onOpenBuild }: {
+function DiscoverySummary({ discovery }: { discovery: DiscoveryView }) {
+  const interpretedRequest = discovery.proposal?.intent.normalizedGoal ?? discovery.prompt;
+  const { safety, proposal } = discovery;
+  return <section className="discovery-summary">
+    <p className="eyebrow">Interpreted request</p><h3>{interpretedRequest}</h3>
+    <p><strong>Safety outcome:</strong> {safety.outcome.replaceAll("_", " ")}</p>
+    <p className="message">{safety.callout}</p>
+    {proposal ? <><p className="eyebrow">Cited proposal</p><h3>{proposal.summary}</h3><p>{proposal.billOfMaterials.length} validated part {proposal.billOfMaterials.length === 1 ? "recommendation" : "recommendations"} with {proposal.freshness} source data.</p><ul className="source-list">{proposal.citations.map((citation) => <li key={`${citation.sourceUrl}:${citation.locator}`}><a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a><span>{citation.locator}</span></li>)}</ul></> : null}
+  </section>;
+}
+
+function Dashboard({ prompt, progress, stages, discovery, error, isDiscovering, onPromptChange, onStart, onOpenBuild }: {
   prompt: string;
   progress: Progress;
   stages: readonly Progress[];
+  discovery?: DiscoveryView;
+  error?: string;
+  isDiscovering: boolean;
   onPromptChange: (value: string) => void;
   onStart: () => void;
   onOpenBuild: () => void;
 }) {
   const complete = progress.stage === "complete";
+  const blocked = progress.stage === "blocked";
   return <section className="dashboard-grid">
     <section className="panel prompt-panel">
       <p className="eyebrow">1. Describe a build</p><h2>What would you like to build?</h2>
       <label htmlFor="project-prompt">Project prompt</label>
-      <textarea id="project-prompt" value={prompt} onChange={(event) => onPromptChange(event.target.value)} />
-      <button className="primary" onClick={onStart}>Generate guided plan</button>
-      <p className="helper">Demo-safe mode keeps this authored weather-station path deterministic while preserving typed progress events.</p>
+      <textarea id="project-prompt" value={prompt} onChange={(event) => onPromptChange(event.target.value)} placeholder="For example: I want a beginner USB desk light using parts I already own." disabled={isDiscovering} />
+      <button className="primary" onClick={onStart} disabled={isDiscovering || prompt.trim().length === 0}>{isDiscovering ? "Checking your request…" : "Discover a safe build"}</button>
+      <p className="helper">Requests use only local catalog and cited knowledge. Beginner safety blocks happen before any proposal is shown.</p>
     </section>
     <section className="panel" aria-live="polite">
       <p className="eyebrow">2. Pipeline status</p><h2>{progress.message}</h2>
       <Pipeline stages={stages} />
-      {complete ? <button className="primary" onClick={onOpenBuild}>Review the build plan</button> : <p className="helper">Watch the validated pipeline stages complete before moving to the plan.</p>}
+      {error ? <p className="message" role="alert">{error}</p> : blocked ? <p className="message" role="alert">This request is blocked before any parts or build steps are available.</p> : null}
+      {discovery ? <DiscoverySummary discovery={discovery} /> : null}
+      {complete && discovery?.proposal ? <button className="primary" onClick={onOpenBuild}>Review the build plan</button> : <p className="helper">Watch the validated pipeline stages complete before moving to the plan.</p>}
     </section>
   </section>;
 }
 
-function ResearchPanel() {
-  const citations = weatherStationGoldenSteps.slice(0, 3).flatMap((step) => step.lesson.citations);
-  return <section className="panel"><p className="eyebrow">Grounded research</p><h2>Cited guidance for the weather station</h2><p>The authored path uses the following sources; the lesson and build remain tied to them in fixture mode.</p><ul className="source-list">{citations.map((citation) => <li key={citation.sourceUrl}><a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a><span>{citation.locator}</span></li>)}</ul></section>;
+function ResearchPanel({ discovery }: { discovery?: DiscoveryView }) {
+  const proposal = discovery?.proposal;
+  const citations = proposal?.citations ?? weatherStationGoldenSteps.slice(0, 3).flatMap((step) => step.lesson.citations);
+  const title = proposal ? `Cited research for ${proposal.intent.normalizedGoal}` : "Cited guidance for the weather station";
+  const description = proposal ? "These local sources support the current discovery proposal." : "The authored path uses the following sources; the lesson and build remain tied to them in fixture mode.";
+  return <section className="panel"><p className="eyebrow">Grounded research</p><h2>{title}</h2><p>{description}</p><ul className="source-list">{citations.map((citation) => <li key={`${citation.sourceUrl}:${citation.locator}`}><a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a><span>{citation.locator}</span></li>)}</ul></section>;
 }
 
 function BuildPanel({ onOpenWorkshop }: { onOpenWorkshop: () => void }) {
@@ -115,9 +155,12 @@ function Workshop() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [explodeFactor, setExplodeFactor] = useState(0);
   const [message, setMessage] = useState("Start with a project prompt to begin the guided build.");
-  const [projectPrompt, setProjectPrompt] = useState("Build a beginner ESP32 weather station that explains every wiring decision.");
+  const [projectPrompt, setProjectPrompt] = useState("");
   const [progress, setProgress] = useState<Progress>({ stage: "queued", message: "Waiting to start", percent: 0 });
   const [pipelineStages, setPipelineStages] = useState<Progress[]>([]);
+  const [discovery, setDiscovery] = useState<DiscoveryView>();
+  const [discoveryError, setDiscoveryError] = useState<string>();
+  const [isDiscovering, setIsDiscovering] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [complete, setComplete] = useState(false);
   const [retryDemo, setRetryDemo] = useState<SolverRetryDemo>();
@@ -125,27 +168,103 @@ function Workshop() {
 
   useEffect(() => () => eventSource.current?.close(), []);
 
-  function startPipeline() {
+  async function startDiscovery() {
     eventSource.current?.close();
-    setHasStarted(true);
+    setHasStarted(false);
     setComplete(false);
     setActiveIndex(0);
     setRetryDemo(undefined);
-    setMessage("The fixture-backed guided build is ready to begin.");
-    setProgress({ stage: "queued", message: "Preparing the guided build", percent: 0 });
+    setDiscovery(undefined);
+    setDiscoveryError(undefined);
+    setIsDiscovering(true);
+    setMessage("Checking the discovery request.");
+    setProgress({ stage: "queued", message: "Queueing your discovery request", percent: 0 });
     setPipelineStages([]);
-    const stream = new EventSource("/api/agents/progress");
-    eventSource.current = stream;
-    stream.addEventListener("progress", (event) => {
-      const update = JSON.parse((event as MessageEvent<string>).data) as Progress;
-      setProgress(update);
-      setPipelineStages((previous) => previous.some((item) => item.stage === update.stage) ? previous : [...previous, update]);
-      if (update.stage === "complete") stream.close();
-    });
-    stream.onerror = () => {
-      stream.close();
-      setMessage("The progress stream stopped. The authored fixture remains available for the demo.");
-    };
+    try {
+      const request = DiscoveryRequestSchema.parse({
+        prompt: projectPrompt,
+        mode: "beginner",
+        userId: discoveryUserId,
+        inventoryPartIds: [],
+        constraints: ["local catalog only"],
+      });
+      const response = await fetch("/api/discovery", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+      });
+      const payload = await response.json() as { operationId?: unknown; error?: unknown };
+      if (!response.ok || typeof payload.operationId !== "string") {
+        throw new Error(typeof payload.error === "string" ? payload.error : "Discovery could not be started.");
+      }
+      const stream = new EventSource(`/api/discovery/${payload.operationId}/events`);
+      eventSource.current = stream;
+      stream.addEventListener("progress", (event) => {
+        try {
+          const update = DiscoveryProgressEventSchema.parse(JSON.parse((event as MessageEvent<string>).data));
+          const { operationId: _operationId, ...nextProgress } = update;
+          setProgress(nextProgress);
+          setPipelineStages((previous) => previous.some((item) => item.stage === nextProgress.stage) ? previous : [...previous, nextProgress]);
+          if (nextProgress.stage === "complete") {
+            stream.close();
+            void loadDiscoveryResult(payload.operationId);
+          }
+          if (nextProgress.stage === "blocked") {
+            stream.close();
+            void loadDiscoveryResult(payload.operationId);
+          }
+          if (nextProgress.stage === "error") {
+            setIsDiscovering(false);
+            setDiscoveryError(nextProgress.message);
+            setMessage(nextProgress.message);
+            stream.close();
+          }
+        } catch {
+          setIsDiscovering(false);
+          setDiscoveryError("Discovery returned an invalid progress update.");
+          setProgress({ stage: "error", message: "Discovery returned an invalid progress update.", percent: 100 });
+          stream.close();
+        }
+      });
+      stream.onerror = () => {
+        stream.close();
+        setIsDiscovering(false);
+        setDiscoveryError("The discovery progress stream stopped before completion.");
+        setProgress({ stage: "error", message: "The discovery progress stream stopped before completion.", percent: 100 });
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Discovery could not be started.";
+      setIsDiscovering(false);
+      setDiscoveryError(message);
+      setProgress({ stage: "error", message, percent: 100 });
+    }
+  }
+
+  async function loadDiscoveryResult(operationId: string) {
+    try {
+      const response = await fetch(`/api/discovery/${operationId}`);
+      const payload = await response.json() as { status?: unknown; safety?: unknown; proposal?: unknown; error?: unknown };
+      if (!response.ok || (payload.status !== "complete" && payload.status !== "blocked")) {
+        throw new Error(typeof payload.error === "string" ? payload.error : "Discovery status could not be loaded.");
+      }
+      const safety = SafetyDecisionSchema.parse(payload.safety);
+      const proposal = payload.proposal === null ? null : BuildProposalSchema.parse(payload.proposal);
+      setDiscovery({ prompt: projectPrompt, safety, proposal });
+      setIsDiscovering(false);
+      if (safety.outcome === "approved" && proposal) {
+        setHasStarted(true);
+        setMessage("Your safe, cited proposal is ready to review.");
+      } else {
+        setHasStarted(false);
+        setDiscoveryError(safety.callout);
+        setMessage(safety.callout);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Discovery status could not be loaded.";
+      setIsDiscovering(false);
+      setDiscoveryError(message);
+      setProgress({ stage: "error", message, percent: 100 });
+    }
   }
 
   async function moveTo(index: number) {
@@ -178,8 +297,8 @@ function Workshop() {
     setMessage(result.correct ? "Correct. The next step is now unlocked." : result.reexplanation ?? result.error ?? "The checkpoint could not be graded.");
   }
 
-  const content = activeTab === "Dashboard" ? <Dashboard prompt={projectPrompt} progress={progress} stages={pipelineStages} onPromptChange={setProjectPrompt} onStart={startPipeline} onOpenBuild={() => setActiveTab("Build")} />
-    : activeTab === "Research" ? <ResearchPanel />
+  const content = activeTab === "Dashboard" ? <Dashboard prompt={projectPrompt} progress={progress} stages={pipelineStages} discovery={discovery} error={discoveryError} isDiscovering={isDiscovering} onPromptChange={setProjectPrompt} onStart={() => void startDiscovery()} onOpenBuild={() => setActiveTab("Build")} />
+    : activeTab === "Research" ? <ResearchPanel discovery={discovery} />
       : activeTab === "Build" ? <BuildPanel onOpenWorkshop={() => setActiveTab("Workshop")} />
         : activeTab === "Parts" ? <PartsPanel onOpenWorkshop={() => setActiveTab("Workshop")} />
           : <WorkshopPanel activeIndex={activeIndex} complete={complete} message={message} retryDemo={retryDemo} explodeFactor={explodeFactor} onMove={(index) => void moveTo(index)} onAnswer={(response) => void answer(response)} onRetry={() => setRetryDemo(runSolverRetryDemo())} onComplete={() => setComplete(true)} onExplode={setExplodeFactor} />;

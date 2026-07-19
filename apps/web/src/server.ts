@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,15 +7,21 @@ import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 import {
   CitationSchema,
+  DiscoveryProgressEventSchema,
+  DiscoveryRequestSchema,
   InventoryPartSchema,
   RetrievalQuerySchema,
   RetrievalResultSchema,
+  type SourcePolicy,
   type RetrievalQuery,
   type RetrievalResult,
+  type DiscoveryProgressEvent,
 } from "@educational-hardware-builder/schemas";
 
 import { progressSse, runResearch } from "./agents.js";
 import { listInventoryParts } from "./integration.js";
+import { IngestApiError, upsertIngestion, type IngestDatabase } from "./ingest.js";
+import { discoverBuild } from "./discovery.js";
 import { WorkshopAccessError, WorkshopSessions } from "./workshop.js";
 
 type Queryable = Pick<Pool, "query">;
@@ -27,6 +34,8 @@ export interface ApiDependencies {
   vramMb?: number;
   demoSafeMode?: boolean;
   staticDir?: string;
+  ingestApiToken?: string;
+  sourcePolicies?: readonly SourcePolicy[];
 }
 
 export class ApiError extends Error {
@@ -168,13 +177,81 @@ async function respondSse(response: ServerResponse): Promise<void> {
   response.end();
 }
 
+function respondDiscoverySse(response: ServerResponse, events: readonly DiscoveryProgressEvent[]): void {
+  response.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+  for (const event of events) response.write(`event: progress\ndata: ${JSON.stringify(DiscoveryProgressEventSchema.parse(event))}\n\n`);
+  response.end();
+}
+
 export function createApiServer(dependencies: ApiDependencies) {
   const workshopSessions = new WorkshopSessions();
+  const discoveryOperations = new Map<string, { status: "queued" | "complete" | "blocked" | "error"; result?: Awaited<ReturnType<typeof discoverBuild>>; error?: string; events: DiscoveryProgressEvent[] }>();
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
       if (request.method === "POST" && request.url === "/api/retrieve") {
         return respond(response, 200, await retrieve(await readJson(request), dependencies));
+      }
+      if (request.method === "POST" && url.pathname === "/api/discovery") {
+        const parsed = DiscoveryRequestSchema.safeParse(await readJson(request));
+        if (!parsed.success) throw new ApiError(400, "Invalid discovery request.");
+        const operationId = randomUUID();
+        const events: DiscoveryProgressEvent[] = [{ operationId, stage: "queued", message: "Discovery request queued", percent: 0 }];
+        discoveryOperations.set(operationId, { status: "queued", events });
+        try {
+          events.push({ operationId, stage: "safety", message: "Applying server safety policy", percent: 20 });
+          events.push({ operationId, stage: "intent", message: "Validating build intent", percent: 40 });
+          const result = await discoverBuild(parsed.data, {
+            fetcher: dependencies.fetcher,
+            ollamaUrl: dependencies.ollamaUrl,
+            demoSafeMode: dependencies.demoSafeMode,
+            retrieve: (query) => retrieve({ query }, dependencies),
+            catalog: {
+              pool: {
+                query: (sql, values) => dependencies.pool.query(sql, [...values]),
+              },
+            },
+          });
+          if (result.safety.outcome === "blocked") {
+            events.push({ operationId, stage: "blocked", message: result.safety.callout, percent: 100 });
+            discoveryOperations.set(operationId, { status: "blocked", result, events });
+          } else {
+            events.push({ operationId, stage: "retrieving", message: "Retrieving local cited knowledge", percent: 65 });
+            events.push({ operationId, stage: "catalog", message: "Validating local proposal", percent: 85 });
+            events.push({ operationId, stage: "complete", message: "Discovery proposal is ready", percent: 100 });
+            discoveryOperations.set(operationId, { status: "complete", result, events });
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Discovery failed.";
+          events.push({ operationId, stage: "error", message, percent: 100 });
+          discoveryOperations.set(operationId, { status: "error", error: message, events });
+        }
+        return respond(response, 202, { operationId, status: "queued" });
+      }
+      if (request.method === "GET" && /^\/api\/discovery\/[0-9a-f-]+\/events$/i.test(url.pathname)) {
+        const operationId = url.pathname.split("/")[3] ?? "";
+        const operation = discoveryOperations.get(operationId);
+        if (!operation) throw new ApiError(404, "Discovery operation was not found.");
+        return respondDiscoverySse(response, operation.events);
+      }
+      if (request.method === "GET" && /^\/api\/discovery\/[0-9a-f-]+$/i.test(url.pathname)) {
+        const operationId = url.pathname.split("/")[3] ?? "";
+        const operation = discoveryOperations.get(operationId);
+        if (!operation) throw new ApiError(404, "Discovery operation was not found.");
+        return respond(response, 200, { operationId, status: operation.status, proposal: operation.result?.proposal, safety: operation.result?.safety, error: operation.error });
+      }
+      if (request.method === "POST" && url.pathname === "/api/ingest/v2/upsert") {
+        if (!dependencies.ingestApiToken) throw new ApiError(503, "Ingestion API is not configured.");
+        if (request.headers.authorization !== `Bearer ${dependencies.ingestApiToken}`) throw new ApiError(401, "Ingestion API authentication failed.");
+        if (!("connect" in dependencies.pool) || typeof dependencies.pool.connect !== "function") {
+          throw new ApiError(503, "Ingestion database transactions are unavailable.");
+        }
+        try {
+          return respond(response, 202, await upsertIngestion(await readJson(request), dependencies.pool as IngestDatabase, dependencies.sourcePolicies ?? []));
+        } catch (error) {
+          if (error instanceof IngestApiError) throw new ApiError(error.status, error.message);
+          throw error;
+        }
       }
       if (request.method === "POST" && request.url === "/api/integration/research") {
         const body = await readJson(request) as { query?: unknown };
@@ -244,6 +321,7 @@ if (isMainModule) {
     ollamaUrl: process.env.OLLAMA_URL ?? "http://ollama:11434",
     vramMb: process.env.VRAM_MB ? Number(process.env.VRAM_MB) : undefined,
     demoSafeMode: demoSafeModeFromEnv(),
+    ingestApiToken: process.env.INGEST_API_TOKEN,
   });
   server.listen(Number(process.env.PORT ?? 3000), "0.0.0.0");
 }
