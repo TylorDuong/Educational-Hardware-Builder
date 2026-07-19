@@ -222,6 +222,17 @@ export async function runRouter(request: string, dependencies: AgentDependencies
 }
 
 export async function runResearch(query: string, dependencies: AgentDependencies): Promise<ModelCallResult<ResearchResult>> {
+  if (dependencies.demoSafeMode) {
+    const step = goldenLessonStep();
+    return {
+      value: {
+        summary: "Use the authored weather-station guidance while local models are unavailable.",
+        findings: step.lesson.citations.map((citation) => ({ claim: step.lesson.content, citation })),
+      },
+      source: "fallback",
+      attempts: 0,
+    };
+  }
   const chunks = await dependencies.retrieve(query);
   const fallback = (): ResearchResult => ({
     summary: "Use the recorded BME280 wiring guidance.",
