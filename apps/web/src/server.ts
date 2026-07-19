@@ -152,7 +152,7 @@ async function respondSse(response: ServerResponse): Promise<void> {
   const stream = progressSse([
     { operationId, stage: "queued", message: "Preparing the guided build", percent: 0 },
     { operationId, stage: "retrieving", message: "Finding cited guidance", percent: 35 },
-    { operationId, stage: "generating", message: "Creating typed lesson content", percent: 70 },
+    { operationId, stage: "generating", message: "Creating the typed step plan", percent: 70 },
     { operationId, stage: "complete", message: "Guidance is ready", percent: 100 },
   ]);
   response.writeHead(200, {
@@ -161,7 +161,10 @@ async function respondSse(response: ServerResponse): Promise<void> {
     connection: "keep-alive",
   });
   const reader = stream.getReader();
-  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) response.write(chunk.value);
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+    response.write(chunk.value);
+    await new Promise<void>((resolve) => setTimeout(resolve, 350));
+  }
   response.end();
 }
 
