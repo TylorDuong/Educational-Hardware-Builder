@@ -182,7 +182,7 @@ function Workshop() {
     : activeTab === "Research" ? <ResearchPanel />
       : activeTab === "Build" ? <BuildPanel onOpenWorkshop={() => setActiveTab("Workshop")} />
         : activeTab === "Parts" ? <PartsPanel onOpenWorkshop={() => setActiveTab("Workshop")} />
-          : <WorkshopPanel activeIndex={activeIndex} complete={complete} message={message} retryDemo={retryDemo} explodeFactor={explodeFactor} onMove={(index) => void moveTo(index)} onAnswer={(answer) => void answer(answer)} onRetry={() => setRetryDemo(runSolverRetryDemo())} onComplete={() => setComplete(true)} onExplode={setExplodeFactor} />;
+          : <WorkshopPanel activeIndex={activeIndex} complete={complete} message={message} retryDemo={retryDemo} explodeFactor={explodeFactor} onMove={(index) => void moveTo(index)} onAnswer={(response) => void answer(response)} onRetry={() => setRetryDemo(runSolverRetryDemo())} onComplete={() => setComplete(true)} onExplode={setExplodeFactor} />;
 
   return <main>
     <header className="hero"><div><p className="eyebrow">Educational Hardware Builder</p><h1>ESP32 weather station workshop</h1><p>Fixture-backed guided learning with cited lessons, typed agent progress, and server-enforced checkpoints.</p></div><output aria-live="polite"><strong>{progress.stage}</strong> · {progress.message} {progress.percent !== undefined ? `(${progress.percent}%)` : ""}</output></header>

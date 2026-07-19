@@ -4,5 +4,9 @@
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
-  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" }
+  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
 }
