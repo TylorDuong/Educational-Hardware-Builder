@@ -112,3 +112,26 @@ the `DEMO_SAFE_MODE=true` browser flow completed successfully on port 3001:
 relevant discovery, typed rejections, unrestricted Workshop navigation, all 12
 fixture steps, cited explanations and completion conditions, and visible cited
 skill links all worked as intended.
+
+## Recorded verification: native Ollama live smoke test (2026-07-19)
+
+With `DEMO_SAFE_MODE=false` and the Compose web service configured with
+`OLLAMA_URL=http://host.docker.internal:11434`, the developer ran the native
+Windows Ollama smoke test against the local Compose API and cited corpus:
+
+```powershell
+Invoke-RestMethod http://localhost:3000/api/health
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ollama-discovery-smoke.ps1
+```
+
+The health endpoint reported `status: ok`, `database: ok`, and `ollama: ok`.
+It detected `nomic-embed-text:latest`, `llama3.1:8b`, and `llama3.2:3b`.
+The smoke test completed with `result: "live discovery ready"` and operation
+ID `46c87a84-87d6-43e7-b614-23841a824d9e`, confirming the native model,
+retrieval, and discovery path worked together.
+
+Observed timings were `firstTokenMs: 3001.3`, `retrievalMs: 635.9`, and
+`discoveryResponseMs: 641`. This is functional live-stack evidence only: the
+first-token result is marginally above the strict three-second target, and the
+small seeded corpus smoke does not demonstrate the 200 ms retrieval target at
+100,000 embeddings.
