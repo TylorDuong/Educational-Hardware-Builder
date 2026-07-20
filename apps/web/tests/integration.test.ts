@@ -248,19 +248,13 @@ test("safe mode completes the discovery, cached sourcing, and selected Workshop 
     const workshopStep = await publicStep.json() as { checkpoint?: Record<string, unknown> };
     assert.equal("correctAnswer" in (workshopStep.checkpoint ?? {}), false);
 
-    const wrongAnswer = await fetch(`${root}/api/workshop/checkpoints`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId: selected.sessionId, buildId: selected.buildId, checkpointId: step!.checkpoint?.id, answer: "The cited guide" }),
-    });
-    assert.equal(wrongAnswer.status, 200);
-    const grade = await wrongAnswer.json() as { correct: boolean; reexplanation: string };
-    assert.equal(grade.correct, false);
-    assert.match(grade.reexplanation, /disconnected from power/i);
+    assert.equal("checkpoint" in workshopStep, false);
+    const removedRoute = await fetch(`${root}/api/workshop/checkpoints`, { method: "POST" });
+    assert.equal(removedRoute.status, 404);
   }, safeModeDiscoveryDependencies());
 });
 
-test("safe mode blocks a mains request before retrieval and publishes the blocked operation", async () => {
+test("safe mode rejects an off-topic request before retrieval and publishes the rejected operation", async () => {
   let embeddingCalls = 0;
   const deps = safeModeDiscoveryDependencies();
   deps.fetcher = (async (url: string | URL) => {
@@ -268,7 +262,7 @@ test("safe mode blocks a mains request before retrieval and publishes the blocke
     throw new Error("Blocked discovery must not use a live dependency.");
   }) as ApiDependencies["fetcher"];
   await withServer(async (root) => {
-    const operationId = await startDiscovery(root, "Help me wire a 120 V mains desk light.");
+    const operationId = await startDiscovery(root, "Write an essay about a vacation.");
     const operation = await (await fetch(`${root}/api/discovery/${operationId}`)).json() as {
       status: string;
       safety: { outcome: string; blockReasons: string[] };
@@ -276,7 +270,7 @@ test("safe mode blocks a mains request before retrieval and publishes the blocke
     };
     assert.equal(operation.status, "blocked");
     assert.equal(operation.safety.outcome, "blocked");
-    assert.deepEqual(operation.safety.blockReasons, ["mains_ac"]);
+    assert.deepEqual(operation.safety.blockReasons, ["off_topic"]);
     assert.equal(operation.proposal, null);
     assert.equal(embeddingCalls, 0);
 

@@ -46,14 +46,14 @@
       retry, deterministic/user-facing fallback, and temperature <= 0.3 for structure.
 - [ ] Deployment is local Docker Compose, inference is local Ollama within detected VRAM,
       embeddings are CPU-based, and no prohibited runtime external calls are introduced.
-- [ ] Research classifies hazards; Beginner mode hard-blocks flagged work and places
-      safety callouts before instructions.
+- [ ] Request handling accepts relevant technical work and rejects only off-topic or
+      malicious requests before discovery; it does not impose hazard- or mode-based blocks.
 - [ ] PostgreSQL with pgvector remains the sole datastore; n8n uses versioned upsert APIs;
       API and SSE payloads use one shared Zod schema package.
 - [ ] Required CAD fixtures, deterministic unit tests, LLM contract/live-smoke tests,
       OpenSCAD negative tests, and GPU-free CI coverage are planned.
-- [ ] UX preserves the five fixed tabs, unskippable Beginner Socratic checkpoints, a
-      single mode flag, and SSE progress for work over two seconds.
+- [ ] UX preserves the five fixed tabs, freely navigable Workshop steps with explanatory
+      skill-library links, and SSE progress for work over two seconds.
 - [ ] The plan measures applicable 3D, first-token, retrieval, and clean-start targets.
 - [ ] CAD ingestion records source URL and license and rejects unidentified licenses.
 

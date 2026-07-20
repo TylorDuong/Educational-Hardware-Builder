@@ -44,13 +44,13 @@ test("safe mode deterministically discovers a cited, fresh catalog proposal with
   assert.equal(first.proposal?.billOfMaterials[0]?.alternatives[0]?.slug, "esp32-compatible");
 });
 
-test("safe mode keeps a blocked hazard out of retrieval, catalog, and lesson generation", async () => {
+test("safe mode accepts a relevant mains project without a hazard block", async () => {
   const result = await discoverBuild(demoBlockedDiscoveryRequest, createDemoDiscoveryDependencies());
 
   assert.equal(result.model.source, "fallback");
-  assert.equal(result.safety.outcome, "blocked");
-  assert.deepEqual(result.safety.blockReasons, ["mains_ac"]);
-  assert.equal(result.proposal, null);
+  assert.equal(result.safety.outcome, "approved");
+  assert.deepEqual(result.safety.blockReasons, []);
+  assert.ok(result.proposal);
 });
 
 test("safe mode creates an approved proposal's cited lesson without exposing model answers", async () => {
@@ -66,5 +66,6 @@ test("safe mode creates an approved proposal's cited lesson without exposing mod
   assert.match(firstStep?.safetyCallout ?? "", /disconnected from power/i);
   assert.match(firstStep?.instruction ?? "", /work surface/i);
   assert.equal(firstStep?.matingSelections.length, 0);
-  assert.ok(firstStep?.checkpoint);
+  assert.equal(firstStep?.checkpoint, undefined);
+  assert.equal(firstStep?.skills[0]?.sourceUrl, demoDiscoveryCitation.sourceUrl);
 });

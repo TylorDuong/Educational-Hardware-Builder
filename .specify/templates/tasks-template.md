@@ -164,7 +164,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Add recorded LLM contract and Make-runnable live smoke tests in tests/
 - [ ] TXXX [P] Add OpenSCAD compile, zero-volume, and bounds tests in tests/
 - [ ] TXXX Measure applicable 3D, first-token, retrieval, and clean-start targets
-- [ ] TXXX Verify safety categories/callout order and CAD asset license/source metadata
+- [ ] TXXX Verify relevance/malicious-request handling, ungated Workshop navigation,
+      skill-library links, and CAD asset license/source metadata
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 

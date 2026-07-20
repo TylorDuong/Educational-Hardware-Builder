@@ -1,6 +1,6 @@
 # Product Roadmap
 
-The original MVP and superseded authored-build sprint are historical. The active direction is Agentic Build Discovery: preserve the fixture-backed demo while deliberately adding cited local discovery, cached sourcing, server-gated lessons, and background-only ingestion.
+The original MVP, superseded authored-build sprint, and safety-gated discovery sprint are historical. The active direction is Open Workshop: preserve the fixture-backed demo while deliberately adding cited local discovery, cached sourcing, freely navigable lessons with skill-library links, and background-only ingestion.
 
 ## Now: complete the Agentic Build Discovery handoff
 
@@ -8,7 +8,7 @@ The original MVP and superseded authored-build sprint are historical. The active
 2. **Verify the local-stack boundary.** Compose must validate before startup; n8n may use only its ingestion API credential and `POST /api/ingest/v2/upsert`, while `ingestion/source-policy.yml` limits documentation and vendor refreshes to allowlisted HTTPS records.
 3. **Record the human evidence.** A developer must separately confirm the n8n API-only smoke, local-Ollama timing measurements, and browser flow. These are release gates, not claims made by fixture tests.
 
-Exit criteria: a new contributor can clone, install, run `pnpm quickstart`, complete a safe fixture discovery, see a hard-blocked unsafe request, and follow the documented path for optional local-stack evidence.
+Exit criteria: a new contributor can clone, install, run `pnpm quickstart`, complete a relevant fixture discovery, see an off-topic or malicious request rejected, and follow the documented path for optional local-stack evidence.
 
 ## Next: validate live services
 
@@ -20,9 +20,9 @@ Exit criteria: a documented demo machine passes a live rehearsal and fixture mod
 
 ## Then: broaden the learning experience
 
-1. **Support a second authored build.** Add a cited corpus, inventory records, symbolic assembly fixtures, lessons, and checkpoints through the shared schemas.
-2. **Move from a single demo session to learner projects.** Persist progress, inventory, and checkpoint history with clear reset and privacy behavior.
-3. **Improve feedback loops.** Add accessible checkpoint explanations, clearer solver-retry guidance, and testable 3D fallback states.
+1. **Support a second authored build.** Add a cited corpus, inventory records, symbolic assembly fixtures, lessons, and skills links through the shared schemas.
+2. **Move from a single demo session to learner projects.** Persist progress and inventory with clear reset and privacy behavior.
+3. **Improve feedback loops.** Add accessible step explanations, clearer solver-retry guidance, and testable 3D fallback states.
 
 Exit criteria: two complete, cited learning paths share the same validated contracts and both pass fixture-mode acceptance tests.
 

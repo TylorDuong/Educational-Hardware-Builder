@@ -138,3 +138,24 @@ For the separately measured clean start, time the approved fresh-stack
 rehearsal and pass its elapsed seconds in `CLEAN_START_SECONDS` before running
 the target. Removing Compose volumes is destructive and requires explicit
 developer approval because it deletes local Postgres, n8n, and Ollama data.
+
+## Recorded verification: T034 (2026-07-19)
+
+Developer Tylor confirmed that the local-Ollama discovery smoke used native
+Windows Ollama on the AMD Radeon RX 9070 XT (Vulkan) and completed
+successfully. The final `make smoke-ollama` result was:
+
+```json
+{
+  "firstTokenMs": 403.2,
+  "retrievalMs": 100.6,
+  "discoveryResponseMs": 1085.4,
+  "cleanStartSeconds": 102,
+  "operationId": "89636f03-19c8-4c71-8d93-e58be65d2232",
+  "result": "live discovery completed"
+}
+```
+
+`ollama ps` reported both `llama3.2:3b` and `nomic-embed-text:latest` at
+100% GPU. The measured first-token, retrieval, and clean-start times meet the
+3-second, 200-ms, and 15-minute targets respectively.

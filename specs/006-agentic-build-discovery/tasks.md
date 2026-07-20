@@ -119,7 +119,7 @@ without n8n direct database access.
 - [x] T031 Run schemas, solver, and SCAD tests/typechecks; record results and required negative-path coverage in `specs/006-agentic-build-discovery/quickstart.md`.
 - [x] T032 Run web tests, web typecheck, sandbox build, and `git diff --check`; record results in `specs/006-agentic-build-discovery/quickstart.md`.
 - [x] T033 Run the source-policy/n8n local-stack smoke and record explicit developer confirmation that n8n used only the upsert API in `specs/006-agentic-build-discovery/quickstart.md`.
-- [ ] T034 Run a local-Ollama discovery smoke through the Make target and record first-token/retrieval/clean-start measurements in `specs/006-agentic-build-discovery/quickstart.md`.
+- [x] T034 Run a local-Ollama discovery smoke through the Make target and record first-token/retrieval/clean-start measurements in `specs/006-agentic-build-discovery/quickstart.md`.
 - [ ] T035 Run `pnpm quickstart` with `DEMO_SAFE_MODE=true`, complete a safe discovery and blocked-hazard browser flow, and record explicit human confirmation in `specs/006-agentic-build-discovery/quickstart.md`.
 - [ ] T036 Prepare a focused pull request from `codex/authored-build` to `main`, noting that `specs/005-authored-build` is superseded history and `.sprint/status.yml` remains unedited.
 

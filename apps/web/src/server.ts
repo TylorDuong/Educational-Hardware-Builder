@@ -209,7 +209,7 @@ export function createApiServer(dependencies: ApiDependencies) {
         const events: DiscoveryProgressEvent[] = [{ operationId, stage: "queued", message: "Discovery request queued", percent: 0 }];
         discoveryOperations.set(operationId, { status: "queued", events });
         try {
-          events.push({ operationId, stage: "safety", message: "Applying server safety policy", percent: 20 });
+          events.push({ operationId, stage: "safety", message: "Checking technical relevance and good-faith use", percent: 20 });
           events.push({ operationId, stage: "intent", message: "Validating build intent", percent: 40 });
           const result = await discoverBuild(parsed.data, {
             fetcher: demoDiscoveryDependencies?.fetcher ?? dependencies.fetcher,
@@ -254,7 +254,7 @@ export function createApiServer(dependencies: ApiDependencies) {
         const operationId = url.pathname.split("/")[3] ?? "";
         const operation = discoveryOperations.get(operationId);
         if (!operation || operation.status !== "complete" || !operation.result?.proposal || operation.result.safety.outcome !== "approved") {
-          throw new ApiError(409, "Only a completed safe discovery proposal can start a Workshop session.");
+          throw new ApiError(409, "Only a completed approved discovery proposal can start a Workshop session.");
         }
         const proposal = BuildProposalSchema.parse({ ...operation.result.proposal, selected: true });
         const lesson = await generateGuidedLesson(proposal, {
@@ -266,12 +266,7 @@ export function createApiServer(dependencies: ApiDependencies) {
         const sessionId = workshopSessions.createSession(proposal.id, workshopStepsForLesson(lesson.value));
         const publicLesson = PublicGuidedLessonSchema.parse({
           ...lesson.value,
-          steps: lesson.value.steps.map((step) => {
-            const { checkpoint, ...withoutCheckpoint } = step;
-            if (!checkpoint) return withoutCheckpoint;
-            const { correctAnswer: _correctAnswer, ...publicCheckpoint } = checkpoint;
-            return { ...withoutCheckpoint, checkpoint: publicCheckpoint };
-          }),
+          steps: lesson.value.steps.map(({ checkpoint: _checkpoint, ...step }) => step),
         });
         return respond(response, 200, {
           sessionId,
@@ -334,18 +329,6 @@ export function createApiServer(dependencies: ApiDependencies) {
           url.searchParams.get("sessionId") ?? "demo",
           url.searchParams.get("buildId") ?? weatherStationBuildId,
           stepId,
-        ));
-      }
-      if (request.method === "POST" && request.url === "/api/workshop/checkpoints") {
-        const body = await readJson(request) as { sessionId?: unknown; buildId?: unknown; checkpointId?: unknown; answer?: unknown };
-        if (typeof body.sessionId !== "string" || typeof body.checkpointId !== "string" || typeof body.answer !== "string") {
-          throw new ApiError(400, "Checkpoint responses require a session, checkpoint, and answer.");
-        }
-        return respond(response, 200, workshopSessions.gradeCheckpoint(
-          body.sessionId,
-          typeof body.buildId === "string" ? body.buildId : weatherStationBuildId,
-          body.checkpointId,
-          body.answer,
         ));
       }
       if (request.method === "GET" && await serveStatic(url.pathname, response, dependencies.staticDir ?? fileURLToPath(new URL("../dist/", import.meta.url)))) {

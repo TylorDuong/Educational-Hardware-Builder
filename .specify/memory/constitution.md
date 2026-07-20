@@ -1,14 +1,18 @@
 <!--
 Sync Impact Report
-- Version change: unversioned template -> 1.0.0
-- Modified principles: template placeholders -> I-IX below
-- Added sections: Non-Negotiable Platform Constraints; Delivery and Review Workflow
-- Removed sections: none
+- Version change: 1.0.0 -> 2.0.0
+- Modified principles: IV. Safety Gates Are Hard Blocks -> IV. Technical Relevance and
+  Good-Faith Use; VII. UX Must Limit Cognitive Load and Show Progress -> VII. Open,
+  Self-Directed Workshop Experience.
+- Added sections: none.
+- Removed sections: mandatory physical-hazard blocking and mandatory Socratic checkpoint
+  gating.
 - Templates requiring updates:
   - .specify/templates/plan-template.md: updated
   - .specify/templates/spec-template.md: updated
   - .specify/templates/tasks-template.md: updated
-- Follow-up TODOs: none
+- Follow-up TODOs: update the superseding open-workshop feature artifacts and its
+  implementation; completed 006 evidence remains historical.
 -->
 # Educational Hardware Builder Constitution
 
@@ -42,13 +46,14 @@ Embedding models MUST run on CPU. Startup MUST detect available VRAM, select a c
 model tier, and show an explicit warning when it degrades capability. This preserves
 privacy, offline ownership, and predictable consumer-hardware operation.
 
-### IV. Safety Gates Are Hard Blocks
+### IV. Technical Relevance and Good-Faith Use
 
-Research MUST classify projects and steps for mains AC voltage, LiPo charging, and all
-other flagged hazards. Beginner mode MUST hard-block classified hazards rather than merely
-warning about them. Every instructional step MUST carry a safety category, and its safety
-callout MUST render before its construction instruction. This places safety decisions
-before user action and prevents hazardous beginner workflows.
+The product MUST accept relevant technical hardware requests without categorically blocking
+them by project hazard, voltage, chemistry, or learner mode. It MUST reject requests that
+are materially unrelated to technical hardware building or that are malicious. Rejections
+MUST be typed, explain the relevance or good-faith reason, and occur before discovery work.
+Instructional material remains cited and explanatory so learners can independently evaluate
+the work.
 
 ### V. PostgreSQL Is the Single Datastore and Boundaries Are Typed
 
@@ -66,14 +71,13 @@ and at least one live smoke test per agent runnable through a Make target. The O
 compile-validation loop MUST test compile failures, zero-volume meshes, and
 out-of-bounds parameters. CI MUST pass without a GPU by mocking Ollama with fixtures.
 
-### VII. UX Must Limit Cognitive Load and Show Progress
+### VII. Open, Self-Directed Workshop Experience
 
-The UI MUST use exactly five fixed tabs: Dashboard, Inventory, Workshop, 3D Mech View
-within Workshop, and Gallery. Socratic checkpoints MUST gate step progression and MUST NOT
-be skippable in Beginner mode. Any agent operation longer than two seconds MUST stream
-visible progress to the UI through SSE. Beginner and Intermediate MUST be one mode flag
-threaded through all agents, never separate forked logic trees. These rules keep learning
-flows coherent and prevent invisible waits.
+The UI MUST use exactly five fixed tabs, with 3D Mech View contained within Workshop. Every
+Workshop step MUST be directly navigable: no quiz, answer validation, checkpoint, or
+server-side progression lock may block a learner. Each step MUST provide a clear cited
+explanation, a completion condition, and links to relevant skill-library material. Any agent
+operation longer than two seconds MUST stream visible progress to the UI through SSE.
 
 ### VIII. Performance Targets Are Product Requirements
 
@@ -96,12 +100,13 @@ non-redistributable design assets.
 - Features MUST preserve the local Docker Compose deployment model, PostgreSQL with
   pgvector as the sole datastore, local Ollama runtime inference, and CPU embeddings.
 - Features that create spatial, electrical, instructional, geometry, retrieval, ingestion,
-  or agent behavior MUST identify their deterministic/typed boundary, safety category,
-  provenance record, and verification strategy before implementation begins.
+  or agent behavior MUST identify their deterministic/typed boundary, provenance record,
+  relevance/malicious-content behavior, and verification strategy before implementation
+  begins.
 - New client navigation MUST fit the five-tab information architecture; long-running work
-  MUST include typed SSE progress states.
+  MUST include typed SSE progress states, and Workshop steps MUST remain freely navigable.
 - A feature cannot substitute a warning, manual review, or best-effort fallback for a hard
-  safety, schema, license, or physical-validation gate.
+  schema, license, provenance, or physical-validation gate.
 
 ## Delivery and Review Workflow
 
@@ -113,10 +118,10 @@ fixtures, unit and contract tests, GPU-free CI behavior, and measured performanc
 they are not optional when covered by this constitution.
 
 Before merging, reviewers MUST confirm that the implementation preserves the principles,
-that safety callouts precede instructions, and that every schema, asset, claim, and
-performance-sensitive path has its required evidence. A justified exception requires a
-formal constitution amendment before implementation; it cannot be introduced by a feature
-plan, task list, or code review.
+that only off-topic and malicious requests are rejected, that Workshop steps remain
+ungated, and that every schema, asset, claim, and performance-sensitive path has its
+required evidence. A justified exception requires a formal constitution amendment before
+implementation; it cannot be introduced by a feature plan, task list, or code review.
 
 ## Governance
 
@@ -132,4 +137,4 @@ non-compliant implementation MUST be changed, deferred, or preceded by a ratifie
 amendment; it MUST NOT be accepted as technical debt. The project uses
 `.specify/memory/constitution.md` as the authoritative governance document.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-16 | **Last Amended**: 2026-07-16
+**Version**: 2.0.0 | **Ratified**: 2026-07-16 | **Last Amended**: 2026-07-19

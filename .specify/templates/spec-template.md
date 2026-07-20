@@ -104,8 +104,9 @@
   how factual lesson claims retain retrieved-source citations.
 - **LLM contract**: Identify the shared JSON/Zod schema, JSON-mode call, one-retry fallback,
   and structural-output temperature requirement.
-- **Safety**: Identify the safety category, research classification, Beginner-mode hard
-  block behavior, and the pre-instruction callout requirement.
+- **Relevance and good-faith use**: Identify how relevant technical requests are accepted,
+  how off-topic or malicious requests are rejected, and how explanations remain cited
+  without hazard- or mode-based blocks.
 - **Local operation and typed boundaries**: State the local Docker Compose/Ollama resource
   assumptions, PostgreSQL/pgvector ownership, and typed API/SSE contracts.
 - **Licensing**: For CAD ingestion or assets, require source URL, identifiable license, and

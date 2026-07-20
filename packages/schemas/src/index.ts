@@ -15,6 +15,13 @@ export const CitationSchema = z.object({
   title: z.string().min(1),
 }).strict();
 
+export const SkillLibraryEntrySchema = z.object({
+  title: z.string().min(1),
+  sourceUrl: z.string().url(),
+  locator: z.string().min(1),
+  relevance: z.string().min(1),
+}).strict();
+
 const HttpsUrlSchema = z.string().url().refine((value) => new URL(value).protocol === "https:", {
   message: "Expected an HTTPS URL",
 });
@@ -183,6 +190,8 @@ export const DiscoveryRequestSchema = z.object({
 }).strict();
 
 export const SafetyBlockReasonSchema = z.enum([
+  "off_topic",
+  "malicious",
   "mains_ac",
   "lipo_charging",
   "unsupported_hazard",
@@ -415,6 +424,7 @@ export const GuidedLessonStepSchema = z.object({
   instruction: NonEmptyTextSchema.max(4_000),
   completionCondition: NonEmptyTextSchema.max(1_000),
   citations: z.array(CitationSchema).min(1),
+  skills: z.array(SkillLibraryEntrySchema).default([]),
   checkpoint: CheckpointSchema.optional(),
   matingSelections: z.array(MatingSelectionSchema).default([]),
 }).strict();

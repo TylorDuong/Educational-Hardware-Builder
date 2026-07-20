@@ -17,9 +17,9 @@ If `pnpm` is not installed, enable it with Corepack from an elevated PowerShell 
 corepack enable
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The command builds the Workshop UI and starts the API in `DEMO_SAFE_MODE=true`, so a cited discovery-and-lesson flow is available even when Postgres and Ollama are not running. Submit a low-voltage request such as “Build a beginner USB desk light,” then confirm the cited proposal, cached sourcing choices, and checkpoint-gated Workshop lesson. Press `Ctrl+C` to stop it.
+Open [http://localhost:3000](http://localhost:3000). The command builds the Workshop UI and starts the API in `DEMO_SAFE_MODE=true`, so a cited discovery-and-lesson flow is available even when Postgres and Ollama are not running. Submit a relevant technical request such as “Build a USB desk light,” then confirm the cited proposal, cached sourcing choices, freely navigable Workshop steps, and linked skills. Press `Ctrl+C` to stop it.
 
-Fixture mode is the default first run. It never needs a live model or a vendor request; the deterministic fixtures supply the retrieval, catalog, and lesson data. A request involving mains AC or LiPo charging must instead show a hard block before any offer or construction step.
+Fixture mode is the default first run. It never needs a live model or a vendor request; the deterministic fixtures supply the retrieval, catalog, and lesson data. Relevant technical requests remain available; only off-topic or malicious requests are rejected before discovery.
 
 ### Everyday commands
 
@@ -82,7 +82,7 @@ For a real n8n rehearsal, import only the allowlisted workflow and verify its re
 
 | Area | Location | Responsibility |
 | --- | --- | --- |
-| Workshop API and UI | `apps/web` | HTTP API, agent boundary, checkpoints, and Vite/React 3D experience |
+| Workshop API and UI | `apps/web` | HTTP API, agent boundary, freely navigable cited steps, skills links, and Vite/React 3D experience |
 | Shared contracts | `packages/schemas` | Zod schemas, fixtures, and mocks used across package boundaries |
 | Spatial solver | `packages/solver` | Deterministic symbolic mating selection to transform validation |
 | CAD validation | `packages/scad-service` | OpenSCAD-facing validation adapter |
@@ -114,7 +114,7 @@ The original MVP and superseded authored-build artifacts are historical. Active 
 
 - Keep cross-package data in `packages/schemas` and update its fixtures and mocks with schema changes.
 - Preserve citations for factual learning content.
-- Keep checkpoint gating server-side and preserve `DEMO_SAFE_MODE` fallbacks.
+- Preserve freely navigable Workshop steps, cited skill-library links, and `DEMO_SAFE_MODE` fallbacks.
 - Never accept model-produced coordinates or transform matrices; route symbolic selections through the solver.
 - Do not commit `.env` files, build output, `node_modules`, or Docker data.
 

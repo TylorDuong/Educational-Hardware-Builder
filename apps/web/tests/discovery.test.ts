@@ -205,7 +205,7 @@ test("discovery API accepts a vague learner request and returns a typed local pr
   });
 });
 
-test("discovery API hard-blocks mains requests before retrieval or proposal generation", async () => {
+test("discovery API rejects off-topic requests before retrieval or proposal generation", async () => {
   let embeddingCalls = 0;
   const deps = dependencies({
     fetcher: (async (url: string | URL) => {
@@ -215,12 +215,12 @@ test("discovery API hard-blocks mains requests before retrieval or proposal gene
     }) as ApiDependencies["fetcher"],
   });
   await withServer(async (root) => {
-    const operationId = await startDiscovery(root, "Wire a 120 V mains desk light.");
+    const operationId = await startDiscovery(root, "Write an essay about a vacation.");
     const status = await fetch(`${root}/api/discovery/${operationId}`);
     const payload = await status.json() as { status: string; safety: { outcome: string; blockReasons: string[] }; proposal: null };
     assert.equal(payload.status, "blocked");
     assert.equal(payload.safety.outcome, "blocked");
-    assert.deepEqual(payload.safety.blockReasons, ["mains_ac"]);
+    assert.deepEqual(payload.safety.blockReasons, ["off_topic"]);
     assert.equal(payload.proposal, null);
     assert.equal(embeddingCalls, 0);
 

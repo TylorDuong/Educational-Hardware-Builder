@@ -92,12 +92,12 @@ function fixtureGuidedLesson(proposal: BuildProposal): GuidedLesson {
       instruction: `Place the ${part} and its cited supporting parts on the work surface before making connections.`,
       completionCondition: "All required parts are identified and remain disconnected from power.",
       citations: [citation],
-      checkpoint: {
-        id: "20000000-0000-4000-8000-000000000010",
-        prompt: "What should remain disconnected while you prepare the parts?",
-        choices: ["Power", "The cited guide"],
-        correctAnswer: "Power",
-      },
+      skills: [{
+        title: citation.title,
+        sourceUrl: citation.sourceUrl,
+        locator: citation.locator,
+        relevance: "Explains the connection and assembly concepts used in this step.",
+      }],
       matingSelections: [],
     }],
     troubleshooting: [{
@@ -148,15 +148,16 @@ export async function generateGuidedLesson(proposal: BuildProposal, dependencies
   });
 }
 
-/** Hard policy boundary, independent of the local model's structured output. */
+/** Relevance boundary, independent of the local model's structured output. */
 export function preflightSafety(prompt: string, intent: BuildIntent): SafetyDecision {
   const text = `${prompt} ${intent.normalizedGoal} ${intent.constraints.join(" ")}`.toLowerCase();
-  if (/\b(mains|120\s*v|240\s*v|ac outlet|line voltage)\b/.test(text)) return blocked("mains_ac", "mains_ac", "Mains AC projects are hard-blocked in Beginner mode.");
-  if (/\b(lipo|li-po|lithium polymer|battery charging)\b/.test(text)) return blocked("lipo", "lipo_charging", "LiPo charging projects are hard-blocked in Beginner mode.");
-  if (/\b(unverified electrical|design a regulator|choose a resistor value)\b/.test(text)) {
-    return SafetyDecisionSchema.parse({ outcome: "blocked", categories: ["none"], blockReasons: ["unverified_electrical_values"], callout: "Unverified electrical design values are not supported." });
+  if (/\b(kill|sabotage|weaponize|evade safeguards|harm someone)\b/.test(text)) {
+    return SafetyDecisionSchema.parse({ outcome: "blocked", categories: ["none"], blockReasons: ["malicious"], callout: "This request is rejected because it expresses malicious intent." });
   }
-  return SafetyDecisionSchema.parse({ ...intent.safety, outcome: "approved", blockReasons: [] });
+  if (/\b(write (an )?essay|recipe|vacation|celebrity gossip|sports score)\b/.test(text)) {
+    return SafetyDecisionSchema.parse({ outcome: "blocked", categories: ["none"], blockReasons: ["off_topic"], callout: "This request is outside technical hardware building." });
+  }
+  return SafetyDecisionSchema.parse({ ...intent.safety, outcome: "approved", blockReasons: [], callout: "Relevant technical hardware request." });
 }
 
 export async function discoverBuild(request: DiscoveryRequest, dependencies: DiscoveryDependencies): Promise<DiscoveryResult> {

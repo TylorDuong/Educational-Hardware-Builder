@@ -7,6 +7,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Windows PowerShell 5.1 does not load this assembly automatically, unlike
+# PowerShell 7. Load it explicitly so the target works in both shells.
+Add-Type -AssemblyName System.Net.Http
+
 function Get-FirstTokenMilliseconds {
   param([string]$BaseUrl)
 
@@ -21,9 +25,9 @@ function Get-FirstTokenMilliseconds {
     } | ConvertTo-Json -Depth 4 -Compress
     $request.Content = [System.Net.Http.StringContent]::new($body, [System.Text.Encoding]::UTF8, "application/json")
     $timer = [System.Diagnostics.Stopwatch]::StartNew()
-    $response = $client.Send($request, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead)
-    $response.EnsureSuccessStatusCode()
-    $reader = [System.IO.StreamReader]::new($response.Content.ReadAsStream())
+    $response = $client.SendAsync($request, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+    $response.EnsureSuccessStatusCode() | Out-Null
+    $reader = [System.IO.StreamReader]::new($response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
     do {
       $firstLine = $reader.ReadLine()
     } while ([string]::IsNullOrWhiteSpace($firstLine))

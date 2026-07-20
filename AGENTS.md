@@ -46,7 +46,8 @@ docker compose -f infra/docker-compose.yml down
 - Validate all cross-boundary data with the shared Zod schemas. Update schemas, mocks, fixtures, and consumers together.
 - Agent output must stay structured and schema-validated. Never allow model-generated raw spatial coordinates or transform matrices; use the deterministic solver.
 - Keep factual learning content cited. Preserve source URL, locator, and title with retrieved or seeded material.
-- Keep server-side checkpoint gating server-side; a client-only lock is insufficient.
+- Reject only off-topic or malicious discovery requests; Workshop steps must remain
+  freely navigable and link learners to cited skill-library material.
 - Preserve `DEMO_SAFE_MODE` fallbacks for model-dependent paths and ensure tests can run without Docker, GPU, or live Ollama.
 - Do not commit secrets, `.env` files, generated build output, `node_modules`, or persistent Docker data.
 
@@ -60,10 +61,8 @@ docker compose -f infra/docker-compose.yml down
 
 ## Agentic build-discovery work
 
-The completed A/B/C and superseded `005-authored-build` sprints are historical.
-For the active single-developer Agentic Build Discovery work, follow
-`.agents/skills/sprint-run/SKILL.md` and
-`specs/006-agentic-build-discovery/tasks.md`. Use `codex/authored-build`,
-preserve `.sprint/status.yml` unchanged, and do not mark a task complete without
-its recorded verification evidence. Prepare a focused PR to `main` only after
-the task queue's final verification phase is complete.
+The completed A/B/C, superseded `005-authored-build`, and safety-gated
+`006-agentic-build-discovery` artifacts are historical. The active direction is
+`specs/007-open-workshop/`. Preserve `.sprint/status.yml` unchanged and do not
+mark a task complete without its recorded verification evidence. Prepare a focused PR to
+`main` only after the active task queue's final verification phase is complete.
