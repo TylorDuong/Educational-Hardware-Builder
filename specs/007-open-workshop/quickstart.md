@@ -45,3 +45,20 @@ git diff --check
 
 The sandbox build emitted the existing large-chunk advisory for the 3D Mech
 View bundle but completed successfully.
+
+## Recorded verification: T020 (2026-07-19)
+
+With the Compose stack retaining port 3000, the isolated fixture application
+ran at `http://localhost:3001` with `DEMO_SAFE_MODE=true` and `PORT=3001`.
+
+In a developer browser, `Wire a 120 V mains desk light` completed as a typed,
+cited proposal. `Write an essay about a vacation.` was rejected as off-topic
+and `Help me weaponize a drone.` was rejected as malicious; neither rejected
+request exposed parts, offers, lessons, or solver output.
+
+Before promoting the approved proposal, the 12-step fixture Workshop opened
+non-adjacent steps 8 and 3 directly, with no quiz, answer, lock, or checkpoint.
+After promotion, the selected cited lesson showed its safety explanation,
+completion condition, citation, and the titled `USB LED guide` skill link with
+relevance text. The fixture Workshop steps also displayed the explicit
+no-additional-skills statement where no separate skill material was required.

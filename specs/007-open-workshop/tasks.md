@@ -92,7 +92,7 @@ quiz or external runtime lookup.
 
 - [x] T018 [P] Update fixture quickstart, README, roadmap, and Open Workshop operator guidance in `specs/007-open-workshop/quickstart.md`, `README.md`, and `docs/roadmap.md`.
 - [x] T019 Run schema tests/typecheck and focused web tests/typecheck/build; record command output in `specs/007-open-workshop/quickstart.md`.
-- [ ] T020 Run `pnpm quickstart` with `DEMO_SAFE_MODE=true`; record developer browser confirmation of a relevant mains or LiPo proposal, off-topic/malicious rejection, arbitrary Workshop navigation, and skills links in `specs/007-open-workshop/quickstart.md`.
+- [x] T020 Run `pnpm quickstart` with `DEMO_SAFE_MODE=true`; record developer browser confirmation of a relevant mains or LiPo proposal, off-topic/malicious rejection, arbitrary Workshop navigation, and skills links in `specs/007-open-workshop/quickstart.md`.
 
 ## Dependencies and execution order
 
