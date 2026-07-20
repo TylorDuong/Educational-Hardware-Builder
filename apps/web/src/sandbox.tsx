@@ -6,11 +6,11 @@ import {
   DiscoveryProgressEventSchema,
   DiscoveryRequestSchema,
   WorkshopPromotionResponseSchema,
-  SafetyDecisionSchema,
+  RequestClassificationSchema,
   type BuildProposal,
   type DiscoveryProgressEvent,
   type PublicGuidedLesson,
-  type SafetyDecision,
+  type RequestClassification,
 } from "@educational-hardware-builder/schemas";
 
 import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
@@ -32,16 +32,16 @@ const LazyMechView = lazy(async () => ({ default: (await import("./components/Me
 
 type Tab = typeof tabs[number];
 type Progress = Omit<DiscoveryProgressEvent, "operationId">;
-type DiscoveryView = { operationId: string; prompt: string; safety: SafetyDecision; proposal: BuildProposal | null };
+type DiscoveryView = { operationId: string; prompt: string; classification: RequestClassification; proposal: BuildProposal | null };
 type SelectedWorkshop = { sessionId: string; buildId: string; lesson: PublicGuidedLesson };
 
 const discoveryPipelineStages: readonly Progress[] = [
   { stage: "queued", message: "Queueing your discovery request", percent: 0 },
-  { stage: "safety", message: "Applying the server safety policy", percent: 20 },
+  { stage: "classifying", message: "Checking technical relevance and good-faith use", percent: 20 },
   { stage: "intent", message: "Interpreting your build goal", percent: 40 },
   { stage: "retrieving", message: "Retrieving local cited knowledge", percent: 65 },
   { stage: "catalog", message: "Validating the local proposal", percent: 85 },
-  { stage: "complete", message: "Discovery proposal is ready", percent: 100 },
+  { stage: "ready", message: "Discovery proposal is ready", percent: 100 },
 ];
 
 async function requestStep(stepId: string, selected?: Pick<SelectedWorkshop, "sessionId" | "buildId">): Promise<{ error?: string }> {
@@ -66,11 +66,11 @@ function Pipeline({ stages }: { stages: readonly Progress[] }) {
 
 function DiscoverySummary({ discovery }: { discovery: DiscoveryView }) {
   const interpretedRequest = discovery.proposal?.intent.normalizedGoal ?? discovery.prompt;
-  const { safety, proposal } = discovery;
+  const { classification, proposal } = discovery;
   return <section className="discovery-summary">
     <p className="eyebrow">Interpreted request</p><h3>{interpretedRequest}</h3>
-    <p><strong>Safety outcome:</strong> {safety.outcome.replaceAll("_", " ")}</p>
-    <p className="message">{safety.callout}</p>
+    <p><strong>Request outcome:</strong> {classification.outcome}</p>
+    <p className="message">{classification.outcome === "approved" ? classification.reason : classification.message}</p>
     {proposal ? <><p className="eyebrow">Cited proposal</p><h3>{proposal.summary}</h3><p>{proposal.billOfMaterials.length} validated part {proposal.billOfMaterials.length === 1 ? "recommendation" : "recommendations"} with {proposal.freshness} source data.</p><ul className="source-list">{proposal.citations.map((citation) => <li key={`${citation.sourceUrl}:${citation.locator}`}><a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a><span>{citation.locator}</span></li>)}</ul></> : null}
   </section>;
 }
@@ -86,8 +86,8 @@ function Dashboard({ prompt, progress, stages, discovery, error, isDiscovering, 
   onStart: () => void;
   onOpenBuild: () => void;
 }) {
-  const complete = progress.stage === "complete";
-  const blocked = progress.stage === "blocked";
+  const complete = progress.stage === "ready";
+  const rejected = progress.stage === "rejected";
   return <section className="dashboard-grid">
     <section className="panel prompt-panel">
       <p className="eyebrow">1. Describe a build</p><h2>What would you like to build?</h2>
@@ -99,7 +99,7 @@ function Dashboard({ prompt, progress, stages, discovery, error, isDiscovering, 
     <section className="panel" aria-live="polite">
       <p className="eyebrow">2. Pipeline status</p><h2>{progress.message}</h2>
       <Pipeline stages={stages} />
-      {error ? <p className="message" role="alert">{error}</p> : blocked ? <p className="message" role="alert">This request is blocked before any parts or build steps are available.</p> : null}
+      {error ? <p className="message" role="alert">{error}</p> : rejected ? <p className="message" role="alert">This request was rejected before any parts or build steps were available.</p> : null}
       {discovery ? <DiscoverySummary discovery={discovery} /> : null}
       {complete && discovery?.proposal ? <button className="primary" onClick={onOpenBuild}>Review the build plan</button> : <p className="helper">Watch the validated pipeline stages complete before moving to the plan.</p>}
     </section>
@@ -134,7 +134,7 @@ function PartsPanel({ discovery, onOpenWorkshop }: { discovery?: DiscoveryView; 
   return <section className="parts-layout"><section className="panel"><p className="eyebrow">Parts and inventory</p><h2>Available for this build</h2><ul className="part-list">{demoParts.map((part) => <li key={part.name}><strong>{part.name}</strong><span>{part.role}</span><em>{part.status}</em></li>)}</ul></section><section className="panel substitution"><p className="eyebrow">Substitution decision</p><h2>{demoSubstitution.selected}</h2><p><strong>Instead of:</strong> {demoSubstitution.requested}</p><p>{demoSubstitution.justification}</p><button className="primary" onClick={onOpenWorkshop}>Continue to the workshop</button></section></section>;
 }
 
-function WorkshopPanel({ activeIndex, complete, message, retryDemo, explodeFactor, onMove, onAnswer, onRetry, onComplete, onExplode }: {
+function WorkshopPanel({ activeIndex, complete, message, retryDemo, explodeFactor, onMove, onRetry, onComplete, onExplode }: {
   activeIndex: number;
   complete: boolean;
   message: string;
@@ -155,7 +155,7 @@ function WorkshopPanel({ activeIndex, complete, message, retryDemo, explodeFacto
   const highlightedPart = mechViewParts[activeIndex % mechViewParts.length]!;
   const cameraTarget = useMemo(() => highlightedPart.transform.positionMm, [highlightedPart]);
 
-  if (complete) return <section className="completion panel"><p className="eyebrow">Build complete</p><h2>Your weather station is ready for its final inspection.</h2><p>You completed a cited, checkpoint-gated path and used deterministic spatial validation for the 3D assembly.</p><button className="primary" onClick={() => onMove(0)}>Review the first step</button></section>;
+  if (complete) return <section className="completion panel"><p className="eyebrow">Build complete</p><h2>Your weather station is ready for its final inspection.</h2><p>You completed a cited, self-directed path and used deterministic spatial validation for the 3D assembly.</p><button className="primary" onClick={() => onMove(0)}>Review the first step</button></section>;
 
   return <section className="workshop-layout">
     <aside className="steps panel"><h2>Build steps</h2>{weatherStationGoldenSteps.map((item, index) => <button key={item.id} className={index === activeIndex ? "step active" : "step"} onClick={() => onMove(index)}><span>{item.order}</span>{item.title}</button>)}</aside>
@@ -168,19 +168,18 @@ function WorkshopPanel({ activeIndex, complete, message, retryDemo, explodeFacto
   </section>;
 }
 
-function SelectedWorkshopPanel({ workshop, activeIndex, complete, message, onMove, onAnswer, onComplete }: {
+function SelectedWorkshopPanel({ workshop, activeIndex, complete, message, onMove, onComplete }: {
   workshop: SelectedWorkshop;
   activeIndex: number;
   complete: boolean;
   message: string;
   onMove: (index: number) => void;
-  onAnswer: (answer: string) => void;
   onComplete: () => void;
 }) {
   const step = workshop.lesson.steps[activeIndex]!;
   const solverResult = useMemo(() => solveSelectedProposalParts(workshop.lesson), [workshop.lesson]);
 
-  if (complete) return <section className="completion panel"><p className="eyebrow">Build complete</p><h2>{workshop.lesson.title}</h2><p>You completed the cited, checkpoint-gated selected proposal.</p><button className="primary" onClick={() => onMove(0)}>Review the first step</button></section>;
+  if (complete) return <section className="completion panel"><p className="eyebrow">Build complete</p><h2>{workshop.lesson.title}</h2><p>You completed the cited, self-directed selected proposal.</p><button className="primary" onClick={() => onMove(0)}>Review the first step</button></section>;
 
   return <section className="workshop-layout">
     <aside className="steps panel"><h2>Build steps</h2>{workshop.lesson.steps.map((item, index) => <button key={item.id} className={index === activeIndex ? "step active" : "step"} onClick={() => onMove(index)}><span>{item.order}</span>{item.title}</button>)}</aside>
@@ -250,11 +249,11 @@ function Workshop() {
           const { operationId: _operationId, ...nextProgress } = update;
           setProgress(nextProgress);
           setPipelineStages((previous) => previous.some((item) => item.stage === nextProgress.stage) ? previous : [...previous, nextProgress]);
-          if (nextProgress.stage === "complete") {
+          if (nextProgress.stage === "ready") {
             stream.close();
             void loadDiscoveryResult(payload.operationId);
           }
-          if (nextProgress.stage === "blocked") {
+          if (nextProgress.stage === "rejected") {
             stream.close();
             void loadDiscoveryResult(payload.operationId);
           }
@@ -288,21 +287,21 @@ function Workshop() {
   async function loadDiscoveryResult(operationId: string) {
     try {
       const response = await fetch(`/api/discovery/${operationId}`);
-      const payload = await response.json() as { status?: unknown; safety?: unknown; proposal?: unknown; error?: unknown };
-      if (!response.ok || (payload.status !== "complete" && payload.status !== "blocked")) {
+      const payload = await response.json() as { status?: unknown; classification?: unknown; proposal?: unknown; error?: unknown };
+      if (!response.ok || (payload.status !== "ready" && payload.status !== "rejected")) {
         throw new Error(typeof payload.error === "string" ? payload.error : "Discovery status could not be loaded.");
       }
-      const safety = SafetyDecisionSchema.parse(payload.safety);
+      const classification = RequestClassificationSchema.parse(payload.classification);
       const proposal = payload.proposal === null ? null : BuildProposalSchema.parse(payload.proposal);
-      setDiscovery({ operationId, prompt: projectPrompt, safety, proposal });
+      setDiscovery({ operationId, prompt: projectPrompt, classification, proposal });
       setIsDiscovering(false);
-      if (safety.outcome === "approved" && proposal) {
+      if (classification.outcome === "approved" && proposal) {
         setHasStarted(true);
         setMessage("Your safe, cited proposal is ready to review.");
       } else {
         setHasStarted(false);
-        setDiscoveryError(safety.callout);
-        setMessage(safety.callout);
+        setDiscoveryError(classification.message);
+        setMessage(classification.message);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Discovery status could not be loaded.";
@@ -328,18 +327,6 @@ function Workshop() {
     setActiveIndex(index);
     setRetryDemo(undefined);
     setMessage(`Step ${target.order} is ready.`);
-  }
-
-  async function answer(answer: string) {
-    const step = weatherStationGoldenSteps[activeIndex]!;
-    if (!step.checkpoint) return;
-    const response = await fetch("/api/workshop/checkpoints", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId, checkpointId: step.checkpoint.id, answer }),
-    });
-    const result = await response.json() as { correct?: boolean; reexplanation?: string; error?: string };
-    setMessage(result.correct ? "Correct. The next step is now unlocked." : result.reexplanation ?? result.error ?? "The checkpoint could not be graded.");
   }
 
   async function startSelectedWorkshop() {
@@ -379,29 +366,16 @@ function Workshop() {
     setMessage(`Step ${target.order} is ready.`);
   }
 
-  async function answerSelected(answer: string) {
-    const workshop = selectedWorkshop;
-    const step = workshop?.lesson.steps[activeIndex];
-    if (!workshop || !step?.checkpoint) return;
-    const response = await fetch("/api/workshop/checkpoints", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId: workshop.sessionId, buildId: workshop.buildId, checkpointId: step.checkpoint.id, answer }),
-    });
-    const result = await response.json() as { correct?: boolean; reexplanation?: string; error?: string };
-    setMessage(result.correct ? "Correct. The next step is now unlocked." : result.reexplanation ?? result.error ?? "The checkpoint could not be graded.");
-  }
-
   const content = activeTab === "Dashboard" ? <Dashboard prompt={projectPrompt} progress={progress} stages={pipelineStages} discovery={discovery} error={discoveryError} isDiscovering={isDiscovering} onPromptChange={setProjectPrompt} onStart={() => void startDiscovery()} onOpenBuild={() => setActiveTab("Build")} />
     : activeTab === "Research" ? <ResearchPanel discovery={discovery} />
       : activeTab === "Build" ? <BuildPanel onOpenWorkshop={() => void startSelectedWorkshop()} />
         : activeTab === "Parts" ? <PartsPanel discovery={discovery} onOpenWorkshop={() => void startSelectedWorkshop()} />
           : selectedWorkshop
-            ? <SelectedWorkshopPanel workshop={selectedWorkshop} activeIndex={activeIndex} complete={complete} message={message} onMove={(index) => void moveSelectedTo(index)} onAnswer={(response) => void answerSelected(response)} onComplete={() => setComplete(true)} />
-            : <WorkshopPanel activeIndex={activeIndex} complete={complete} message={message} retryDemo={retryDemo} explodeFactor={explodeFactor} onMove={(index) => void moveTo(index)} onAnswer={(response) => void answer(response)} onRetry={() => setRetryDemo(runSolverRetryDemo())} onComplete={() => setComplete(true)} onExplode={setExplodeFactor} />;
+            ? <SelectedWorkshopPanel workshop={selectedWorkshop} activeIndex={activeIndex} complete={complete} message={message} onMove={(index) => void moveSelectedTo(index)} onComplete={() => setComplete(true)} />
+            : <WorkshopPanel activeIndex={activeIndex} complete={complete} message={message} retryDemo={retryDemo} explodeFactor={explodeFactor} onMove={(index) => void moveTo(index)} onRetry={() => setRetryDemo(runSolverRetryDemo())} onComplete={() => setComplete(true)} onExplode={setExplodeFactor} />;
 
   return <main>
-    <header className="hero"><div><p className="eyebrow">Educational Hardware Builder</p><h1>ESP32 weather station workshop</h1><p>Fixture-backed guided learning with cited lessons, typed agent progress, and server-enforced checkpoints.</p></div><output aria-live="polite"><strong>{progress.stage}</strong> · {progress.message} {progress.percent !== undefined ? `(${progress.percent}%)` : ""}</output></header>
+    <header className="hero"><div><p className="eyebrow">Educational Hardware Builder</p><h1>ESP32 weather station workshop</h1><p>Fixture-backed self-directed learning with cited lessons and typed agent progress.</p></div><output aria-live="polite"><strong>{progress.stage}</strong> · {progress.message} {progress.percent !== undefined ? `(${progress.percent}%)` : ""}</output></header>
     <AppTabs active={activeTab} hasStarted={hasStarted} onSelect={setActiveTab} />
     {content}
   </main>;

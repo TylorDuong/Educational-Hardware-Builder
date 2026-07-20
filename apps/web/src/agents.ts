@@ -229,7 +229,7 @@ export async function runRouter(request: string, dependencies: AgentDependencies
   });
 }
 
-/** Extracts only a typed intent; server-side policy owns the final safety decision. */
+/** Extracts only a typed intent; server-side policy owns request classification. */
 export async function runDiscoveryIntent(request: string, dependencies: AgentDependencies): Promise<ModelCallResult<BuildIntent>> {
   return callModel({
     schema: BuildIntentSchema as z.ZodType<BuildIntent>,
@@ -240,10 +240,10 @@ export async function runDiscoveryIntent(request: string, dependencies: AgentDep
     fallback: () => ({
       normalizedGoal: request.trim() || "Build a beginner low-voltage project.",
       capabilities: ["low-voltage assembly"],
-      exclusions: ["mains power", "LiPo charging"],
+      exclusions: [],
       constraints: ["local catalog only"],
       retrievalTerms: ["beginner low-voltage hardware project"],
-      safety: { outcome: "approved", categories: ["none"], blockReasons: [], callout: "Use only verified low-voltage parts." },
+      classification: { outcome: "approved", reason: "Relevant technical hardware request." },
     }),
     fetcher: dependencies.fetcher,
     ollamaUrl: dependencies.ollamaUrl,

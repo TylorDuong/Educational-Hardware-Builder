@@ -6,7 +6,7 @@ import {
   DiscoveryRequestSchema,
   GuidedLessonSchema,
   IngestUpsertSchema,
-  SafetyDecisionSchema,
+  RequestClassificationSchema,
   SourcePolicySchema,
 } from "../src/index.js";
 
@@ -26,15 +26,12 @@ const citation = {
 };
 const safeDecision = {
   outcome: "approved" as const,
-  categories: ["none"] as const,
-  blockReasons: [],
-  callout: "Use USB power only.",
+  reason: "Relevant technical hardware request.",
 };
 const blockedDecision = {
-  outcome: "blocked" as const,
-  categories: ["mains_ac"] as const,
-  blockReasons: ["mains_ac"] as const,
-  callout: "Mains AC builds are not supported in Beginner mode.",
+  outcome: "rejected" as const,
+  reason: "malicious" as const,
+  message: "Rejected malicious request.",
 };
 const part = {
   id: ids.part,
@@ -56,7 +53,7 @@ const intent = {
   exclusions: ["mains power"],
   constraints: ["usb-power-only"],
   retrievalTerms: ["USB LED module"],
-  safety: safeDecision,
+  classification: safeDecision,
 };
 const staleOffer = {
   externalId: "adafruit-1234",
@@ -116,7 +113,7 @@ describe("agentic build discovery contracts", () => {
         order: 1,
         title: "Connect the module",
         safetyCategory: "none",
-        safetyCallout: safeDecision.callout,
+        safetyCallout: "Disconnect power while preparing the parts.",
         instruction: "Connect the USB LED module.",
         completionCondition: "The LED module is seated.",
         citations: [],
@@ -159,7 +156,7 @@ describe("agentic build discovery contracts", () => {
       id: ids.proposal,
       discoveryRequestId: ids.request,
       intent,
-      safety: safeDecision,
+      classification: safeDecision,
       summary: "A safe USB desk-light proposal.",
       billOfMaterials: [{
         part,
@@ -211,7 +208,7 @@ describe("agentic build discovery contracts", () => {
         order: 1,
         title: "Connect the module",
         safetyCategory: "none",
-        safetyCallout: safeDecision.callout,
+        safetyCallout: "Disconnect power while preparing the parts.",
         instruction: "Connect the USB LED module.",
         completionCondition: "The LED module is seated.",
         citations: [citation],
@@ -224,12 +221,12 @@ describe("agentic build discovery contracts", () => {
         }],
       }],
     })).toThrow();
-    expect(() => SafetyDecisionSchema.parse({ ...blockedDecision, blockReasons: [] })).toThrow();
+    expect(RequestClassificationSchema.parse(blockedDecision)).toEqual(blockedDecision);
     expect(() => BuildProposalSchema.parse({
       id: ids.proposal,
       discoveryRequestId: ids.request,
-      intent: { ...intent, safety: blockedDecision },
-      safety: blockedDecision,
+      intent: { ...intent, classification: blockedDecision },
+      classification: blockedDecision,
       summary: "A blocked proposal.",
       billOfMaterials: [{
         part,

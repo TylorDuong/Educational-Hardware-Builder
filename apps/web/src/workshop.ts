@@ -16,8 +16,7 @@ type WorkshopStep = { id: string; source: Record<string, unknown> };
 type WorkshopSession = { buildId: string; steps: readonly WorkshopStep[] };
 
 function publicStep(step: WorkshopStep): Record<string, unknown> {
-  const { checkpoint: _checkpoint, ...publicData } = step.source;
-  return publicData;
+  return step.source;
 }
 
 function guidedStep(step: GuidedLesson["steps"][number]): WorkshopStep {

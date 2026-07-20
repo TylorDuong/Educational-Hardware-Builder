@@ -13,7 +13,7 @@ test("Dashboard renders validated discovery results and preserves the existing f
   assert.match(source, /fetch\("\/api\/discovery"/);
   assert.match(source, /new EventSource\(`\/api\/discovery\/\$\{payload\.operationId\}\/events`\)/);
   assert.match(source, /DiscoveryProgressEventSchema\.parse/);
-  assert.match(source, /SafetyDecisionSchema\.parse/);
+  assert.match(source, /RequestClassificationSchema\.parse/);
   assert.match(source, /BuildProposalSchema\.parse/);
   assert.match(source, /function DiscoverySummary/);
   assert.match(source, /Cited proposal/);

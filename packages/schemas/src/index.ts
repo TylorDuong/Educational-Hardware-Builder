@@ -96,13 +96,6 @@ export const TemplateParamsSchema = z.object({
   values: z.record(z.number()),
 });
 
-export const CheckpointSchema = z.object({
-  id: z.string().uuid(),
-  prompt: z.string().min(1),
-  choices: z.array(z.string().min(1)).min(2).max(4).optional(),
-  correctAnswer: z.string().min(1),
-});
-
 export const LessonSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
@@ -116,7 +109,7 @@ export const StepPlanSchema = z.object({
   instruction: z.string().min(1),
   safetyCategory: SafetyCategorySchema,
   lesson: LessonSchema,
-  checkpoint: CheckpointSchema.optional(),
+  skills: z.array(SkillLibraryEntrySchema).default([]),
   matingSelections: z.array(MatingSelectionSchema).default([]),
 }).strict();
 
@@ -189,28 +182,11 @@ export const DiscoveryRequestSchema = z.object({
   constraints: z.array(NonEmptyTextSchema.max(160)).max(50).default([]),
 }).strict();
 
-export const SafetyBlockReasonSchema = z.enum([
-  "off_topic",
-  "malicious",
-  "mains_ac",
-  "lipo_charging",
-  "unsupported_hazard",
-  "unverified_electrical_values",
-  "unvalidated_substitution",
+export const RequestRejectionReasonSchema = z.enum(["off_topic", "malicious"]);
+export const RequestClassificationSchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("approved"), reason: NonEmptyTextSchema.max(1_000) }).strict(),
+  z.object({ outcome: z.literal("rejected"), reason: RequestRejectionReasonSchema, message: NonEmptyTextSchema.max(1_000) }).strict(),
 ]);
-export const SafetyDecisionSchema = z.object({
-  outcome: z.enum(["approved", "blocked", "review_required"]),
-  categories: z.array(SafetyCategorySchema).min(1),
-  blockReasons: z.array(SafetyBlockReasonSchema).default([]),
-  callout: NonEmptyTextSchema.max(1_000),
-}).strict().superRefine((decision, context) => {
-  if (decision.outcome === "blocked" && decision.blockReasons.length === 0) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["blockReasons"], message: "Blocked safety decisions require a reason" });
-  }
-  if (decision.outcome === "approved" && decision.blockReasons.length > 0) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["blockReasons"], message: "Approved safety decisions cannot include block reasons" });
-  }
-});
 
 /** Strict structured output for intent extraction; unknown model fields are rejected. */
 export const BuildIntentSchema = z.object({
@@ -219,7 +195,7 @@ export const BuildIntentSchema = z.object({
   exclusions: z.array(NonEmptyTextSchema.max(160)).max(30).default([]),
   constraints: z.array(NonEmptyTextSchema.max(160)).max(50).default([]),
   retrievalTerms: z.array(NonEmptyTextSchema.max(160)).min(1).max(20),
-  safety: SafetyDecisionSchema,
+  classification: RequestClassificationSchema,
 }).strict();
 
 export const SourceClassSchema = z.enum(["documentation", "vendor_catalog"]);
@@ -403,15 +379,15 @@ export const BuildProposalSchema = z.object({
   id: z.string().uuid(),
   discoveryRequestId: z.string().uuid(),
   intent: BuildIntentSchema,
-  safety: SafetyDecisionSchema,
+  classification: RequestClassificationSchema,
   summary: NonEmptyTextSchema.max(2_000),
   billOfMaterials: z.array(BuildProposalBomEntrySchema).min(1),
   citations: z.array(CitationSchema).min(1),
   freshness: OfferFreshnessSchema,
   selected: z.boolean().default(false),
 }).strict().superRefine((proposal, context) => {
-  if (proposal.safety.outcome !== "approved" && proposal.billOfMaterials.length > 0) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["billOfMaterials"], message: "Blocked or review-required proposals cannot expose a bill of materials" });
+  if (proposal.classification.outcome !== "approved" && proposal.billOfMaterials.length > 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["billOfMaterials"], message: "Rejected proposals cannot expose a bill of materials" });
   }
 });
 
@@ -425,7 +401,6 @@ export const GuidedLessonStepSchema = z.object({
   completionCondition: NonEmptyTextSchema.max(1_000),
   citations: z.array(CitationSchema).min(1),
   skills: z.array(SkillLibraryEntrySchema).default([]),
-  checkpoint: CheckpointSchema.optional(),
   matingSelections: z.array(MatingSelectionSchema).default([]),
 }).strict();
 export const GuidedLessonSchema = z.object({
@@ -438,14 +413,9 @@ export const GuidedLessonSchema = z.object({
     citations: z.array(CitationSchema).min(1),
   }).strict()).default([]),
 }).strict();
-/** Lesson data returned to a learner; checkpoint answers remain server-only. */
-export const PublicCheckpointSchema = CheckpointSchema.omit({ correctAnswer: true });
-export const PublicGuidedLessonStepSchema = GuidedLessonStepSchema.extend({
-  checkpoint: PublicCheckpointSchema.optional(),
-});
-export const PublicGuidedLessonSchema = GuidedLessonSchema.extend({
-  steps: z.array(PublicGuidedLessonStepSchema).min(1),
-});
+/** Lesson data returned to a learner contains no quiz or progression state. */
+export const PublicGuidedLessonStepSchema = GuidedLessonStepSchema;
+export const PublicGuidedLessonSchema = GuidedLessonSchema;
 export const WorkshopPromotionResponseSchema = z.object({
   sessionId: z.string().uuid(),
   buildId: z.string().uuid(),
@@ -454,15 +424,15 @@ export const WorkshopPromotionResponseSchema = z.object({
 
 export const DiscoveryOperationStatusSchema = z.enum([
   "queued",
-  "safety",
+  "classifying",
   "intent",
   "retrieving",
   "catalog",
   "generating",
   "validating",
   "solver",
-  "complete",
-  "blocked",
+  "ready",
+  "rejected",
   "error",
 ]);
 export const DiscoveryOperationSchema = z.object({
@@ -470,13 +440,13 @@ export const DiscoveryOperationSchema = z.object({
   status: DiscoveryOperationStatusSchema,
   request: DiscoveryRequestSchema,
   intent: BuildIntentSchema.optional(),
-  safety: SafetyDecisionSchema.optional(),
+  classification: RequestClassificationSchema.optional(),
   proposal: BuildProposalSchema.optional(),
   lesson: GuidedLessonSchema.optional(),
   error: NonEmptyTextSchema.max(1_000).optional(),
 }).strict().superRefine((operation, context) => {
-  if (operation.status === "blocked" && operation.safety?.outcome !== "blocked") {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["safety"], message: "Blocked operations require a blocked safety decision" });
+  if (operation.status === "rejected" && operation.classification?.outcome !== "rejected") {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["classification"], message: "Rejected operations require a rejected classification" });
   }
   if (operation.status === "error" && !operation.error) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["error"], message: "Errored operations require an error message" });
@@ -492,6 +462,7 @@ export const DiscoveryProgressEventSchema = z.object({
 export const AgentProgressEventSchema = DiscoveryProgressEventSchema;
 
 export type Citation = z.infer<typeof CitationSchema>;
+export type SkillLibraryEntry = z.infer<typeof SkillLibraryEntrySchema>;
 export type BuildId = z.infer<typeof BuildIdSchema>;
 export type BuildSlug = z.infer<typeof BuildSlugSchema>;
 export type PartRecord = z.infer<typeof PartRecordSchema>;
@@ -500,7 +471,6 @@ export type CadAssetRecord = z.infer<typeof CadAssetRecordSchema>;
 export type MatingSelection = z.infer<typeof MatingSelectionSchema>;
 export type AssemblyTransform = z.infer<typeof AssemblyTransformSchema>;
 export type TemplateParams = z.infer<typeof TemplateParamsSchema>;
-export type Checkpoint = z.infer<typeof CheckpointSchema>;
 export type Lesson = z.infer<typeof LessonSchema>;
 export type StepPlan = z.infer<typeof StepPlanSchema>;
 export type AuthoredBuildManifest = z.infer<typeof AuthoredBuildManifestSchema>;
@@ -511,7 +481,7 @@ export type RetrievalQuery = z.infer<typeof RetrievalQuerySchema>;
 export type RetrievalResult = z.infer<typeof RetrievalResultSchema>;
 export type LearnerMode = z.infer<typeof LearnerModeSchema>;
 export type DiscoveryRequest = z.infer<typeof DiscoveryRequestSchema>;
-export type SafetyDecision = z.infer<typeof SafetyDecisionSchema>;
+export type RequestClassification = z.infer<typeof RequestClassificationSchema>;
 export type BuildIntent = z.infer<typeof BuildIntentSchema>;
 export type SourcePolicy = z.infer<typeof SourcePolicySchema>;
 export type SourcePolicyDocument = z.infer<typeof SourcePolicyDocumentSchema>;

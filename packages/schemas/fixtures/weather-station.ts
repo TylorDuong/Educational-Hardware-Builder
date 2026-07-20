@@ -16,11 +16,11 @@ export const weatherStationStepFixture: StepPlan = {
       title: "ESP-IDF I2C API Reference",
     }],
   },
-  checkpoint: {
-    id: "22c16561-f93d-4c32-8c2e-f2756397cf14",
-    prompt: "Which two wires carry I2C data and clock?",
-    choices: ["SDA and SCL", "VIN and GND"],
-    correctAnswer: "SDA and SCL",
-  },
+  skills: [{
+    sourceUrl: "https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2c.html",
+    locator: "I2C Introduction",
+    title: "ESP-IDF I2C API Reference",
+    relevance: "Explains the I2C connections used in this step.",
+  }],
   matingSelections: [],
 };

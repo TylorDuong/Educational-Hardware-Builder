@@ -88,3 +88,19 @@ pnpm --filter @educational-hardware-builder/web test # 66 tests passed
 T001-T004, T006, T008-T009, and T014-T016 remain unchecked. The merged source
 still retains some checkpoint or hazard-era contracts/fixtures, or lacks the
 specific replacement fixtures, tests, or cleanup those tasks require.
+
+## Recorded verification: final implementation completion (2026-07-19)
+
+The remaining Open Workshop contract migration replaced hazard safety decisions
+with typed request classifications, removed checkpoint data and handlers, and
+made cited skills part of both fixture and generated lessons. The focused
+GPU-free verification passed:
+
+```powershell
+pnpm --filter @educational-hardware-builder/schemas typecheck
+pnpm --filter @educational-hardware-builder/schemas test       # 11 tests passed
+pnpm --filter @educational-hardware-builder/web typecheck
+pnpm --filter @educational-hardware-builder/web test           # 66 tests passed
+pnpm --filter @educational-hardware-builder/web build:sandbox
+git diff --check
+```

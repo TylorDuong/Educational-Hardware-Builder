@@ -3,6 +3,7 @@ import type {
   Citation,
   DiscoveryRequest,
   RetrievalResult,
+  SkillLibraryEntry,
 } from "@educational-hardware-builder/schemas";
 
 import type { CatalogDependencies } from "./catalog.js";
@@ -19,6 +20,11 @@ export const demoDiscoveryCitation: Citation = {
   title: "USB LED guide",
 };
 
+export const demoSkillLibraryEntry: SkillLibraryEntry = {
+  ...demoDiscoveryCitation,
+  relevance: "Explains the USB power-path concepts used by the deterministic fixture lesson.",
+};
+
 export const demoDiscoveryRequest: DiscoveryRequest = {
   prompt: "Build a beginner USB desk light using an ESP32 I already own.",
   mode: "beginner",
@@ -27,7 +33,7 @@ export const demoDiscoveryRequest: DiscoveryRequest = {
   constraints: ["usb-power-only"],
 };
 
-export const demoBlockedDiscoveryRequest: DiscoveryRequest = {
+export const demoMainsDiscoveryRequest: DiscoveryRequest = {
   ...demoDiscoveryRequest,
   prompt: "Help me wire a 120 V mains desk light.",
 };
@@ -94,9 +100,10 @@ export function createDemoDiscoveryDependencies(): DiscoveryDependencies {
 
 export const demoPipelineStages = [
   { stage: "queued", message: "Preparing the guided build", percent: 0 },
+  { stage: "classifying", message: "Checking technical relevance", percent: 20 },
   { stage: "retrieving", message: "Finding cited guidance", percent: 35 },
   { stage: "generating", message: "Creating the typed step plan", percent: 70 },
-  { stage: "complete", message: "Guidance is ready", percent: 100 },
+  { stage: "ready", message: "Guidance is ready", percent: 100 },
 ] as const;
 
 export const demoParts = [
