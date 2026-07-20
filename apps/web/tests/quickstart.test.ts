@@ -62,7 +62,7 @@ test("quickstart serves fixture-safe discovery, SSE, static assets, and the five
     }
 
     const sandbox = await readFile(new URL("../src/sandbox.tsx", import.meta.url), "utf8");
-    assert.match(sandbox, /const tabs = \["Dashboard", "Research", "Build", "Parts", "Workshop"\] as const/);
+    assert.match(sandbox, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Workshop"\] as const/);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await rm(staticDir, { recursive: true, force: true });

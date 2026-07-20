@@ -28,7 +28,7 @@ import "./sandbox.css";
 const sessionId = "workshop-demo";
 const discoveryUserId = "40000000-0000-4000-8000-000000000001";
 const discoveryInventoryPartIds = ["7e893f29-068e-43e2-9c3c-b9ba2d9ed6db"];
-const tabs = ["Dashboard", "Research", "Build", "Parts", "Workshop"] as const;
+const tabs = ["Dashboard", "Research", "Parts", "Build", "Workshop"] as const;
 const LazyMechView = lazy(async () => ({ default: (await import("./components/MechView.js")).MechView }));
 
 type Tab = typeof tabs[number];
@@ -121,11 +121,15 @@ function ResearchPanel({ discovery }: { discovery?: DiscoveryView }) {
   </section>;
 }
 
-function BuildPanel({ onOpenWorkshop }: { onOpenWorkshop: () => void }) {
-  return <section className="panel"><p className="eyebrow">Generated plan</p><h2>ESP32 weather station</h2><ol className="plan-list">{weatherStationGoldenSteps.map((step) => <li key={step.id}><strong>{step.order}. {step.title}</strong><span>{step.instruction}</span></li>)}</ol><button className="primary" onClick={onOpenWorkshop}>Start the guided workshop</button></section>;
+function BuildPanel({ onOpenWorkshop, isStartingWorkshop }: { onOpenWorkshop: () => void; isStartingWorkshop: boolean }) {
+  return <section className="panel"><p className="eyebrow">Generated plan</p><h2>ESP32 weather station</h2><ol className="plan-list">{weatherStationGoldenSteps.map((step) => <li key={step.id}><strong>{step.order}. {step.title}</strong><span>{step.instruction}</span></li>)}</ol><button className="primary" onClick={onOpenWorkshop} disabled={isStartingWorkshop}>{isStartingWorkshop ? "Opening the Workshop..." : "Start the guided workshop"}</button></section>;
 }
 
-function PartsPanel({ discovery, onOpenWorkshop }: { discovery?: DiscoveryView; onOpenWorkshop: () => void }) {
+function ComponentBreakdown() {
+  return <section className="panel"><p className="eyebrow">Workshop components</p><h2>Individual parts breakdown</h2><p className="helper">These components are used across the weather-station steps. A current, cited shop link appears beside a part only when it exists in the local catalog.</p><ul className="part-list">{demoParts.map((part) => <li key={part.name}><strong>{part.name}</strong><span>{part.role}</span><em>{part.status}</em></li>)}</ul></section>;
+}
+
+function PartsDetails({ discovery, onOpenWorkshop }: { discovery?: DiscoveryView; onOpenWorkshop: () => void }) {
   const proposal = discovery?.proposal;
   if (proposal) return <section className="parts-layout"><section className="panel"><p className="eyebrow">Parts and inventory</p><h2>Validated parts for this build</h2><ul className="part-list">{proposal.billOfMaterials.map((entry) => <li key={entry.part.id}><strong>{entry.part.name} × {entry.quantity}</strong><span>{entry.rationale}</span><em className={entry.freshness === "stale" ? "freshness stale" : "freshness fresh"}>{entry.freshness === "stale" ? "Stale or unavailable offer data" : "Fresh cached offer data"}</em>
     {entry.inventoryMatch ? <p><strong>Verified inventory:</strong> {entry.inventoryMatch.quantity} on hand{entry.inventoryMatch.rawLabel ? ` (${entry.inventoryMatch.rawLabel})` : ""}.</p> : <p className="inventory-gap"><strong>Inventory gap:</strong> No verified item is recorded; choose a current cached offer or compatible alternative.</p>}
@@ -133,6 +137,10 @@ function PartsPanel({ discovery, onOpenWorkshop }: { discovery?: DiscoveryView; 
     <section className="part-detail"><h3>Compatible alternatives</h3>{entry.alternatives.length > 0 ? <ul className="source-list">{entry.alternatives.map((alternative) => <li key={alternative.id}><strong>{alternative.name}</strong><span>{alternative.category}</span>{alternative.datasheetUrl ? <a href={alternative.datasheetUrl} target="_blank" rel="noreferrer">View compatible-part source</a> : null}</li>)}</ul> : <p className="helper">No locally validated alternatives are available for this part.</p>}</section>
   </li>)}</ul></section><section className="panel substitution"><p className="eyebrow">Sourcing decision</p><h2>Use cited local choices</h2><p>Only verified inventory, cached offers, and compatibility records are shown. Checkout and live shop calls stay outside this workshop.</p><button className="primary" onClick={onOpenWorkshop}>Continue to the workshop</button></section></section>;
   return <section className="parts-layout"><section className="panel"><p className="eyebrow">Parts and inventory</p><h2>Available for this build</h2><ul className="part-list">{demoParts.map((part) => <li key={part.name}><strong>{part.name}</strong><span>{part.role}</span><em>{part.status}</em></li>)}</ul></section><section className="panel substitution"><p className="eyebrow">Substitution decision</p><h2>{demoSubstitution.selected}</h2><p><strong>Instead of:</strong> {demoSubstitution.requested}</p><p>{demoSubstitution.justification}</p><button className="primary" onClick={onOpenWorkshop}>Continue to the workshop</button></section></section>;
+}
+
+function PartsPanel({ discovery, onOpenWorkshop }: { discovery?: DiscoveryView; onOpenWorkshop: () => void }) {
+  return <><ComponentBreakdown /><PartsDetails discovery={discovery} onOpenWorkshop={onOpenWorkshop} /></>;
 }
 
 function WorkshopPanel({ activeIndex, complete, message, retryDemo, explodeFactor, onMove, onRetry, onComplete, onExplode }: {
@@ -208,6 +216,7 @@ function Workshop() {
   const [complete, setComplete] = useState(false);
   const [retryDemo, setRetryDemo] = useState<SolverRetryDemo>();
   const [selectedWorkshop, setSelectedWorkshop] = useState<SelectedWorkshop>();
+  const [isStartingWorkshop, setIsStartingWorkshop] = useState(false);
   const eventSource = useRef<EventSource | undefined>(undefined);
 
   useEffect(() => () => eventSource.current?.close(), []);
@@ -331,26 +340,28 @@ function Workshop() {
   }
 
   async function startSelectedWorkshop() {
+    setActiveTab("Workshop");
     if (!discovery?.proposal) {
-      setActiveTab("Workshop");
       return;
     }
     if (selectedWorkshop) {
-      setActiveTab("Workshop");
       return;
     }
+    setIsStartingWorkshop(true);
+    setMessage("Opening your selected cited lesson.");
     try {
       const response = await fetch(`/api/discovery/${discovery.operationId}/select`, { method: "POST" });
       const payload = WorkshopPromotionResponseSchema.parse(await response.json());
       setSelectedWorkshop(payload);
       setActiveIndex(0);
       setComplete(false);
-      setActiveTab("Workshop");
       setMessage("Your selected cited lesson is ready. Every step is available in any order.");
     } catch (error) {
       const nextMessage = error instanceof Error ? error.message : "The selected lesson could not be started.";
       setMessage(nextMessage);
       setDiscoveryError(nextMessage);
+    } finally {
+      setIsStartingWorkshop(false);
     }
   }
 
@@ -369,9 +380,11 @@ function Workshop() {
 
   const content = activeTab === "Dashboard" ? <Dashboard prompt={projectPrompt} progress={progress} stages={pipelineStages} discovery={discovery} error={discoveryError} isDiscovering={isDiscovering} onPromptChange={setProjectPrompt} onStart={() => void startDiscovery()} onOpenBuild={() => setActiveTab("Build")} />
     : activeTab === "Research" ? <ResearchPanel discovery={discovery} />
-      : activeTab === "Build" ? <BuildPanel onOpenWorkshop={() => void startSelectedWorkshop()} />
+      : activeTab === "Build" ? <BuildPanel onOpenWorkshop={() => void startSelectedWorkshop()} isStartingWorkshop={isStartingWorkshop} />
         : activeTab === "Parts" ? <PartsPanel discovery={discovery} onOpenWorkshop={() => void startSelectedWorkshop()} />
-          : selectedWorkshop
+          : isStartingWorkshop
+            ? <section className="completion panel"><p className="eyebrow">Workshop</p><h2>Opening your cited lesson...</h2><p>{message}</p></section>
+            : selectedWorkshop
             ? <SelectedWorkshopPanel workshop={selectedWorkshop} activeIndex={activeIndex} complete={complete} message={message} onMove={(index) => void moveSelectedTo(index)} onComplete={() => setComplete(true)} />
             : <WorkshopPanel activeIndex={activeIndex} complete={complete} message={message} retryDemo={retryDemo} explodeFactor={explodeFactor} onMove={(index) => void moveTo(index)} onRetry={() => setRetryDemo(runSolverRetryDemo())} onComplete={() => setComplete(true)} onExplode={setExplodeFactor} />;
 

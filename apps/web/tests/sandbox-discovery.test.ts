@@ -8,7 +8,7 @@ async function sandboxSource(): Promise<string> {
 
 test("Dashboard renders validated discovery results and preserves the existing five-tab navigation", async () => {
   const source = await sandboxSource();
-  assert.match(source, /const tabs = \["Dashboard", "Research", "Build", "Parts", "Workshop"\] as const/);
+  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Workshop"\] as const/);
   assert.match(source, /DiscoveryRequestSchema\.parse/);
   assert.match(source, /inventoryPartIds: discoveryInventoryPartIds/);
   assert.match(source, /fetch\("\/api\/discovery"/);
@@ -21,6 +21,8 @@ test("Dashboard renders validated discovery results and preserves the existing f
   assert.match(source, /function ResearchPanel\(\{ discovery \}/);
   assert.match(source, /Catalog provenance/);
   assert.match(source, /function PartsPanel\(\{ discovery, onOpenWorkshop \}/);
+  assert.match(source, /function ComponentBreakdown\(\)/);
+  assert.match(source, /Individual parts breakdown/);
   assert.match(source, /Inventory gap/);
   assert.match(source, /Cached source options/);
   assert.match(source, /Compatible alternatives/);
@@ -29,6 +31,8 @@ test("Dashboard renders validated discovery results and preserves the existing f
   assert.match(source, /Stale or unavailable offer data/);
   assert.match(source, /WorkshopPromotionResponseSchema\.parse/);
   assert.match(source, /\/api\/discovery\/\$\{discovery\.operationId\}\/select/);
+  assert.match(source, /setActiveTab\("Workshop"\)/);
+  assert.match(source, /Opening your selected cited lesson/);
   assert.match(source, /function SelectedWorkshopPanel/);
   assert.match(source, /Safety first/);
   assert.match(source, /Troubleshooting/);
