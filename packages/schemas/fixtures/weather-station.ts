@@ -16,6 +16,12 @@ export const weatherStationStepFixture: StepPlan = {
       title: "ESP-IDF I2C API Reference",
     }],
   },
+  completionCondition: "VIN, GND, SDA, and SCL each reach the named ESP32 pin in the cited guide.",
+  whyItMatters: "The named I2C connections create a power path and the two signal paths the controller uses to communicate with the sensor.",
+  concepts: [{
+    title: "I2C bus",
+    explanation: "I2C uses named data and clock wires so the controller can communicate with addressed devices.",
+  }],
   skills: [{
     sourceUrl: "https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2c.html",
     locator: "I2C Introduction",

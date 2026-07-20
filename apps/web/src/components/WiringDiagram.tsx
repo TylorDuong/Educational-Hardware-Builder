@@ -66,9 +66,16 @@ function WiringCanvas({ layout, selectedNet }: { layout: WiringLayout; selectedN
   );
 }
 
-export function WiringDiagram({ netlist }: { netlist: ElectricalNetlist }) {
+export function WiringDiagram({
+  netlist,
+  initialNet,
+}: {
+  netlist: ElectricalNetlist;
+  /** Lets a Workshop step open the diagram with its required connection already selected. */
+  initialNet?: string;
+}) {
   const layout = useMemo(() => layoutElectricalNetlist(netlist), [netlist]);
-  const [selectedNet, setSelectedNet] = useState<string>();
+  const [selectedNet, setSelectedNet] = useState<string | undefined>(initialNet);
   const componentsByRefdes = useMemo(() => new Map(netlist.components.map((component) => [component.refdes, component])), [netlist]);
 
   return (

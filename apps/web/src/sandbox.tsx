@@ -1,4 +1,4 @@
-import { lazy, StrictMode, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, StrictMode, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
@@ -8,7 +8,9 @@ import {
   RequestClassificationSchema,
   WorkshopPromotionResponseSchema,
   type BuildProposal,
+  type Citation,
   type DiscoveryProgressEvent,
+  type LearningConcept,
   type PublicGuidedLesson,
   type RequestClassification,
 } from "@educational-hardware-builder/schemas";
@@ -56,10 +58,108 @@ type SkillReference = {
   locator: string;
   relevance: string;
 };
+type WorkshopMatingSelection = {
+  movingPartId: string;
+  targetPartId: string;
+  fastener?: string;
+};
+type WorkshopStepView = {
+  id: string;
+  order: number;
+  title: string;
+  instruction: string;
+  citations: readonly Citation[];
+  skills: readonly SkillReference[];
+  matingSelections: readonly WorkshopMatingSelection[];
+  completionCondition?: string;
+  safetyCallout?: string;
+  whyItMatters?: string;
+  concepts: readonly LearningConcept[];
+};
+type ModelVisualGuide = {
+  title: string;
+  description: string;
+  focusPartIds?: readonly string[];
+  routeIds?: readonly string[];
+  showRoutes?: boolean;
+};
+type StepVisualGuide =
+  | { kind: "diagram"; title: string; description: string; initialNet?: string }
+  | { kind: "model"; model: ModelVisualGuide };
 type SectionGuide = {
   title: string;
   detail: string;
 };
+
+const fixtureWorkshopSteps: readonly WorkshopStepView[] = weatherStationGoldenSteps.map((step) => ({
+  id: step.id,
+  order: step.order,
+  title: step.title,
+  instruction: step.instruction,
+  citations: step.lesson.citations,
+  skills: step.skills,
+  matingSelections: step.matingSelections,
+  completionCondition: step.completionCondition,
+  whyItMatters: step.whyItMatters ?? step.lesson.content,
+  concepts: step.concepts.length > 0 ? step.concepts : [{
+    title: step.lesson.title,
+    explanation: step.lesson.content,
+  }],
+}));
+
+function visualGuideForStep(step: WorkshopStepView): StepVisualGuide {
+  const title = step.title.toLowerCase();
+  if (title.includes("ground")) {
+    return { kind: "diagram", title: "Trace the shared ground", description: "The highlighted net shows the two named pins that share the circuit reference.", initialNet: "GND" };
+  }
+  if (title.includes("sensor power")) {
+    return { kind: "diagram", title: "Trace the 3.3 V supply", description: "The highlighted power net shows the documented source and destination for the sensor supply.", initialNet: "3V3" };
+  }
+  if (title.includes("i2c data")) {
+    return { kind: "diagram", title: "Trace the I2C data line", description: "The highlighted net makes the sensor and controller data endpoints explicit.", initialNet: "I2C_SDA" };
+  }
+  if (title.includes("i2c clock")) {
+    return { kind: "diagram", title: "Trace the I2C clock line", description: "The highlighted net makes the timing connection distinct from the I2C data line.", initialNet: "I2C_SCL" };
+  }
+  if (title.includes("inspect wiring")) {
+    return { kind: "diagram", title: "Inspect the complete wiring plan", description: "Select any named net to compare its endpoints with the physical assembly before power is connected." };
+  }
+
+  const mate = step.matingSelections[0];
+  if (mate) {
+    return {
+      kind: "model",
+      model: {
+        title: "See the parts that meet in this step",
+        description: mate.fastener
+          ? `The highlighted parts show the validated relationship for the ${mate.fastener} connection.`
+          : "The highlighted parts show the relationship you are preparing in this step.",
+        focusPartIds: [mate.movingPartId, mate.targetPartId],
+        showRoutes: title.includes("power"),
+        routeIds: title.includes("power") ? ["usb-power"] : [],
+      },
+    };
+  }
+  if (title.includes("sensor values")) {
+    return {
+      kind: "model",
+      model: {
+        title: "Relate the reading to the assembly",
+        description: "The model keeps the sensor, controller, and checked connection route visible while you review the result.",
+        showRoutes: true,
+        routeIds: ["jumper-i2c"],
+      },
+    };
+  }
+  return {
+    kind: "model",
+    model: {
+      title: "Use the complete model as your reference",
+      description: "Inspect the complete assembly, then select a part to see where it sits in the source-backed model.",
+      showRoutes: title.includes("review"),
+    },
+  };
+}
 
 const sectionGuides: Record<Tab, SectionGuide> = {
   Dashboard: {
@@ -692,21 +792,27 @@ function SkillReferenceList({
   onOpen: (skill: SkillReference) => void;
 }) {
   return (
-    <section className="part-detail skill-references">
-      <h3>Need more help?</h3>
+    <section className="skill-references">
+      <h3>Further reading</h3>
       {skills.length > 0 ? (
-        <ul className="source-list">
+        <ul className="learning-source-list">
           {skills.map((skill) => (
             <li key={skill.sourceUrl + ":" + skill.locator}>
-              <button type="button" className="skill-reference" onClick={() => onOpen(skill)}>
-                <strong>{skill.title}</strong>
-                <span>{skill.relevance} / {skill.locator}</span>
-                <small>LEARN MORE</small>
-              </button>
+              <article className="skill-reference">
+                <div>
+                  <h4>{skill.title}</h4>
+                  <p>{skill.relevance}</p>
+                  <span>Find it: {skill.locator}</span>
+                </div>
+                <div className="source-actions">
+                  <a href={skill.sourceUrl} target="_blank" rel="noreferrer">Read source</a>
+                  <button type="button" onClick={() => onOpen(skill)}>Reference details</button>
+                </div>
+              </article>
             </li>
           ))}
         </ul>
-      ) : <p className="helper">No extra reading is needed for this step.</p>}
+      ) : <p className="helper">No separate skill reference is needed for this step.</p>}
     </section>
   );
 }
@@ -743,12 +849,16 @@ function InteractiveAssemblyViewer({
   layoutMessage,
   heading,
   stepOrder,
+  guide,
+  showPartList = true,
 }: {
   parts: readonly MechViewPart[];
   routes: readonly MechViewRoute[];
   layoutMessage: string;
   heading: string;
   stepOrder: number;
+  guide?: ModelVisualGuide;
+  showPartList?: boolean;
 }) {
   const [selectedPartId, setSelectedPartId] = useState<string>();
   const [hoveredPartId, setHoveredPartId] = useState<string>();
@@ -757,6 +867,15 @@ function InteractiveAssemblyViewer({
   const [resetViewKey, setResetViewKey] = useState(0);
   const selectedPart = parts.find((part) => part.id === selectedPartId);
   const hoveredPart = parts.find((part) => part.id === hoveredPartId);
+  const guideFocusIds = guide?.focusPartIds ?? [];
+  const visibleRoutes = guide?.showRoutes === false
+    ? []
+    : guide?.routeIds && guide.routeIds.length > 0
+      ? routes.filter((route) => guide.routeIds?.includes(route.id))
+      : routes;
+  const listedParts = guideFocusIds.length > 0
+    ? parts.filter((part) => guideFocusIds.includes(part.id))
+    : parts;
 
   if (parts.length === 0) {
     return <section className="viewer panel"><h2>{heading}</h2><p className="helper" role="alert">{layoutMessage}</p></section>;
@@ -774,7 +893,7 @@ function InteractiveAssemblyViewer({
       selectedPart.positionMm[2] + selectedPart.dimensionsMm[2] / 2,
     ]
     : modelCenter;
-  const focusLabel = selectedPart ? "SELECTED" : hoveredPart ? "HOVER PREVIEW" : "EXPLORE THE MODEL";
+  const focusLabel = selectedPart ? "SELECTED" : hoveredPart ? "HOVER PREVIEW" : guideFocusIds.length > 0 ? "STEP FOCUS" : "EXPLORE THE MODEL";
 
   function canSelectPart(partId: string): boolean {
     const part = parts.find((candidate) => candidate.id === partId);
@@ -812,8 +931,8 @@ function InteractiveAssemblyViewer({
           <Suspense fallback={<p>Loading the 3D view...</p>}>
             <LazyMechView
               parts={[...parts]}
-              routes={[...routes]}
-              highlightIds={selectedPart ? [selectedPart.id] : []}
+              routes={visibleRoutes}
+              highlightIds={selectedPart ? [selectedPart.id] : [...guideFocusIds]}
               selectedPartId={selectedPart?.id}
               hoveredPartId={hoveredPart?.id}
               disassembleOnHover={disassembleOnHover}
@@ -833,7 +952,7 @@ function InteractiveAssemblyViewer({
               <p>{selectedPart.purpose}</p>
               <p className="focus-hint">The selected part stays solid while the rest of the model spreads out for inspection.</p>
             </>
-          ) : hoveredPart ? <p>Previewing {hoveredPart.name}. Click it to select and centre it.</p> : <p>Hover over a part to preview it, or select one to keep it centred.</p>}
+          ) : hoveredPart ? <p>Previewing {hoveredPart.name}. Click it to select and centre it.</p> : guide ? <p>{guide.description}</p> : <p>Hover over a part to preview it, or select one to keep it centred.</p>}
           <label className="hover-toggle">
             <input type="checkbox" checked={disassembleOnHover} onChange={(event) => {
               setDisassembleOnHover(event.target.checked);
@@ -850,26 +969,418 @@ function InteractiveAssemblyViewer({
           <button type="button" className="view-reset" onClick={resetModelView}>Center &amp; reset model</button>
         </aside>
       </div>
-      <section className="part-detail">
-        <h3>Parts in this model ({parts.length})</h3>
-        <ul className="part-list">
-          {parts.map((part) => (
-            <li key={part.id}>
-              <button
-                type="button"
-                className={part.id === selectedPart?.id ? "part-picker active" : "part-picker"}
-                aria-pressed={part.id === selectedPart?.id}
-                disabled={part.isContainer === true && !selectEnclosures}
-                onClick={() => selectPart(part.id)}
-              >
-                <strong>{part.name}</strong>
-                <span>{part.purpose}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+      {showPartList ? (
+        <section className="part-detail">
+          <h3>{guideFocusIds.length > 0 ? "Parts highlighted in this step" : `Parts in this model (${parts.length})`}</h3>
+          <ul className="part-list">
+            {listedParts.map((part) => (
+              <li key={part.id}>
+                <button
+                  type="button"
+                  className={part.id === selectedPart?.id ? "part-picker active" : "part-picker"}
+                  aria-pressed={part.id === selectedPart?.id}
+                  disabled={part.isContainer === true && !selectEnclosures}
+                  onClick={() => selectPart(part.id)}
+                >
+                  <strong>{part.name}</strong>
+                  <span>{part.purpose}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      <p className="helper">{layoutMessage} {guide?.description ?? `Showing step ${stepOrder}.`}</p>
+    </section>
+  );
+}
+
+function CitationList({ citations, heading = "Cited sources" }: { citations: readonly Citation[]; heading?: string }) {
+  return (
+    <section className="citation-library">
+      <h3>{heading}</h3>
+      <ul className="learning-source-list">
+        {citations.map((citation) => (
+          <li key={citation.sourceUrl + ":" + citation.locator}>
+            <article className="citation-reference">
+              <div>
+                <h4>{citation.title}</h4>
+                <p>Find it: {citation.locator}</p>
+              </div>
+              <a href={citation.sourceUrl} target="_blank" rel="noreferrer">Open source</a>
+            </article>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function WorkshopTimeline({
+  steps,
+  activeIndex,
+  reviewedStepIds,
+  showingOverview,
+  onMove,
+  onShowOverview,
+}: {
+  steps: readonly WorkshopStepView[];
+  activeIndex: number;
+  reviewedStepIds: ReadonlySet<string>;
+  showingOverview: boolean;
+  onMove: (index: number) => void;
+  onShowOverview: () => void;
+}) {
+  const reviewedCount = steps.filter((step) => reviewedStepIds.has(step.id)).length;
+  return (
+    <section className="workshop-timeline" aria-label="Workshop learning plan">
+      <div className="timeline-heading">
+        <div>
+          <p className="eyebrow">LEARNING PLAN</p>
+          <h2>See the whole build, then zoom into each action.</h2>
+        </div>
+        <p>{reviewedCount} of {steps.length} steps reviewed. Every step remains available.</p>
+      </div>
+      <nav className="timeline-scroll" aria-label="Workshop step navigation">
+        <button
+          type="button"
+          className={showingOverview ? "timeline-overview active" : "timeline-overview"}
+          aria-current={showingOverview ? "step" : undefined}
+          onClick={onShowOverview}
+        >
+          <span className="timeline-step-number">VIEW</span>
+          <span>Full build</span>
+        </button>
+        <ol>
+          {steps.map((step, index) => {
+            const reviewed = reviewedStepIds.has(step.id);
+            const current = !showingOverview && activeIndex === index;
+            const status = current ? "current" : reviewed ? "reviewed" : "available";
+            return (
+              <li key={step.id}>
+                <button
+                  type="button"
+                  className={`timeline-step ${status}`}
+                  aria-current={current ? "step" : undefined}
+                  aria-label={`Step ${step.order}: ${step.title}. ${status}.`}
+                  onClick={() => onMove(index)}
+                >
+                  <span className="timeline-step-number">{String(step.order).padStart(2, "0")}</span>
+                  <span>{step.title}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+    </section>
+  );
+}
+
+function WorkshopOverview({
+  lessonTitle,
+  firstStep,
+  onOpenFirstStep,
+  parts,
+  routes,
+  layoutMessage,
+}: {
+  lessonTitle: string;
+  firstStep: WorkshopStepView;
+  onOpenFirstStep: () => void;
+  parts: readonly MechViewPart[];
+  routes: readonly MechViewRoute[];
+  layoutMessage: string;
+}) {
+  return (
+    <section className="workshop-overview">
+      <div className="overview-introduction panel">
+        <p className="eyebrow">START WITH THE ASSEMBLY</p>
+        <h2>{lessonTitle}</h2>
+        <p>Orient yourself with the complete model first. Then use the plan above to move freely between the practical actions, visual guides, explanations, and cited reading.</p>
+        <dl className="overview-notes">
+          <div><dt>Model</dt><dd>Source-backed component proxies and deterministic connection routes.</dd></div>
+          <div><dt>Plan</dt><dd>Every step is available now. Reviewing a step does not lock or grade the next one.</dd></div>
+        </dl>
+        <button className="primary" type="button" onClick={onOpenFirstStep}>Open step {firstStep.order}: {firstStep.title}</button>
+      </div>
+      <InteractiveAssemblyViewer
+        parts={parts}
+        routes={routes}
+        layoutMessage={layoutMessage}
+        heading="Full 3D build overview"
+        stepOrder={firstStep.order}
+        guide={{
+          title: "Full 3D build overview",
+          description: "Rotate the complete model, inspect any component, and trace the checked route before working through an individual step.",
+          showRoutes: true,
+        }}
+      />
+    </section>
+  );
+}
+
+function WorkshopStepVisual({
+  step,
+  parts,
+  routes,
+  layoutMessage,
+  supplement,
+}: {
+  step: WorkshopStepView;
+  parts: readonly MechViewPart[];
+  routes: readonly MechViewRoute[];
+  layoutMessage: string;
+  supplement?: ReactNode;
+}) {
+  const guide = visualGuideForStep(step);
+  return (
+    <section className="workshop-step-visual" aria-label={`Visual guide for ${step.title}`}>
+      {guide.kind === "diagram" ? (
+        <section className="step-diagram panel">
+          <header>
+            <p className="eyebrow">VISUAL GUIDE</p>
+            <h2>{guide.title}</h2>
+            <p>{guide.description}</p>
+          </header>
+          <WiringDiagram key={`${step.id}:${guide.initialNet ?? "all"}`} netlist={weatherStationWiringNetlist} initialNet={guide.initialNet} />
+        </section>
+      ) : (
+        <InteractiveAssemblyViewer
+          key={step.id}
+          parts={parts}
+          routes={routes}
+          layoutMessage={layoutMessage}
+          heading={guide.model.title}
+          stepOrder={step.order}
+          guide={guide.model}
+          showPartList={false}
+        />
+      )}
+      {supplement}
+    </section>
+  );
+}
+
+function WorkshopStepDetails({
+  step,
+  activeIndex,
+  totalSteps,
+  message,
+  onMove,
+  onShowOverview,
+  onComplete,
+  onOpenSkill,
+  supplement,
+}: {
+  step: WorkshopStepView;
+  activeIndex: number;
+  totalSteps: number;
+  message: string;
+  onMove: (index: number) => void;
+  onShowOverview: () => void;
+  onComplete: () => void;
+  onOpenSkill: (skill: SkillReference) => void;
+  supplement?: ReactNode;
+}) {
+  const concepts = step.concepts.length > 0
+    ? step.concepts
+    : step.skills.map((skill) => ({ title: skill.title, explanation: skill.relevance }));
+  const completionCondition = step.completionCondition ?? `You can explain how you completed ${step.title.toLowerCase()} using the cited source.`;
+  const whyItMatters = step.whyItMatters ?? "Use the cited source and further reading to understand the reason for this action before changing the assembly.";
+
+  return (
+    <article className="lesson-details panel">
+      <header className="lesson-details-heading">
+        <p className="step-count">Step {step.order} of {totalSteps}</p>
+        <h2>{step.title}</h2>
+      </header>
+
+      <section className="learning-block action-block">
+        <h3>What to do</h3>
+        <p>{step.instruction}</p>
       </section>
-      <p className="helper">{layoutMessage} Showing step {stepOrder}.</p>
+
+      <section className="learning-block why-block">
+        <h3>Why this matters</h3>
+        <p>{whyItMatters}</p>
+      </section>
+
+      {step.safetyCallout ? (
+        <aside className="preparation-note">
+          <h3>Before you begin</h3>
+          <p>{step.safetyCallout}</p>
+        </aside>
+      ) : null}
+
+      {concepts.length > 0 ? (
+        <section className="learning-block concepts-block">
+          <h3>Concepts to notice</h3>
+          <ul className="concept-list">
+            {concepts.map((concept) => (
+              <li key={concept.title}>
+                <h4>{concept.title}</h4>
+                {concept.explanation !== whyItMatters ? <p>{concept.explanation}</p> : <p>Use the cited source below to explore this idea in more detail.</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="completion-condition">
+        <h3>Finish this step when</h3>
+        <p>{completionCondition}</p>
+      </section>
+
+      <CitationList citations={step.citations} />
+      <SkillReferenceList skills={step.skills} onOpen={onOpenSkill} />
+      {supplement}
+
+      <p className="message" aria-live="polite">{message}</p>
+      <nav className="workshop-footer-navigation" aria-label="Step navigation">
+        <button type="button" disabled={activeIndex === 0} onClick={() => onMove(activeIndex - 1)}>Previous</button>
+        <button type="button" onClick={onShowOverview}>Build overview</button>
+        <button type="button" disabled={activeIndex === totalSteps - 1} onClick={() => onMove(activeIndex + 1)}>Next</button>
+        {activeIndex === totalSteps - 1 ? <button className="primary" type="button" onClick={onComplete}>Finish build</button> : null}
+      </nav>
+    </article>
+  );
+}
+
+function WorkshopExperience({
+  lessonTitle,
+  steps,
+  activeIndex,
+  complete,
+  showingOverview,
+  reviewedStepIds,
+  message,
+  onMove,
+  onShowOverview,
+  onComplete,
+  onOpenSkill,
+  onOpenHelp,
+  visualSupplement,
+  lessonSupplement,
+}: {
+  lessonTitle: string;
+  steps: readonly WorkshopStepView[];
+  activeIndex: number;
+  complete: boolean;
+  showingOverview: boolean;
+  reviewedStepIds: ReadonlySet<string>;
+  message: string;
+  onMove: (index: number) => void;
+  onShowOverview: () => void;
+  onComplete: () => void;
+  onOpenSkill: (skill: SkillReference) => void;
+  onOpenHelp: (section: Tab) => void;
+  visualSupplement?: (step: WorkshopStepView) => ReactNode;
+  lessonSupplement?: (step: WorkshopStepView) => ReactNode;
+}) {
+  const schematicScene = useMemo(() => createSchematicScene(), []);
+  const step = steps[activeIndex] ?? steps[0];
+
+  if (!step) {
+    return <section className="completion panel"><h2>No Workshop steps are available.</h2><p className="helper">Choose a cited build plan to populate the Workshop.</p></section>;
+  }
+
+  if (complete) {
+    return (
+      <section className="completion panel">
+        <p className="eyebrow">BUILD REVIEW</p>
+        <h2>{lessonTitle}</h2>
+        <p>You can return to the full model or revisit any step whenever you need it.</p>
+        <button className="primary" type="button" onClick={onShowOverview}>Return to build overview</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="workshop-view">
+      <PageHeading section="Workshop" title="Build with a visual learning plan" caption="Start with the complete assembly, then choose any step for its action guide, explanation, and cited reading." onOpenHelp={onOpenHelp} />
+      <WorkshopTimeline
+        steps={steps}
+        activeIndex={activeIndex}
+        reviewedStepIds={reviewedStepIds}
+        showingOverview={showingOverview}
+        onMove={onMove}
+        onShowOverview={onShowOverview}
+      />
+      {showingOverview ? (
+        <WorkshopOverview
+          lessonTitle={lessonTitle}
+          firstStep={steps[0]!}
+          onOpenFirstStep={() => onMove(0)}
+          parts={schematicScene.parts}
+          routes={schematicScene.routes}
+          layoutMessage={schematicScene.message}
+        />
+      ) : (
+        <div className="workshop-step-layout">
+          <WorkshopStepVisual
+            step={step}
+            parts={schematicScene.parts}
+            routes={schematicScene.routes}
+            layoutMessage={schematicScene.message}
+            supplement={visualSupplement?.(step)}
+          />
+          <WorkshopStepDetails
+            step={step}
+            activeIndex={activeIndex}
+            totalSteps={steps.length}
+            message={message}
+            onMove={onMove}
+            onShowOverview={onShowOverview}
+            onComplete={onComplete}
+            onOpenSkill={onOpenSkill}
+            supplement={lessonSupplement?.(step)}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function FitCheck({ solverResult }: { solverResult: ReturnType<typeof solveSelectedProposalParts> }) {
+  return (
+    <section className="fit-check panel">
+      <h3>Fit check</h3>
+      {solverResult.ok ? (
+        <>
+          <p>{solverResult.message}</p>
+          <ul className="fit-check-list">
+            {solverResult.traces.map((trace) => (
+              <li key={trace.transform.stepId + ":" + trace.selection.movingPartId + ":" + trace.selection.targetPartId}>
+                <strong>Step {trace.transform.stepId}</strong>
+                <span>Connection checked by the deterministic solver.</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <section className="retry" role="alert">
+          <h3>Try a new fit</h3>
+          <p>{solverResult.rejection.message}</p>
+          <p>{solverResult.rejection.retryInstruction}</p>
+        </section>
+      )}
+    </section>
+  );
+}
+
+function Troubleshooting({ entries }: { entries: PublicGuidedLesson["troubleshooting"] }) {
+  if (entries.length === 0) return null;
+  return (
+    <section className="troubleshooting">
+      <h3>When something does not work</h3>
+      {entries.map((item) => (
+        <article key={item.problem}>
+          <h4>{item.problem}</h4>
+          <p>{item.explanation}</p>
+          <CitationList citations={item.citations} heading="Troubleshooting source" />
+        </article>
+      ))}
     </section>
   );
 }
@@ -877,9 +1388,12 @@ function InteractiveAssemblyViewer({
 function WorkshopPanel({
   activeIndex,
   complete,
+  showingOverview,
+  reviewedStepIds,
   message,
   retryDemo,
   onMove,
+  onShowOverview,
   onRetry,
   onComplete,
   onOpenSkill,
@@ -887,96 +1401,45 @@ function WorkshopPanel({
 }: {
   activeIndex: number;
   complete: boolean;
+  showingOverview: boolean;
+  reviewedStepIds: ReadonlySet<string>;
   message: string;
   retryDemo?: SolverRetryDemo;
   onMove: (index: number) => void;
+  onShowOverview: () => void;
   onRetry: () => void;
   onComplete: () => void;
   onOpenSkill: (skill: SkillReference) => void;
   onOpenHelp: (section: Tab) => void;
 }) {
-  const step = weatherStationGoldenSteps[activeIndex]!;
-  const schematicScene = useMemo(() => createSchematicScene(), []);
-  const mechViewParts = schematicScene.parts;
-
-  if (complete) {
-    return (
-      <section className="completion panel">
-        <p className="eyebrow">DONE FOR NOW</p>
-        <h2>Your weather station is ready to check.</h2>
-        <p>You can come back to any step whenever you need it.</p>
-        <button className="primary" type="button" onClick={() => onMove(0)}>Start again</button>
-      </section>
-    );
-  }
-
   return (
-    <section className="workshop-view">
-      <PageHeading section="Workshop" title="Build step by step" caption="Choose a step and explore the model." onOpenHelp={onOpenHelp} />
-      <div className="workshop-layout">
-        <aside className="steps panel">
-          <h2>Steps</h2>
-          {weatherStationGoldenSteps.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              className={index === activeIndex ? "step active" : "step"}
-              onClick={() => onMove(index)}
-            >
-              <span>{item.order}</span>
-              {item.title}
-            </button>
-          ))}
-        </aside>
-
-        <section className="lesson panel">
-          <p className="eyebrow">STEP {step.order}</p>
-          <h2>{step.title}</h2>
-          <p className="instruction">{step.instruction}</p>
-          <h3>{step.lesson.title}</h3>
-          <p>{step.lesson.content}</p>
-          <h3>Sources</h3>
-          <ul className="source-list">
-            {step.lesson.citations.map((citation) => (
-              <li key={citation.sourceUrl + ":" + citation.locator}>
-                <a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a>
-                <span>{citation.locator}</span>
-              </li>
-            ))}
-          </ul>
-          <SkillReferenceList skills={step.skills} onOpen={onOpenSkill} />
-          {step.order === 8 ? (
-            <section className="retry">
-              <h3>Try a new fit</h3>
-              <p>The system checks a connection. If it does not fit, it suggests a new one.</p>
-              <button type="button" onClick={onRetry}>Show the check</button>
-              {retryDemo?.ok ? (
-                <div className="retry-result">
-                  <p><strong>First try:</strong> {retryDemo.firstAttempt}</p>
-                  <p><strong>New try:</strong> {retryDemo.retry}</p>
-                </div>
-              ) : retryDemo ? <p className="message">{retryDemo.message}</p> : null}
-            </section>
-          ) : null}
-          <p className="message" aria-live="polite">{message}</p>
-          <div className="pagination">
-            <button type="button" disabled={activeIndex === 0} onClick={() => onMove(activeIndex - 1)}>Previous</button>
-            <button type="button" disabled={activeIndex === weatherStationGoldenSteps.length - 1} onClick={() => onMove(activeIndex + 1)}>Next</button>
-            {activeIndex === weatherStationGoldenSteps.length - 1
-              ? <button className="primary" type="button" onClick={onComplete}>Finish build</button>
-              : null}
-          </div>
+    <WorkshopExperience
+      lessonTitle="Weather station assembly"
+      steps={fixtureWorkshopSteps}
+      activeIndex={activeIndex}
+      complete={complete}
+      showingOverview={showingOverview}
+      reviewedStepIds={reviewedStepIds}
+      message={message}
+      onMove={onMove}
+      onShowOverview={onShowOverview}
+      onComplete={onComplete}
+      onOpenSkill={onOpenSkill}
+      onOpenHelp={onOpenHelp}
+      lessonSupplement={(step) => step.order === 8 ? (
+        <section className="learning-tryout">
+          <h3>Explore the fit check</h3>
+          <p>The model checks a named mechanical relationship. If it does not fit, it provides a new symbolic choice instead of inventing coordinates.</p>
+          <button type="button" onClick={onRetry}>Show the fit check</button>
+          {retryDemo?.ok ? (
+            <div className="retry-result">
+              <p><strong>First try:</strong> {retryDemo.firstAttempt}</p>
+              <p><strong>New try:</strong> {retryDemo.retry}</p>
+            </div>
+          ) : retryDemo ? <p className="message">{retryDemo.message}</p> : null}
         </section>
-
-        <InteractiveAssemblyViewer
-          parts={mechViewParts}
-          routes={schematicScene.routes}
-          layoutMessage={schematicScene.message}
-          heading="3D view"
-          stepOrder={step.order}
-        />
-      </div>
-    </section>
+      ) : null}
+    />
   );
 }
 
@@ -984,8 +1447,11 @@ function SelectedWorkshopPanel({
   workshop,
   activeIndex,
   complete,
+  showingOverview,
+  reviewedStepIds,
   message,
   onMove,
+  onShowOverview,
   onComplete,
   onOpenSkill,
   onOpenHelp,
@@ -993,128 +1459,33 @@ function SelectedWorkshopPanel({
   workshop: SelectedWorkshop;
   activeIndex: number;
   complete: boolean;
+  showingOverview: boolean;
+  reviewedStepIds: ReadonlySet<string>;
   message: string;
   onMove: (index: number) => void;
+  onShowOverview: () => void;
   onComplete: () => void;
   onOpenSkill: (skill: SkillReference) => void;
   onOpenHelp: (section: Tab) => void;
 }) {
-  const step = workshop.lesson.steps[activeIndex]!;
   const solverResult = useMemo(() => solveSelectedProposalParts(workshop.lesson), [workshop.lesson]);
-  const schematicScene = useMemo(() => createSchematicScene(), []);
-  const mechViewParts = schematicScene.parts;
-
-  if (complete) {
-    return (
-      <section className="completion panel">
-        <p className="eyebrow">DONE FOR NOW</p>
-        <h2>{workshop.lesson.title}</h2>
-        <p>You can come back to any step whenever you need it.</p>
-        <button className="primary" type="button" onClick={() => onMove(0)}>Start again</button>
-      </section>
-    );
-  }
-
   return (
-    <section className="workshop-view">
-      <PageHeading section="Workshop" title="Build step by step" caption="Choose a step and explore the model." onOpenHelp={onOpenHelp} />
-      <div className="workshop-layout">
-        <aside className="steps panel">
-          <h2>Steps</h2>
-          {workshop.lesson.steps.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              className={index === activeIndex ? "step active" : "step"}
-              onClick={() => onMove(index)}
-            >
-              <span>{item.order}</span>
-              {item.title}
-            </button>
-          ))}
-        </aside>
-
-        <section className="lesson panel">
-          <p className="eyebrow">STEP {step.order}</p>
-          <h2>{step.title}</h2>
-          <section className="checkpoint">
-            <h3>Safety tip</h3>
-            <p>{step.safetyCallout}</p>
-          </section>
-          <p className="instruction">{step.instruction}</p>
-          <p><strong>Finish when:</strong> {step.completionCondition}</p>
-          <h3>Sources</h3>
-          <ul className="source-list">
-            {step.citations.map((citation) => (
-              <li key={citation.sourceUrl + ":" + citation.locator}>
-                <a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a>
-                <span>{citation.locator}</span>
-              </li>
-            ))}
-          </ul>
-          <SkillReferenceList skills={step.skills} onOpen={onOpenSkill} />
-          {workshop.lesson.troubleshooting.length > 0 ? (
-            <section className="retry">
-              <h3>Fix a problem</h3>
-              {workshop.lesson.troubleshooting.map((item) => (
-                <article key={item.problem}>
-                  <p><strong>{item.problem}</strong></p>
-                  <p>{item.explanation}</p>
-                  <ul className="source-list">
-                    {item.citations.map((citation) => (
-                      <li key={citation.sourceUrl + ":" + citation.locator}>
-                        <a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a>
-                        <span>{citation.locator}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-            </section>
-          ) : null}
-          <p className="message" aria-live="polite">{message}</p>
-          <div className="pagination">
-            <button type="button" disabled={activeIndex === 0} onClick={() => onMove(activeIndex - 1)}>Previous</button>
-            <button type="button" disabled={activeIndex === workshop.lesson.steps.length - 1} onClick={() => onMove(activeIndex + 1)}>Next</button>
-            {activeIndex === workshop.lesson.steps.length - 1
-              ? <button className="primary" type="button" onClick={onComplete}>Finish build</button>
-              : null}
-          </div>
-        </section>
-
-        <div className="assembly-stack">
-          <InteractiveAssemblyViewer
-            parts={mechViewParts}
-            routes={schematicScene.routes}
-            layoutMessage={`Fixture schematic proxy — ${schematicScene.message}`}
-            heading="3D view"
-            stepOrder={step.order}
-          />
-          <section className="viewer panel">
-            <h2>Fit check</h2>
-            {solverResult.ok ? (
-              <>
-                <p>{solverResult.message}</p>
-                <ul className="source-list">
-                  {solverResult.traces.map((trace) => (
-                    <li key={trace.transform.stepId + ":" + trace.selection.movingPartId + ":" + trace.selection.targetPartId}>
-                      <strong>Step {trace.transform.stepId}</strong>
-                      <span>Connection checked by the solver.</span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : (
-              <section className="retry" role="alert">
-                <h3>Try a new fit</h3>
-                <p>{solverResult.rejection.message}</p>
-                <p>{solverResult.rejection.retryInstruction}</p>
-              </section>
-            )}
-          </section>
-        </div>
-      </div>
-    </section>
+    <WorkshopExperience
+      lessonTitle={workshop.lesson.title}
+      steps={workshop.lesson.steps}
+      activeIndex={activeIndex}
+      complete={complete}
+      showingOverview={showingOverview}
+      reviewedStepIds={reviewedStepIds}
+      message={message}
+      onMove={onMove}
+      onShowOverview={onShowOverview}
+      onComplete={onComplete}
+      onOpenSkill={onOpenSkill}
+      onOpenHelp={onOpenHelp}
+      visualSupplement={() => <FitCheck solverResult={solverResult} />}
+      lessonSupplement={() => <Troubleshooting entries={workshop.lesson.troubleshooting} />}
+    />
   );
 }
 
@@ -1131,6 +1502,8 @@ function Workshop() {
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [complete, setComplete] = useState(false);
+  const [showingOverview, setShowingOverview] = useState(true);
+  const [reviewedStepIds, setReviewedStepIds] = useState<ReadonlySet<string>>(() => new Set());
   const [retryDemo, setRetryDemo] = useState<SolverRetryDemo>();
   const [selectedWorkshop, setSelectedWorkshop] = useState<SelectedWorkshop>();
   const [selectedSkill, setSelectedSkill] = useState<SkillReference>();
@@ -1146,6 +1519,8 @@ function Workshop() {
     eventSource.current?.close();
     setHasStarted(false);
     setComplete(false);
+    setShowingOverview(true);
+    setReviewedStepIds(new Set());
     setActiveIndex(0);
     setRetryDemo(undefined);
     setDiscovery(undefined);
@@ -1263,6 +1638,9 @@ function Workshop() {
       return;
     }
     setActiveIndex(index);
+    setComplete(false);
+    setShowingOverview(false);
+    setReviewedStepIds((previous) => previous.has(target.id) ? previous : new Set([...previous, target.id]));
     setRetryDemo(undefined);
     setMessage("Step " + target.order + " is ready.");
   }
@@ -1278,6 +1656,8 @@ function Workshop() {
       setSelectedWorkshop(payload);
       setActiveIndex(0);
       setComplete(false);
+      setShowingOverview(true);
+      setReviewedStepIds(new Set());
       setMessage("Your lesson is ready. You can choose any step.");
     } catch (error) {
       const nextMessage = error instanceof Error ? error.message : "The selected lesson could not be started.";
@@ -1298,7 +1678,15 @@ function Workshop() {
       return;
     }
     setActiveIndex(index);
+    setComplete(false);
+    setShowingOverview(false);
+    setReviewedStepIds((previous) => previous.has(target.id) ? previous : new Set([...previous, target.id]));
     setMessage("Step " + target.order + " is ready.");
+  }
+
+  function showWorkshopOverview() {
+    setComplete(false);
+    setShowingOverview(true);
   }
 
   const content = activeTab === "Dashboard"
@@ -1347,8 +1735,11 @@ function Workshop() {
                   workshop={selectedWorkshop}
                   activeIndex={activeIndex}
                   complete={complete}
+                  showingOverview={showingOverview}
+                  reviewedStepIds={reviewedStepIds}
                   message={message}
                   onMove={(index) => void moveSelectedTo(index)}
+                  onShowOverview={showWorkshopOverview}
                   onComplete={() => setComplete(true)}
                   onOpenSkill={setSelectedSkill}
                   onOpenHelp={setSelectedHelp}
@@ -1358,9 +1749,12 @@ function Workshop() {
                 <WorkshopPanel
                   activeIndex={activeIndex}
                   complete={complete}
+                  showingOverview={showingOverview}
+                  reviewedStepIds={reviewedStepIds}
                   message={message}
                   retryDemo={retryDemo}
                   onMove={(index) => void moveTo(index)}
+                  onShowOverview={showWorkshopOverview}
                   onRetry={() => setRetryDemo(runSolverRetryDemo())}
                   onComplete={() => setComplete(true)}
                   onOpenSkill={setSelectedSkill}

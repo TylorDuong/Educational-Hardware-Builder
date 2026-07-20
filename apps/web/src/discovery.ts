@@ -67,8 +67,34 @@ const guidedLessonJsonSchema = {
       minItems: 1,
       items: {
         type: "object",
-        required: ["id", "order", "title", "safetyCategory", "safetyCallout", "instruction", "completionCondition", "citations", "matingSelections"],
+        required: ["id", "order", "title", "safetyCategory", "safetyCallout", "instruction", "completionCondition", "whyItMatters", "concepts", "citations", "skills", "matingSelections"],
         additionalProperties: false,
+        properties: {
+          id: { type: "string", format: "uuid" },
+          order: { type: "integer", minimum: 1 },
+          title: { type: "string", minLength: 1 },
+          safetyCategory: { type: "string" },
+          safetyCallout: { type: "string", minLength: 1 },
+          instruction: { type: "string", minLength: 1 },
+          completionCondition: { type: "string", minLength: 1 },
+          whyItMatters: { type: "string", minLength: 1 },
+          concepts: {
+            type: "array",
+            minItems: 1,
+            items: {
+              type: "object",
+              required: ["title", "explanation"],
+              additionalProperties: false,
+              properties: {
+                title: { type: "string", minLength: 1 },
+                explanation: { type: "string", minLength: 1 },
+              },
+            },
+          },
+          citations: { type: "array", minItems: 1 },
+          skills: { type: "array" },
+          matingSelections: { type: "array" },
+        },
       },
     },
     troubleshooting: { type: "array" },
@@ -78,10 +104,9 @@ const guidedLessonJsonSchema = {
 function fixtureGuidedLesson(proposal: BuildProposal): GuidedLesson {
   const citation = proposal.citations[0];
   if (!citation) throw new Error("A guided lesson requires at least one proposal citation.");
-  const part = proposal.billOfMaterials[0]?.part.name ?? "selected low-voltage part";
   return GuidedLessonSchema.parse({
     proposalId: proposal.id,
-    title: `${proposal.summary} — guided lesson`,
+    title: `${proposal.summary} - guided lesson`,
     steps: weatherStationGoldenSteps.map((step) => ({
       id: step.id,
       order: step.order,
@@ -89,7 +114,12 @@ function fixtureGuidedLesson(proposal: BuildProposal): GuidedLesson {
       safetyCategory: step.safetyCategory,
       safetyCallout: `Review the cited guidance before ${step.title.toLowerCase()}.`,
       instruction: step.instruction,
-      completionCondition: `Complete ${step.title.toLowerCase()} as described in the cited guidance.`,
+      completionCondition: step.completionCondition ?? `Complete ${step.title.toLowerCase()} as described in the cited guidance.`,
+      whyItMatters: step.whyItMatters ?? step.lesson.content,
+      concepts: step.concepts.length > 0 ? step.concepts : [{
+        title: step.lesson.title,
+        explanation: step.lesson.content,
+      }],
       citations: [citation],
       skills: step.skills,
       matingSelections: step.matingSelections,
@@ -132,7 +162,7 @@ export async function generateGuidedLesson(proposal: BuildProposal, dependencies
   return callModel<GuidedLesson>({
     schema: guidedLessonSchemaFor(proposal) as z.ZodType<GuidedLesson>,
     jsonSchema: guidedLessonJsonSchema,
-    prompt: `Generate a beginner guided hardware lesson for this approved proposal. Return only JSON. Every step must provide a safety callout before its instruction, cite only the supplied proposal citations, use symbolic mating IDs only, and never emit coordinates, transforms, matrices, or electrical design values.\n\nProposal: ${JSON.stringify(proposal)}`,
+    prompt: `Generate a beginner guided hardware lesson for this approved proposal. Return only JSON. Every step must provide a safety callout before its instruction, a cited whyItMatters explanation, and one or more named concepts with learner-friendly explanations. Cite only the supplied proposal citations, use symbolic mating IDs only, and never emit coordinates, transforms, matrices, or electrical design values.\n\nProposal: ${JSON.stringify(proposal)}`,
     model: "llama3.1:8b",
     temperature: 0.2,
     fallback,

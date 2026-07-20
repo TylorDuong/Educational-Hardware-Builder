@@ -56,6 +56,11 @@ const lesson = {
     safetyCallout: "Unplug USB power before making or changing connections.",
     instruction: "Place the ESP32 and LED module on the work surface.",
     completionCondition: "Both parts are visible and disconnected from power.",
+    whyItMatters: "Separating preparation from power helps a learner inspect the named parts and connections first.",
+    concepts: [{
+      title: "Power path",
+      explanation: "The source and destination of the USB connection should be traceable before it is energized.",
+    }],
     citations: [citation],
     skills: [{ ...citation, relevance: "Explains the USB power connection for this step." }],
     matingSelections: [{
@@ -93,6 +98,8 @@ test("guided lesson contract exposes cited skills without checkpoint data", () =
   const parsedLesson = GuidedLessonSchema.parse(lesson);
   assert.equal("checkpoint" in (parsedLesson.steps[0] ?? {}), false);
   assert.ok(parsedLesson.steps[0]?.skills.length);
+  assert.match(parsedLesson.steps[0]?.whyItMatters ?? "", /inspect/i);
+  assert.equal(parsedLesson.steps[0]?.concepts[0]?.title, "Power path");
 });
 
 test("guided lesson contract rejects uncited steps and raw coordinate or transform leaks", () => {

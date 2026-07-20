@@ -340,6 +340,12 @@ export const LessonSchema = z.object({
   citations: z.array(CitationSchema).min(1),
 });
 
+/** A cited idea the learner should understand while completing a Workshop step. */
+export const LearningConceptSchema = z.object({
+  title: NonEmptyTextSchema.max(240),
+  explanation: NonEmptyTextSchema.max(1_500),
+}).strict();
+
 export const StepPlanSchema = z.object({
   id: z.string().uuid(),
   order: z.number().int().positive(),
@@ -347,6 +353,9 @@ export const StepPlanSchema = z.object({
   instruction: z.string().min(1),
   safetyCategory: SafetyCategorySchema,
   lesson: LessonSchema,
+  completionCondition: NonEmptyTextSchema.max(1_000).optional(),
+  whyItMatters: NonEmptyTextSchema.max(2_000).optional(),
+  concepts: z.array(LearningConceptSchema).default([]),
   skills: z.array(SkillLibraryEntrySchema).default([]),
   matingSelections: z.array(MatingSelectionSchema).default([]),
 }).strict();
@@ -642,6 +651,8 @@ export const GuidedLessonStepSchema = z.object({
   safetyCallout: NonEmptyTextSchema.max(1_000),
   instruction: NonEmptyTextSchema.max(4_000),
   completionCondition: NonEmptyTextSchema.max(1_000),
+  whyItMatters: NonEmptyTextSchema.max(2_000).optional(),
+  concepts: z.array(LearningConceptSchema).default([]),
   citations: z.array(CitationSchema).min(1),
   skills: z.array(SkillLibraryEntrySchema).default([]),
   matingSelections: z.array(MatingSelectionSchema).default([]),
@@ -743,6 +754,7 @@ export type MatingSelection = z.infer<typeof MatingSelectionSchema>;
 export type AssemblyTransform = z.infer<typeof AssemblyTransformSchema>;
 export type TemplateParams = z.infer<typeof TemplateParamsSchema>;
 export type Lesson = z.infer<typeof LessonSchema>;
+export type LearningConcept = z.infer<typeof LearningConceptSchema>;
 export type StepPlan = z.infer<typeof StepPlanSchema>;
 export type AuthoredBuildManifest = z.infer<typeof AuthoredBuildManifestSchema>;
 export type BuildSelection = z.infer<typeof BuildSelectionSchema>;

@@ -78,8 +78,13 @@ test("Dashboard preserves discovery behavior, six-tab navigation, and section he
   assert.match(source, /disabled=\{part\.isContainer === true && !selectEnclosures\}/);
   assert.match(source, /className=\{part\.id === selectedPart\?\.id \? "part-picker active" : "part-picker"\}/);
   assert.doesNotMatch(source, /Spread parts out/);
-  assert.match(source, /Safety tip/);
-  assert.match(source, /Fix a problem/);
+  assert.match(source, /function WorkshopTimeline/);
+  assert.match(source, /Full 3D build overview/);
+  assert.match(source, /Why this matters/);
+  assert.match(source, /Concepts to notice/);
+  assert.match(source, /Further reading/);
+  assert.match(source, /Before you begin/);
+  assert.match(source, /When something does not work/);
   assert.match(source, /Fit check/);
   assert.match(source, /solveSelectedProposalParts/);
   assert.match(source, /role="alert"/);
