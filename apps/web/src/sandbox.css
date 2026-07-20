@@ -1158,6 +1158,39 @@ pre {
   line-height: 1.55;
 }
 
+.enclosure-toggle,
+.hover-toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.3rem 0.55rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.enclosure-toggle input,
+.hover-toggle input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.08rem 0 0;
+  accent-color: var(--blue);
+}
+
+.enclosure-toggle small,
+.hover-toggle small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .view-reset {
   width: 100%;
   margin-top: auto;
@@ -1200,6 +1233,15 @@ pre {
 .part-picker.active {
   border-color: var(--blue);
   background: var(--surface);
+}
+
+.part-picker:disabled {
+  cursor: not-allowed;
+  border-color: var(--line);
+  border-left-color: var(--line);
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.65;
 }
 
 .part-picker strong,

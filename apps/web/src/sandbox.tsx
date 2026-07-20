@@ -707,9 +707,11 @@ function InteractiveAssemblyViewer({
 }) {
   const [selectedPartId, setSelectedPartId] = useState<string>();
   const [hoveredPartId, setHoveredPartId] = useState<string>();
+  const [selectEnclosures, setSelectEnclosures] = useState(false);
+  const [disassembleOnHover, setDisassembleOnHover] = useState(true);
   const [resetViewKey, setResetViewKey] = useState(0);
-  const focusedPart = parts.find((part) => part.id === hoveredPartId)
-    ?? parts.find((part) => part.id === selectedPartId);
+  const selectedPart = parts.find((part) => part.id === selectedPartId);
+  const hoveredPart = parts.find((part) => part.id === hoveredPartId);
 
   if (parts.length === 0) {
     return <section className="viewer panel"><h2>{heading}</h2><p className="helper" role="alert">{layoutMessage}</p></section>;
@@ -720,18 +722,35 @@ function InteractiveAssemblyViewer({
     sum[1] + part.positionMm[1] + part.dimensionsMm[1] / 2,
     sum[2] + part.positionMm[2] + part.dimensionsMm[2] / 2,
   ], [0, 0, 0]).map((coordinate) => coordinate / parts.length) as [number, number, number];
-  const cameraTarget: [number, number, number] = focusedPart
+  const cameraTarget: [number, number, number] = selectedPart
     ? [
-      focusedPart.positionMm[0] + focusedPart.dimensionsMm[0] / 2,
-      focusedPart.positionMm[1] + focusedPart.dimensionsMm[1] / 2,
-      focusedPart.positionMm[2] + focusedPart.dimensionsMm[2] / 2,
+      selectedPart.positionMm[0] + selectedPart.dimensionsMm[0] / 2,
+      selectedPart.positionMm[1] + selectedPart.dimensionsMm[1] / 2,
+      selectedPart.positionMm[2] + selectedPart.dimensionsMm[2] / 2,
     ]
     : modelCenter;
-  const focusLabel = hoveredPartId ? "HOVERING" : selectedPartId ? "SELECTED" : "EXPLORE THE MODEL";
+  const focusLabel = selectedPart ? "SELECTED" : hoveredPart ? "HOVER PREVIEW" : "EXPLORE THE MODEL";
 
-  function focusPart(partId: string): void {
+  function canSelectPart(partId: string): boolean {
+    const part = parts.find((candidate) => candidate.id === partId);
+    return part !== undefined && (selectEnclosures || part.isContainer !== true);
+  }
+
+  function selectPart(partId: string): void {
+    if (!canSelectPart(partId)) return;
     setSelectedPartId(partId);
     setHoveredPartId(undefined);
+  }
+
+  function previewPart(partId: string | undefined): void {
+    if (selectedPartId || (partId !== undefined && !canSelectPart(partId))) return;
+    setHoveredPartId(partId);
+  }
+
+  function changeSelectEnclosures(nextValue: boolean): void {
+    setSelectEnclosures(nextValue);
+    if (!nextValue && selectedPart?.isContainer) setSelectedPartId(undefined);
+    if (!nextValue && hoveredPart?.isContainer) setHoveredPartId(undefined);
   }
 
   function resetModelView(): void {
@@ -749,25 +768,40 @@ function InteractiveAssemblyViewer({
             <LazyMechView
               parts={[...parts]}
               routes={[...routes]}
-              highlightIds={focusedPart ? [focusedPart.id] : []}
-              focusPartId={focusedPart?.id}
-              explodeFactor={focusedPart ? 0.8 : 0}
+              highlightIds={selectedPart ? [selectedPart.id] : []}
+              selectedPartId={selectedPart?.id}
+              hoveredPartId={hoveredPart?.id}
+              disassembleOnHover={disassembleOnHover}
+              selectEnclosures={selectEnclosures}
               cameraTarget={cameraTarget}
               resetViewKey={resetViewKey}
-              onSelect={focusPart}
-              onHover={setHoveredPartId}
+              onSelect={selectPart}
+              onHover={previewPart}
             />
           </Suspense>
         </div>
         <aside className="part-focus-panel" aria-live="polite">
           <p className="eyebrow">{focusLabel}</p>
-          {focusedPart ? (
+          {selectedPart ? (
             <>
-              <h3>{focusedPart.name}</h3>
-              <p>{focusedPart.purpose}</p>
-              <p className="focus-hint">The focused part stays solid while the rest of the model spreads out for inspection.</p>
+              <h3>{selectedPart.name}</h3>
+              <p>{selectedPart.purpose}</p>
+              <p className="focus-hint">The selected part stays solid while the rest of the model spreads out for inspection.</p>
             </>
-          ) : <p>Hover over a part to preview it, or select one to keep it centred.</p>}
+          ) : hoveredPart ? <p>Previewing {hoveredPart.name}. Click it to select and centre it.</p> : <p>Hover over a part to preview it, or select one to keep it centred.</p>}
+          <label className="hover-toggle">
+            <input type="checkbox" checked={disassembleOnHover} onChange={(event) => {
+              setDisassembleOnHover(event.target.checked);
+              if (!event.target.checked) setHoveredPartId(undefined);
+            }} />
+            <span>Disassemble on hover</span>
+            <small>{disassembleOnHover ? "Automatic: move closer to a part for a faster, capped disassembly preview." : "Hover preview is off; click a part to select and inspect it."}</small>
+          </label>
+          <label className="enclosure-toggle">
+            <input type="checkbox" checked={selectEnclosures} onChange={(event) => changeSelectEnclosures(event.target.checked)} />
+            <span>Select enclosures</span>
+            <small>{selectEnclosures ? "Enclosures can be selected." : "Automatic: click through enclosures to the parts inside."}</small>
+          </label>
           <button type="button" className="view-reset" onClick={resetModelView}>Center &amp; reset model</button>
         </aside>
       </div>
@@ -778,9 +812,10 @@ function InteractiveAssemblyViewer({
             <li key={part.id}>
               <button
                 type="button"
-                className={part.id === focusedPart?.id ? "part-picker active" : "part-picker"}
-                aria-pressed={part.id === focusedPart?.id}
-                onClick={() => focusPart(part.id)}
+                className={part.id === selectedPart?.id ? "part-picker active" : "part-picker"}
+                aria-pressed={part.id === selectedPart?.id}
+                disabled={part.isContainer === true && !selectEnclosures}
+                onClick={() => selectPart(part.id)}
               >
                 <strong>{part.name}</strong>
                 <span>{part.purpose}</span>
