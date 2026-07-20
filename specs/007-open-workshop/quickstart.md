@@ -104,3 +104,11 @@ pnpm --filter @educational-hardware-builder/web test           # 66 tests passed
 pnpm --filter @educational-hardware-builder/web build:sandbox
 git diff --check
 ```
+
+## Recorded verification: corrected fixture browser flow (2026-07-19)
+
+After the Quickstart port and fixture-lesson fixes, the developer confirmed that
+the `DEMO_SAFE_MODE=true` browser flow completed successfully on port 3001:
+relevant discovery, typed rejections, unrestricted Workshop navigation, all 12
+fixture steps, cited explanations and completion conditions, and visible cited
+skill links all worked as intended.
