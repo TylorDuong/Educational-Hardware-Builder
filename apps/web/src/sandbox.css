@@ -1116,20 +1116,102 @@ pre {
   background: var(--surface);
 }
 
-.explode-control {
+.viewer-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.42fr);
+  gap: 0.85rem;
+  align-items: stretch;
+}
+
+.viewer-stage .canvas {
+  height: min(61vh, 560px);
+  min-height: 360px;
+}
+
+.part-focus-panel {
   display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-bottom: 0.85rem;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1rem;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.part-focus-panel h3 {
+  margin: 0.15rem 0 0.45rem;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.part-focus-panel > p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.part-focus-panel .focus-hint {
+  margin-top: 1rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.view-reset {
+  width: 100%;
+  margin-top: auto;
+  padding: 0.7rem 0.8rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--yellow);
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 800;
 }
 
-.explode-control input {
-  flex: 1;
-  accent-color: var(--coral);
+.view-reset:hover {
+  background: var(--coral);
+  color: #fffdf5;
+}
+
+.viewer .part-list > li {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.part-picker {
+  display: grid;
+  width: 100%;
+  gap: 0.28rem;
+  padding: 0.78rem 0.85rem;
+  border: 2px solid var(--line);
+  border-left: 4px solid var(--blue);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  text-align: left;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.part-picker:hover,
+.part-picker.active {
+  border-color: var(--blue);
+  background: var(--surface);
+}
+
+.part-picker strong,
+.part-picker span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.part-picker span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .assembly-stack {
@@ -1308,7 +1390,16 @@ pre {
       "lesson";
   }
 
+  .viewer-stage {
+    grid-template-columns: 1fr;
+  }
+
   .canvas {
+    height: 52dvh;
+    min-height: 300px;
+  }
+
+  .viewer-stage .canvas {
     height: 52dvh;
     min-height: 300px;
   }

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/server.ts",
-    "test": "tsx --test tests/server.test.ts tests/weather-station.fixture.test.ts tests/agents.test.ts tests/integration.test.ts tests/spatial-integration.test.ts tests/demo-flow.test.ts tests/agentic-build-discovery.persistence.test.ts tests/ingest.test.ts tests/ingest-workflows.test.ts tests/discovery-agents.test.ts tests/discovery.test.ts tests/sandbox-discovery.test.ts tests/quickstart.test.ts tests/catalog-repository.test.ts tests/catalog.test.ts tests/generated-build.test.ts tests/workshop-discovery.test.ts tests/owned-parts.test.ts",
+    "test": "tsx --test tests/server.test.ts tests/weather-station.fixture.test.ts tests/agents.test.ts tests/schematic-agents.test.ts tests/schematic-scene.test.ts tests/mech-view.test.ts tests/integration.test.ts tests/spatial-integration.test.ts tests/demo-flow.test.ts tests/agentic-build-discovery.persistence.test.ts tests/ingest.test.ts tests/ingest-workflows.test.ts tests/discovery-agents.test.ts tests/discovery.test.ts tests/sandbox-discovery.test.ts tests/quickstart.test.ts tests/catalog-repository.test.ts tests/catalog.test.ts tests/generated-build.test.ts tests/workshop-discovery.test.ts tests/owned-parts.test.ts",
     "typecheck": "tsc --noEmit",
     "sandbox": "vite --host 0.0.0.0",
     "build:sandbox": "vite build"

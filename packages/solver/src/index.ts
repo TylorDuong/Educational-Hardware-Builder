@@ -1,5 +1,7 @@
 import type { AssemblyTransform, CadAssetRecord, MatingSelection } from "../../schemas/src/index.js";
 
+export { solveSchematicLayout } from "./schematic-layout.js";
+
 export type SolverError =
   | { code: "UNKNOWN_FEATURE"; message: string; partId: string; featureId: string }
   | { code: "MISMATCHED_HOLE_COUNT"; message: string; expected: number; actual: number }

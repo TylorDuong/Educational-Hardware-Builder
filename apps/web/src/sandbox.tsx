@@ -20,10 +20,11 @@ import {
   runSolverRetryDemo,
   type SolverRetryDemo,
 } from "./demo-flow.js";
-import type { MechViewPart } from "./components/MechView.js";
+import type { MechViewPart, MechViewRoute } from "./components/MechView.js";
 import { matchedInventoryPartIds, parseOwnedParts, type OwnedPartInput } from "./owned-parts.js";
+import { createSchematicScene } from "./schematic-scene.js";
 import { applicationSourcePolicies } from "./source-policies.js";
-import { assertSolverTraces, solveSelectedProposalParts, solverTracedFixtureParts } from "./spatial-integration.js";
+import { solveSelectedProposalParts } from "./spatial-integration.js";
 
 import "./sandbox.css";
 
@@ -693,55 +694,83 @@ function SkillReferenceModal({ skill, onClose }: { skill?: SkillReference; onClo
 
 function InteractiveAssemblyViewer({
   parts,
+  routes,
+  layoutMessage,
   heading,
   stepOrder,
-  explodeFactor,
-  onExplode,
 }: {
   parts: readonly MechViewPart[];
+  routes: readonly MechViewRoute[];
+  layoutMessage: string;
   heading: string;
   stepOrder: number;
-  explodeFactor: number;
-  onExplode: (value: number) => void;
 }) {
-  const [selectedPartId, setSelectedPartId] = useState(() => parts[0]?.id ?? "");
-  const selectedPart = parts.find((part) => part.id === selectedPartId) ?? parts[0];
+  const [selectedPartId, setSelectedPartId] = useState<string>();
+  const [hoveredPartId, setHoveredPartId] = useState<string>();
+  const [resetViewKey, setResetViewKey] = useState(0);
+  const focusedPart = parts.find((part) => part.id === hoveredPartId)
+    ?? parts.find((part) => part.id === selectedPartId);
 
-  if (!selectedPart) {
-    return <section className="viewer panel"><h2>{heading}</h2><p className="helper">No parts are ready for this step.</p></section>;
+  if (parts.length === 0) {
+    return <section className="viewer panel"><h2>{heading}</h2><p className="helper" role="alert">{layoutMessage}</p></section>;
+  }
+
+  const modelCenter = parts.reduce<[number, number, number]>((sum, part) => [
+    sum[0] + part.positionMm[0] + part.dimensionsMm[0] / 2,
+    sum[1] + part.positionMm[1] + part.dimensionsMm[1] / 2,
+    sum[2] + part.positionMm[2] + part.dimensionsMm[2] / 2,
+  ], [0, 0, 0]).map((coordinate) => coordinate / parts.length) as [number, number, number];
+  const cameraTarget: [number, number, number] = focusedPart
+    ? [
+      focusedPart.positionMm[0] + focusedPart.dimensionsMm[0] / 2,
+      focusedPart.positionMm[1] + focusedPart.dimensionsMm[1] / 2,
+      focusedPart.positionMm[2] + focusedPart.dimensionsMm[2] / 2,
+    ]
+    : modelCenter;
+  const focusLabel = hoveredPartId ? "HOVERING" : selectedPartId ? "SELECTED" : "EXPLORE THE MODEL";
+
+  function focusPart(partId: string): void {
+    setSelectedPartId(partId);
+    setHoveredPartId(undefined);
+  }
+
+  function resetModelView(): void {
+    setSelectedPartId(undefined);
+    setHoveredPartId(undefined);
+    setResetViewKey((current) => current + 1);
   }
 
   return (
     <section className="viewer panel">
       <h2>{heading}</h2>
-      <label className="explode-control" htmlFor="assembly-explode-view">
-        Spread parts out
-        <input
-          id="assembly-explode-view"
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={explodeFactor}
-          onChange={(event) => onExplode(Number(event.target.value))}
-        />
-      </label>
-      <div className="canvas">
-        <Suspense fallback={<p>Loading the 3D view...</p>}>
-          <LazyMechView
-            parts={[...parts]}
-            highlightIds={[selectedPart.id]}
-            explodeFactor={explodeFactor}
-            cameraTarget={selectedPart.transform.positionMm}
-            onSelect={setSelectedPartId}
-          />
-        </Suspense>
+      <div className="viewer-stage">
+        <div className="canvas">
+          <Suspense fallback={<p>Loading the 3D view...</p>}>
+            <LazyMechView
+              parts={[...parts]}
+              routes={[...routes]}
+              highlightIds={focusedPart ? [focusedPart.id] : []}
+              focusPartId={focusedPart?.id}
+              explodeFactor={focusedPart ? 0.8 : 0}
+              cameraTarget={cameraTarget}
+              resetViewKey={resetViewKey}
+              onSelect={focusPart}
+              onHover={setHoveredPartId}
+            />
+          </Suspense>
+        </div>
+        <aside className="part-focus-panel" aria-live="polite">
+          <p className="eyebrow">{focusLabel}</p>
+          {focusedPart ? (
+            <>
+              <h3>{focusedPart.name}</h3>
+              <p>{focusedPart.purpose}</p>
+              <p className="focus-hint">The focused part stays solid while the rest of the model spreads out for inspection.</p>
+            </>
+          ) : <p>Hover over a part to preview it, or select one to keep it centred.</p>}
+          <button type="button" className="view-reset" onClick={resetModelView}>Center &amp; reset model</button>
+        </aside>
       </div>
-      <section className="part-detail" aria-live="polite">
-        <p className="eyebrow">SELECTED</p>
-        <h3>{selectedPart.name}</h3>
-        <p>{selectedPart.purpose}</p>
-      </section>
       <section className="part-detail">
         <h3>Parts in this model ({parts.length})</h3>
         <ul className="part-list">
@@ -749,9 +778,9 @@ function InteractiveAssemblyViewer({
             <li key={part.id}>
               <button
                 type="button"
-                className={part.id === selectedPart.id ? "step active" : "step"}
-                aria-pressed={part.id === selectedPart.id}
-                onClick={() => setSelectedPartId(part.id)}
+                className={part.id === focusedPart?.id ? "part-picker active" : "part-picker"}
+                aria-pressed={part.id === focusedPart?.id}
+                onClick={() => focusPart(part.id)}
               >
                 <strong>{part.name}</strong>
                 <span>{part.purpose}</span>
@@ -760,7 +789,7 @@ function InteractiveAssemblyViewer({
           ))}
         </ul>
       </section>
-      <p className="helper">Showing step {stepOrder}.</p>
+      <p className="helper">{layoutMessage} Showing step {stepOrder}.</p>
     </section>
   );
 }
@@ -770,11 +799,9 @@ function WorkshopPanel({
   complete,
   message,
   retryDemo,
-  explodeFactor,
   onMove,
   onRetry,
   onComplete,
-  onExplode,
   onOpenSkill,
   onOpenHelp,
 }: {
@@ -782,20 +809,15 @@ function WorkshopPanel({
   complete: boolean;
   message: string;
   retryDemo?: SolverRetryDemo;
-  explodeFactor: number;
   onMove: (index: number) => void;
   onRetry: () => void;
   onComplete: () => void;
-  onExplode: (value: number) => void;
   onOpenSkill: (skill: SkillReference) => void;
   onOpenHelp: (section: Tab) => void;
 }) {
   const step = weatherStationGoldenSteps[activeIndex]!;
-  const mechViewParts: MechViewPart[] = useMemo(() => {
-    const parts = solverTracedFixtureParts(step.id);
-    assertSolverTraces(parts);
-    return parts;
-  }, [step.id]);
+  const schematicScene = useMemo(() => createSchematicScene(), []);
+  const mechViewParts = schematicScene.parts;
 
   if (complete) {
     return (
@@ -868,10 +890,10 @@ function WorkshopPanel({
 
         <InteractiveAssemblyViewer
           parts={mechViewParts}
+          routes={schematicScene.routes}
+          layoutMessage={schematicScene.message}
           heading="3D view"
           stepOrder={step.order}
-          explodeFactor={explodeFactor}
-          onExplode={onExplode}
         />
       </div>
     </section>
@@ -899,12 +921,8 @@ function SelectedWorkshopPanel({
 }) {
   const step = workshop.lesson.steps[activeIndex]!;
   const solverResult = useMemo(() => solveSelectedProposalParts(workshop.lesson), [workshop.lesson]);
-  const mechViewParts: MechViewPart[] = useMemo(() => {
-    const parts = solverTracedFixtureParts(step.id);
-    assertSolverTraces(parts);
-    return parts;
-  }, [step.id]);
-  const [explodeFactor, setExplodeFactor] = useState(0);
+  const schematicScene = useMemo(() => createSchematicScene(), []);
+  const mechViewParts = schematicScene.parts;
 
   if (complete) {
     return (
@@ -987,10 +1005,10 @@ function SelectedWorkshopPanel({
         <div className="assembly-stack">
           <InteractiveAssemblyViewer
             parts={mechViewParts}
+            routes={schematicScene.routes}
+            layoutMessage={`Fixture schematic proxy — ${schematicScene.message}`}
             heading="3D view"
             stepOrder={step.order}
-            explodeFactor={explodeFactor}
-            onExplode={setExplodeFactor}
           />
           <section className="viewer panel">
             <h2>Fit check</h2>
@@ -1023,7 +1041,6 @@ function SelectedWorkshopPanel({
 function Workshop() {
   const [activeTab, setActiveTab] = useState<Tab>("Dashboard");
   const [activeIndex, setActiveIndex] = useState(0);
-  const [explodeFactor, setExplodeFactor] = useState(0);
   const [message, setMessage] = useState("Start with a project idea.");
   const [projectPrompt, setProjectPrompt] = useState("");
   const [ownedPartsText, setOwnedPartsText] = useState("");
@@ -1261,11 +1278,9 @@ function Workshop() {
                   complete={complete}
                   message={message}
                   retryDemo={retryDemo}
-                  explodeFactor={explodeFactor}
                   onMove={(index) => void moveTo(index)}
                   onRetry={() => setRetryDemo(runSolverRetryDemo())}
                   onComplete={() => setComplete(true)}
-                  onExplode={setExplodeFactor}
                   onOpenSkill={setSelectedSkill}
                   onOpenHelp={setSelectedHelp}
                 />

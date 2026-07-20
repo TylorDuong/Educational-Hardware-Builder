@@ -15,6 +15,30 @@ export const CitationSchema = z.object({
   title: z.string().min(1),
 }).strict();
 
+/** The layout MVP uses one voxel per millimetre, so physical proxy bounds must be whole cells. */
+export const IntegerGridDimensionsSchema = z.tuple([
+  z.number().int().positive(),
+  z.number().int().positive(),
+  z.number().int().positive(),
+]);
+
+/** Grid positions may be negative relative to the solver-selected origin, unlike physical bounds. */
+export const SchematicGridPositionSchema = z.tuple([
+  z.number().int(),
+  z.number().int(),
+  z.number().int(),
+]);
+
+export const DimensionConfidenceSchema = z.number().finite().min(0).max(1);
+export const MINIMUM_SCHEMATIC_DIMENSION_CONFIDENCE = 0.85;
+export const RequiredDimensionConfidenceSchema = DimensionConfidenceSchema.min(MINIMUM_SCHEMATIC_DIMENSION_CONFIDENCE);
+
+/** Provenance for dimensions used by a physical schematic proxy. */
+export const CitedDimensionEvidenceSchema = z.object({
+  confidence: DimensionConfidenceSchema,
+  citation: CitationSchema,
+}).strict();
+
 export const SkillLibraryEntrySchema = z.object({
   title: z.string().min(1),
   sourceUrl: z.string().url(),
@@ -69,8 +93,172 @@ export const CadAssetRecordSchema = z.object({
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
   sourceUrl: z.string().url(),
   license: z.string().min(1),
+  /**
+   * Integer outer proxy bounds. These remain optional on the legacy catalog record so existing
+   * ingestion payloads can be reviewed; a schematic solver quarantines assets that omit them.
+   */
+  boundsMm: IntegerGridDimensionsSchema.optional(),
+  /** Cited provenance for `boundsMm`; required before an asset can appear in a ready layout. */
+  dimensionEvidence: CitedDimensionEvidenceSchema.optional(),
   matingFeatures: z.array(MatingFeatureSchema),
 });
+
+/** Architect-controlled semantic behavior. It deliberately contains no geometric pose. */
+export const SchematicRoleSchema = z.enum(["container", "base", "component", "flexible"]);
+
+/**
+ * A face is a named relationship on a proxy, not a coordinate. Interior faces make containment
+ * intent explicit without exposing a container's local coordinate system to an agent.
+ */
+export const SemanticAnchorFaceSchema = z.enum([
+  "top",
+  "bottom",
+  "front",
+  "back",
+  "left",
+  "right",
+  "inside_top",
+  "inside_bottom",
+  "inside_front",
+  "inside_back",
+  "inside_left",
+  "inside_right",
+  "center",
+]);
+
+export const SemanticAnchorSchema = z.object({
+  name: NonEmptyTextSchema.max(160),
+  face: SemanticAnchorFaceSchema,
+}).strict();
+
+/** A rigid or flexible part described only by symbolic containment and named anchors. */
+export const SchematicConstraintNodeSchema = z.object({
+  partId: z.string().uuid(),
+  role: SchematicRoleSchema,
+  parentPartId: z.string().uuid().optional(),
+  parentAnchor: NonEmptyTextSchema.max(160).optional(),
+  anchors: z.array(SemanticAnchorSchema).max(64).default([]),
+}).strict();
+
+/** A symbolic instruction that a deterministic solver will use to order placement or routing. */
+export const SchematicAssemblySequenceStepSchema = z.object({
+  id: NonEmptyTextSchema.max(160),
+  order: z.number().int().positive(),
+  kind: z.enum(["place_part", "connect_flexible"]),
+  partId: z.string().uuid().optional(),
+  connectionId: NonEmptyTextSchema.max(160).optional(),
+}).strict().superRefine((step, context) => {
+  if (step.kind === "place_part") {
+    if (!step.partId || step.connectionId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A place_part sequence step requires partId and cannot include connectionId",
+      });
+    }
+    return;
+  }
+
+  if (!step.connectionId || step.partId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "A connect_flexible sequence step requires connectionId and cannot include partId",
+    });
+  }
+});
+
+/** A flexible route requested by endpoint names; pathfinding and points remain solver-owned. */
+export const FlexibleConnectionSchema = z.object({
+  id: NonEmptyTextSchema.max(160),
+  flexiblePartId: z.string().uuid().optional(),
+  fromPartId: z.string().uuid(),
+  fromAnchor: NonEmptyTextSchema.max(160),
+  toPartId: z.string().uuid(),
+  toAnchor: NonEmptyTextSchema.max(160),
+}).strict();
+
+/**
+ * The sole agent-facing schematic relationship payload. Strict objects intentionally reject
+ * position, coordinate, transform, quaternion, matrix, mesh, and arbitrary geometry fields.
+ * Semantic reference resolution is deterministic solver work so it can become a typed rejection.
+ */
+export const SchematicConstraintGraphSchema = z.object({
+  gridUnitMm: z.literal(1),
+  nodes: z.array(SchematicConstraintNodeSchema).min(1).max(100),
+  connections: z.array(FlexibleConnectionSchema).max(200).default([]),
+  assemblySequence: z.array(SchematicAssemblySequenceStepSchema).max(300).default([]),
+}).strict();
+
+/** Input to the deterministic layout boundary. Low-confidence and missing evidence stay typed so they can be quarantined. */
+export const SchematicLayoutRequestSchema = z.object({
+  graph: SchematicConstraintGraphSchema,
+  cadAssets: z.array(CadAssetRecordSchema).min(1).max(100),
+  requiredDimensionConfidence: RequiredDimensionConfidenceSchema.default(MINIMUM_SCHEMATIC_DIMENSION_CONFIDENCE),
+}).strict();
+
+/** Solver-owned rigid placement. The graph schema above never accepts this coordinate-bearing shape. */
+export const SchematicPlacementSchema = z.object({
+  partId: z.string().uuid(),
+  gridPosition: SchematicGridPositionSchema,
+  boundsMm: IntegerGridDimensionsSchema,
+}).strict();
+
+/** Solver-owned orthogonal route, expressed as whole grid cells. */
+export const SchematicRouteSchema = z.object({
+  connectionId: NonEmptyTextSchema.max(160),
+  points: z.array(SchematicGridPositionSchema).min(2).max(10_000),
+}).strict();
+
+export const SchematicLayoutQuarantineRecordSchema = z.object({
+  partId: z.string().uuid(),
+  observedConfidence: DimensionConfidenceSchema.nullable(),
+  requiredConfidence: RequiredDimensionConfidenceSchema,
+  reason: NonEmptyTextSchema.max(1_000),
+}).strict();
+
+export const SchematicLayoutRejectionCodeSchema = z.enum([
+  "INVALID_GRAPH",
+  "UNKNOWN_PART",
+  "UNKNOWN_PARENT",
+  "UNKNOWN_ANCHOR",
+  "AMBIGUOUS_ROOT",
+  "CYCLIC_PARENTAGE",
+  "COLLISION",
+  "OUT_OF_BOUNDS",
+  "ROUTE_UNAVAILABLE",
+  "INVALID_SEQUENCE",
+]);
+
+export const SchematicLayoutRejectionSchema = z.object({
+  code: SchematicLayoutRejectionCodeSchema,
+  message: NonEmptyTextSchema.max(1_000),
+  partId: z.string().uuid().optional(),
+  connectionId: NonEmptyTextSchema.max(160).optional(),
+  sequenceStepId: NonEmptyTextSchema.max(160).optional(),
+}).strict();
+
+export const SchematicLayoutReadyResultSchema = z.object({
+  outcome: z.literal("ready"),
+  placements: z.array(SchematicPlacementSchema).min(1).max(100),
+  routes: z.array(SchematicRouteSchema).max(200).default([]),
+  /** Canonical, solver-validated order used to check dependencies before connections are routed. */
+  assemblySequence: z.array(SchematicAssemblySequenceStepSchema).max(300).default([]),
+}).strict();
+
+export const SchematicLayoutQuarantinedResultSchema = z.object({
+  outcome: z.literal("quarantined"),
+  quarantinedParts: z.array(SchematicLayoutQuarantineRecordSchema).min(1).max(100),
+}).strict();
+
+export const SchematicLayoutRejectedResultSchema = z.object({
+  outcome: z.literal("rejected"),
+  rejection: SchematicLayoutRejectionSchema,
+}).strict();
+
+export const SchematicLayoutResultSchema = z.discriminatedUnion("outcome", [
+  SchematicLayoutReadyResultSchema,
+  SchematicLayoutQuarantinedResultSchema,
+  SchematicLayoutRejectedResultSchema,
+]);
 
 /** Model-facing selection is symbolic: it never contains raw transforms. */
 export const MatingSelectionSchema = z.object({
@@ -467,12 +655,33 @@ export const DiscoveryProgressEventSchema = z.object({
 export const AgentProgressEventSchema = DiscoveryProgressEventSchema;
 
 export type Citation = z.infer<typeof CitationSchema>;
+export type IntegerGridDimensions = z.infer<typeof IntegerGridDimensionsSchema>;
+export type SchematicGridPosition = z.infer<typeof SchematicGridPositionSchema>;
+export type DimensionConfidence = z.infer<typeof DimensionConfidenceSchema>;
+export type CitedDimensionEvidence = z.infer<typeof CitedDimensionEvidenceSchema>;
 export type SkillLibraryEntry = z.infer<typeof SkillLibraryEntrySchema>;
 export type BuildId = z.infer<typeof BuildIdSchema>;
 export type BuildSlug = z.infer<typeof BuildSlugSchema>;
 export type PartRecord = z.infer<typeof PartRecordSchema>;
 export type InventoryPart = z.infer<typeof InventoryPartSchema>;
 export type CadAssetRecord = z.infer<typeof CadAssetRecordSchema>;
+export type SchematicRole = z.infer<typeof SchematicRoleSchema>;
+export type SemanticAnchorFace = z.infer<typeof SemanticAnchorFaceSchema>;
+export type SemanticAnchor = z.infer<typeof SemanticAnchorSchema>;
+export type SchematicConstraintNode = z.infer<typeof SchematicConstraintNodeSchema>;
+export type SchematicAssemblySequenceStep = z.infer<typeof SchematicAssemblySequenceStepSchema>;
+export type FlexibleConnection = z.infer<typeof FlexibleConnectionSchema>;
+export type SchematicConstraintGraph = z.infer<typeof SchematicConstraintGraphSchema>;
+export type SchematicLayoutRequest = z.infer<typeof SchematicLayoutRequestSchema>;
+export type SchematicPlacement = z.infer<typeof SchematicPlacementSchema>;
+export type SchematicRoute = z.infer<typeof SchematicRouteSchema>;
+export type SchematicLayoutQuarantineRecord = z.infer<typeof SchematicLayoutQuarantineRecordSchema>;
+export type SchematicLayoutRejectionCode = z.infer<typeof SchematicLayoutRejectionCodeSchema>;
+export type SchematicLayoutRejection = z.infer<typeof SchematicLayoutRejectionSchema>;
+export type SchematicLayoutReadyResult = z.infer<typeof SchematicLayoutReadyResultSchema>;
+export type SchematicLayoutQuarantinedResult = z.infer<typeof SchematicLayoutQuarantinedResultSchema>;
+export type SchematicLayoutRejectedResult = z.infer<typeof SchematicLayoutRejectedResultSchema>;
+export type SchematicLayoutResult = z.infer<typeof SchematicLayoutResultSchema>;
 export type MatingSelection = z.infer<typeof MatingSelectionSchema>;
 export type AssemblyTransform = z.infer<typeof AssemblyTransformSchema>;
 export type TemplateParams = z.infer<typeof TemplateParamsSchema>;

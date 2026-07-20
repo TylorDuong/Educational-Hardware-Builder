@@ -5,13 +5,12 @@ import { GuidedLessonSchema } from "@educational-hardware-builder/schemas";
 import { bme280ToEsp32Selection } from "@educational-hardware-builder/schemas/mocks";
 
 import {
-  assertSolverTraces,
   compileWeatherStationTemplate,
   formatSolverError,
   solveSelectedProposalParts,
   solveWeatherStationSelection,
-  solverTracedFixtureParts,
 } from "../src/spatial-integration.js";
+import { assertReadySchematicScene, createSchematicScene } from "../src/schematic-scene.js";
 
 const stepId = "10000000-0000-4000-8000-000000000003";
 const printableStl = "solid bracket\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nendloop\nendfacet\nendsolid";
@@ -76,24 +75,16 @@ test("selected proposal solver rejection supplies a typed symbolic retry without
   assert.doesNotMatch(`${result.rejection.message} ${result.rejection.retryInstruction}`, /position|quaternion|matrix|transform/i);
 });
 
-test("every sandbox part carries a deterministic solver trace", () => {
-  const parts = solverTracedFixtureParts(stepId);
-  assert.equal(parts.length, 10);
-  assert.doesNotThrow(() => assertSolverTraces(parts));
-  assert.equal(parts[0]?.solverTrace.source, "deterministic-solver");
-  assert.ok(parts.every((part) => part.name.length > 0 && part.purpose.length > 0));
-  assert.deepEqual(parts.map((part) => part.name), [
-    "ESP32 DevKit",
-    "BME280 sensor",
-    "Weatherproof enclosure",
-    "L-bracket",
-    "Mini breadboard",
-    "USB-C cable",
-    "Jumper wires",
-    "M3 fastener",
-    "AA battery pack",
-    "Weatherproof grommet",
-  ]);
+test("the live fixture scene carries deterministic placements rather than self-mated presentation positions", () => {
+  const scene = createSchematicScene();
+  assertReadySchematicScene(scene);
+  assert.equal(scene.parts.length, 8);
+  assert.equal(scene.routes.length, 2);
+  assert.ok(scene.parts.every((part) => part.name.length > 0 && part.purpose.length > 0));
+  assert.deepEqual(
+    scene.parts.map((part) => part.positionMm),
+    scene.layout.placements.map((placement) => placement.gridPosition),
+  );
 });
 
 test("template compilation returns a printable STL and never exposes raw compiler stderr", async () => {
