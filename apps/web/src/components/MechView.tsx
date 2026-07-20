@@ -31,7 +31,7 @@ function FixturePart({ part, highlighted, explodeFactor, layoutIndex, onSelect }
   return (
     <mesh position={[x / 25 + presentationX * separation, y / 25 + presentationY * separation, z / 25 + (layoutIndex % 2) * 0.12]} quaternion={[qx, qy, qz, qw]} castShadow onClick={() => onSelect(part.id)}>
       <boxGeometry args={part.displaySize} />
-      <meshStandardMaterial color={highlighted ? "#f59e0b" : part.color ?? "#38bdf8"} emissive={highlighted ? "#7c2d12" : "#000000"} />
+      <meshStandardMaterial color={highlighted ? "#e65f54" : part.color ?? "#0172e4"} emissive={highlighted ? "#54231f" : "#000000"} />
     </mesh>
   );
 }
@@ -41,9 +41,9 @@ export function MechView({ parts, highlightIds, explodeFactor, cameraTarget, onS
   const target = cameraTarget.map((coordinate) => coordinate / 25) as [number, number, number];
   return (
     <Canvas camera={{ position: [4, 3, 5], fov: 45 }} shadows>
-      <color attach="background" args={["#0f172a"]} />
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[5, 5, 5]} intensity={1.4} castShadow />
+      <color attach="background" args={["#fffdf5"]} />
+      <ambientLight intensity={0.85} />
+      <directionalLight position={[5, 5, 5]} intensity={1.5} castShadow />
       {parts.map((part, index) => <FixturePart key={part.id} part={part} highlighted={highlightIds.includes(part.id)} explodeFactor={explodeFactor} layoutIndex={index} onSelect={onSelect} />)}
       <OrbitControls enablePan enableRotate enableZoom target={target} />
     </Canvas>
