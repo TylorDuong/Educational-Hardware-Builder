@@ -102,7 +102,7 @@ function Dashboard({ prompt, progress, stages, discovery, error, isDiscovering, 
       <Pipeline stages={stages} />
       {error ? <p className="message" role="alert">{error}</p> : rejected ? <p className="message" role="alert">This request was rejected before any parts or build steps were available.</p> : null}
       {discovery ? <DiscoverySummary discovery={discovery} /> : null}
-      {complete && discovery?.proposal ? <button className="primary" onClick={onOpenBuild}>Review the build plan</button> : <p className="helper">Watch the validated pipeline stages complete before moving to the plan.</p>}
+      {complete && discovery?.proposal ? <button className="primary" onClick={onOpenBuild}>Review cited research</button> : <p className="helper">Watch the validated pipeline stages complete before moving to the plan.</p>}
     </section>
   </section>;
 }
@@ -135,8 +135,8 @@ function PartsDetails({ discovery, onOpenWorkshop }: { discovery?: DiscoveryView
     {entry.inventoryMatch ? <p><strong>Verified inventory:</strong> {entry.inventoryMatch.quantity} on hand{entry.inventoryMatch.rawLabel ? ` (${entry.inventoryMatch.rawLabel})` : ""}.</p> : <p className="inventory-gap"><strong>Inventory gap:</strong> No verified item is recorded; choose a current cached offer or compatible alternative.</p>}
     <section className="part-detail"><h3>Cached source options</h3>{entry.offers.length > 0 ? <ul className="source-list">{entry.offers.map((offer) => <li key={offer.externalId}><strong>{offer.provider} · {offer.providerSku}</strong><span>{offer.availability.replaceAll("_", " ")} · {offer.price !== undefined && offer.currency ? `${offer.currency} ${offer.price.toFixed(2)}` : "Price not captured"} · observed {new Date(offer.observedAt).toLocaleDateString()}</span><a href={offer.purchaseUrl} target="_blank" rel="noreferrer">Open cached shop link</a><a href={offer.sourceUrl} target="_blank" rel="noreferrer">View source provenance</a></li>)}</ul> : <p className="helper">No fresh in-stock cached offer. Use verified inventory or review an alternative below.</p>}</section>
     <section className="part-detail"><h3>Compatible alternatives</h3>{entry.alternatives.length > 0 ? <ul className="source-list">{entry.alternatives.map((alternative) => <li key={alternative.id}><strong>{alternative.name}</strong><span>{alternative.category}</span>{alternative.datasheetUrl ? <a href={alternative.datasheetUrl} target="_blank" rel="noreferrer">View compatible-part source</a> : null}</li>)}</ul> : <p className="helper">No locally validated alternatives are available for this part.</p>}</section>
-  </li>)}</ul></section><section className="panel substitution"><p className="eyebrow">Sourcing decision</p><h2>Use cited local choices</h2><p>Only verified inventory, cached offers, and compatibility records are shown. Checkout and live shop calls stay outside this workshop.</p><button className="primary" onClick={onOpenWorkshop}>Continue to the workshop</button></section></section>;
-  return <section className="parts-layout"><section className="panel"><p className="eyebrow">Parts and inventory</p><h2>Available for this build</h2><ul className="part-list">{demoParts.map((part) => <li key={part.name}><strong>{part.name}</strong><span>{part.role}</span><em>{part.status}</em></li>)}</ul></section><section className="panel substitution"><p className="eyebrow">Substitution decision</p><h2>{demoSubstitution.selected}</h2><p><strong>Instead of:</strong> {demoSubstitution.requested}</p><p>{demoSubstitution.justification}</p><button className="primary" onClick={onOpenWorkshop}>Continue to the workshop</button></section></section>;
+  </li>)}</ul></section><section className="panel substitution"><p className="eyebrow">Sourcing decision</p><h2>Use cited local choices</h2><p>Only verified inventory, cached offers, and compatibility records are shown. Checkout and live shop calls stay outside this workshop.</p><button className="primary" onClick={onOpenWorkshop}>Review the build plan</button></section></section>;
+  return <section className="parts-layout"><section className="panel"><p className="eyebrow">Parts and inventory</p><h2>Available for this build</h2><ul className="part-list">{demoParts.map((part) => <li key={part.name}><strong>{part.name}</strong><span>{part.role}</span><em>{part.status}</em></li>)}</ul></section><section className="panel substitution"><p className="eyebrow">Substitution decision</p><h2>{demoSubstitution.selected}</h2><p><strong>Instead of:</strong> {demoSubstitution.requested}</p><p>{demoSubstitution.justification}</p><button className="primary" onClick={onOpenWorkshop}>Review the build plan</button></section></section>;
 }
 
 function PartsPanel({ discovery, onOpenWorkshop }: { discovery?: DiscoveryView; onOpenWorkshop: () => void }) {
@@ -378,10 +378,10 @@ function Workshop() {
     setMessage(`Step ${target.order} is ready.`);
   }
 
-  const content = activeTab === "Dashboard" ? <Dashboard prompt={projectPrompt} progress={progress} stages={pipelineStages} discovery={discovery} error={discoveryError} isDiscovering={isDiscovering} onPromptChange={setProjectPrompt} onStart={() => void startDiscovery()} onOpenBuild={() => setActiveTab("Build")} />
-    : activeTab === "Research" ? <ResearchPanel discovery={discovery} />
+  const content = activeTab === "Dashboard" ? <Dashboard prompt={projectPrompt} progress={progress} stages={pipelineStages} discovery={discovery} error={discoveryError} isDiscovering={isDiscovering} onPromptChange={setProjectPrompt} onStart={() => void startDiscovery()} onOpenBuild={() => setActiveTab("Research")} />
+    : activeTab === "Research" ? <><ResearchPanel discovery={discovery} /><section className="panel"><button className="primary" onClick={() => setActiveTab("Parts")}>Review parts and inventory</button></section></>
       : activeTab === "Build" ? <BuildPanel onOpenWorkshop={() => void startSelectedWorkshop()} isStartingWorkshop={isStartingWorkshop} />
-        : activeTab === "Parts" ? <PartsPanel discovery={discovery} onOpenWorkshop={() => void startSelectedWorkshop()} />
+        : activeTab === "Parts" ? <PartsPanel discovery={discovery} onOpenWorkshop={() => setActiveTab("Build")} />
           : isStartingWorkshop
             ? <section className="completion panel"><p className="eyebrow">Workshop</p><h2>Opening your cited lesson...</h2><p>{message}</p></section>
             : selectedWorkshop

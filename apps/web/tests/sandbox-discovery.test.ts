@@ -20,6 +20,10 @@ test("Dashboard renders validated discovery results and preserves the existing f
   assert.match(source, /Cited proposal/);
   assert.match(source, /function ResearchPanel\(\{ discovery \}/);
   assert.match(source, /Catalog provenance/);
+  assert.match(source, /Review cited research/);
+  assert.match(source, /Review parts and inventory/);
+  assert.match(source, /onOpenBuild=\{\(\) => setActiveTab\("Research"\)\}/);
+  assert.match(source, /setActiveTab\("Parts"\)/);
   assert.match(source, /function PartsPanel\(\{ discovery, onOpenWorkshop \}/);
   assert.match(source, /function ComponentBreakdown\(\)/);
   assert.match(source, /Individual parts breakdown/);
@@ -27,6 +31,8 @@ test("Dashboard renders validated discovery results and preserves the existing f
   assert.match(source, /Cached source options/);
   assert.match(source, /Compatible alternatives/);
   assert.match(source, /Open cached shop link/);
+  assert.match(source, /Review the build plan/);
+  assert.match(source, /onOpenWorkshop=\{\(\) => setActiveTab\("Build"\)\}/);
   assert.match(source, /View source provenance/);
   assert.match(source, /Stale or unavailable offer data/);
   assert.match(source, /WorkshopPromotionResponseSchema\.parse/);
