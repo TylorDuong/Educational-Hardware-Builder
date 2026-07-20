@@ -24,6 +24,7 @@ const cite = {
 const step = (id: string, order: number, title: string, instruction: string, safetyCategory: StepPlan["safetyCategory"], content: string, citation: StepPlan["lesson"]["citations"][number]): StepPlan => ({
   id, order, title, instruction, safetyCategory,
   lesson: { title, content, citations: [citation] },
+  skills: [{ ...citation, relevance: `Explains the technique used while you ${title.toLowerCase()}.` }],
   matingSelections: [],
 });
 
@@ -38,15 +39,9 @@ export const weatherStationGoldenSteps: readonly StepPlan[] = [
     matingSelections: [{ movingPartId: parts.bme280, movingFeatureId: "bme280-mount-1", targetPartId: parts.esp32, targetFeatureId: "esp32-proto-1", fastener: "M2.5x6" }],
   },
   step("10000000-0000-4000-8000-000000000004", 4, "Connect ground", "Connect BME280 GND to an ESP32 GND pin.", "none", "A common ground gives both devices the same signal reference.", cite.bme280),
-  {
-    ...step("10000000-0000-4000-8000-000000000005", 5, "Connect sensor power", "Connect BME280 VIN to the ESP32 3V3 supply.", "none", "The reference build uses the regulated 3.3 V rail.", cite.bme280),
-    checkpoint: { id: "20000000-0000-4000-8000-000000000001", prompt: "Which ESP32 power rail is used for the BME280?", choices: ["3V3", "9 V battery", "Mains outlet"], correctAnswer: "3V3" },
-  },
+  step("10000000-0000-4000-8000-000000000005", 5, "Connect sensor power", "Connect BME280 VIN to the ESP32 3V3 supply.", "none", "The reference build uses the regulated 3.3 V rail.", cite.bme280),
   step("10000000-0000-4000-8000-000000000006", 6, "Wire I2C data", "Connect BME280 SDA to the ESP32 I2C data pin.", "none", "SDA carries I2C data between the controller and sensor.", cite.bme280),
-  {
-    ...step("10000000-0000-4000-8000-000000000007", 7, "Wire I2C clock", "Connect BME280 SCL to the ESP32 I2C clock pin.", "none", "SCL coordinates when I2C devices send and read data.", cite.bme280),
-    checkpoint: { id: "20000000-0000-4000-8000-000000000002", prompt: "Which two wires make up this I2C bus?", choices: ["SDA and SCL", "VIN and GND", "TX and RX"], correctAnswer: "SDA and SCL" },
-  },
+  step("10000000-0000-4000-8000-000000000007", 7, "Wire I2C clock", "Connect BME280 SCL to the ESP32 I2C clock pin.", "none", "SCL coordinates when I2C devices send and read data.", cite.bme280),
   {
     ...step("10000000-0000-4000-8000-000000000008", 8, "Plan the L-bracket", "Request the bounded L-bracket template for the sensor support.", "mechanical", "A predefined bracket keeps the mount within validated physical limits.", cite.enclosure),
     matingSelections: [{ movingPartId: parts.bracket, movingFeatureId: "bracket-mount-1", targetPartId: parts.enclosure, targetFeatureId: "enclosure-mount-1", fastener: "M3x8" }],
@@ -56,10 +51,7 @@ export const weatherStationGoldenSteps: readonly StepPlan[] = [
     ...step("10000000-0000-4000-8000-000000000010", 10, "Attach power", "Connect the regulated power pack after inspection is complete.", "none", "Power comes last so wiring errors are found first.", cite.esp32),
     matingSelections: [{ movingPartId: parts.battery, movingFeatureId: "battery-pack-mount-1", targetPartId: parts.enclosure, targetFeatureId: "enclosure-mount-1", fastener: "M3x8" }],
   },
-  {
-    ...step("10000000-0000-4000-8000-000000000011", 11, "Read sensor values", "Run the sensor check and confirm temperature, humidity, and pressure values.", "none", "The BME280 combines environmental sensing for temperature, humidity, and pressure.", cite.bme280),
-    checkpoint: { id: "20000000-0000-4000-8000-000000000003", prompt: "Why inspect the circuit before powering it?", choices: ["Catch wiring mistakes before they are energized", "Make the board faster", "Remove the sensor address"], correctAnswer: "Catch wiring mistakes before they are energized" },
-  },
+  step("10000000-0000-4000-8000-000000000011", 11, "Read sensor values", "Run the sensor check and confirm temperature, humidity, and pressure values.", "none", "The BME280 combines environmental sensing for temperature, humidity, and pressure.", cite.bme280),
   {
     ...step("10000000-0000-4000-8000-000000000012", 12, "Secure the enclosure", "Place the verified assembly in the enclosure while leaving the sensor exposed to air.", "mechanical", "An enclosure protects electronics while the sensor needs contact with the air it measures.", cite.enclosure),
     matingSelections: [{ movingPartId: parts.esp32, movingFeatureId: "esp32-proto-2", targetPartId: parts.enclosure, targetFeatureId: "enclosure-mount-1", fastener: "M3x8" }],

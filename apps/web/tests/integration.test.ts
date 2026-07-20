@@ -225,7 +225,7 @@ test("safe mode completes the discovery, cached sourcing, and selected Workshop 
         }>;
       };
     };
-    assert.equal(operation.status, "complete");
+    assert.equal(operation.status, "ready");
     assert.equal(operation.proposal.billOfMaterials[0]?.freshness, "fresh");
     assert.equal(operation.proposal.billOfMaterials[0]?.inventoryMatch?.verified, true);
     assert.equal(operation.proposal.billOfMaterials[0]?.offers[0]?.availability, "in_stock");
@@ -265,17 +265,17 @@ test("safe mode rejects an off-topic request before retrieval and publishes the 
     const operationId = await startDiscovery(root, "Write an essay about a vacation.");
     const operation = await (await fetch(`${root}/api/discovery/${operationId}`)).json() as {
       status: string;
-      safety: { outcome: string; blockReasons: string[] };
+      classification: { outcome: string; reason: string };
       proposal: null;
     };
-    assert.equal(operation.status, "blocked");
-    assert.equal(operation.safety.outcome, "blocked");
-    assert.deepEqual(operation.safety.blockReasons, ["off_topic"]);
+    assert.equal(operation.status, "rejected");
+    assert.equal(operation.classification.outcome, "rejected");
+    assert.equal(operation.classification.reason, "off_topic");
     assert.equal(operation.proposal, null);
     assert.equal(embeddingCalls, 0);
 
     const events = await (await fetch(`${root}/api/discovery/${operationId}/events`)).text();
-    assert.match(events, /\"stage\":\"blocked\"/);
+    assert.match(events, /\"stage\":\"rejected\"/);
     assert.doesNotMatch(events, /\"stage\":\"retrieving\"/);
   }, deps);
 });

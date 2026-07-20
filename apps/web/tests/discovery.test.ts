@@ -18,7 +18,7 @@ const safeIntent = {
   exclusions: ["mains power"],
   constraints: ["usb-power-only"],
   retrievalTerms: ["USB LED module"],
-  safety: { outcome: "approved", categories: ["none"], blockReasons: [], callout: "Use USB power only." },
+  classification: { outcome: "approved", reason: "Relevant technical hardware request." },
 };
 const catalogAlternative = {
   id: alternativePartId,
@@ -107,9 +107,9 @@ test("discovery API returns a cited safe proposal and typed progress events", as
     const operationId = await startDiscovery(root, "I want a beginner USB desk light.");
     const status = await fetch(`${root}/api/discovery/${operationId}`);
     assert.equal(status.status, 200);
-    const payload = await status.json() as { status: string; safety: { outcome: string }; proposal: { summary: string; citations: typeof citation[] } };
-    assert.equal(payload.status, "complete");
-    assert.equal(payload.safety.outcome, "approved");
+    const payload = await status.json() as { status: string; classification: { outcome: string }; proposal: { summary: string; citations: typeof citation[] } };
+    assert.equal(payload.status, "ready");
+    assert.equal(payload.classification.outcome, "approved");
     assert.equal(payload.proposal.summary, safeIntent.normalizedGoal);
     assert.deepEqual(payload.proposal.citations, [citation]);
 
@@ -133,13 +133,13 @@ test("discovery API returns a cited safe proposal and typed progress events", as
     const events = await fetch(`${root}/api/discovery/${operationId}/events`);
     assert.equal(events.headers.get("content-type"), "text/event-stream");
     const stream = await events.text();
-    for (const stage of ["queued", "safety", "intent", "retrieving", "catalog", "complete"]) {
+    for (const stage of ["queued", "classifying", "intent", "retrieving", "catalog", "ready"]) {
       assert.match(stream, new RegExp(`\\\"stage\\\":\\\"${stage}\\\"`));
     }
   });
 });
 
-test("selected discovery proposal returns a public cited lesson without checkpoint answers", async () => {
+test("selected discovery proposal returns a cited lesson without checkpoint data", async () => {
   await withServer(async (root) => {
     const operationId = await startDiscovery(root, "I want a beginner USB desk light.");
     const response = await fetch(`${root}/api/discovery/${operationId}/select`, { method: "POST" });
@@ -148,7 +148,7 @@ test("selected discovery proposal returns a public cited lesson without checkpoi
     assert.equal(promotion.buildId, "30000000-0000-4000-8000-000000000001");
     assert.ok(promotion.lesson.steps[0]?.citations.length);
     assert.ok(promotion.lesson.troubleshooting.length);
-    assert.equal("correctAnswer" in (promotion.lesson.steps[0]?.checkpoint ?? {}), false);
+    assert.equal("checkpoint" in (promotion.lesson.steps[0] ?? {}), false);
   }, dependencies({ demoSafeMode: true }));
 });
 
@@ -184,7 +184,7 @@ test("discovery prefers verified inventory and labels an unavailable cached offe
       };
     };
     const entry = payload.proposal.billOfMaterials[0];
-    assert.equal(payload.status, "complete");
+    assert.equal(payload.status, "ready");
     assert.equal(entry?.inventoryMatch?.partId, partId);
     assert.equal(entry?.inventoryMatch?.verified, true);
     assert.equal(entry?.inventoryMatch?.quantity, 2);
@@ -199,7 +199,7 @@ test("discovery API accepts a vague learner request and returns a typed local pr
     const operationId = await startDiscovery(root, "Help me make something simple.");
     const status = await fetch(`${root}/api/discovery/${operationId}`);
     const payload = await status.json() as { status: string; proposal: { billOfMaterials: unknown[]; citations: typeof citation[] } };
-    assert.equal(payload.status, "complete");
+    assert.equal(payload.status, "ready");
     assert.equal(payload.proposal.billOfMaterials.length, 1);
     assert.deepEqual(payload.proposal.citations, [citation]);
   });
@@ -217,15 +217,15 @@ test("discovery API rejects off-topic requests before retrieval or proposal gene
   await withServer(async (root) => {
     const operationId = await startDiscovery(root, "Write an essay about a vacation.");
     const status = await fetch(`${root}/api/discovery/${operationId}`);
-    const payload = await status.json() as { status: string; safety: { outcome: string; blockReasons: string[] }; proposal: null };
-    assert.equal(payload.status, "blocked");
-    assert.equal(payload.safety.outcome, "blocked");
-    assert.deepEqual(payload.safety.blockReasons, ["off_topic"]);
+    const payload = await status.json() as { status: string; classification: { outcome: string; reason: string }; proposal: null };
+    assert.equal(payload.status, "rejected");
+    assert.equal(payload.classification.outcome, "rejected");
+    assert.equal(payload.classification.reason, "off_topic");
     assert.equal(payload.proposal, null);
     assert.equal(embeddingCalls, 0);
 
     const stream = await (await fetch(`${root}/api/discovery/${operationId}/events`)).text();
-    assert.match(stream, /\"stage\":\"blocked\"/);
+    assert.match(stream, /\"stage\":\"rejected\"/);
     assert.doesNotMatch(stream, /\"stage\":\"retrieving\"/);
   }, deps);
 });
@@ -240,7 +240,7 @@ test("discovery API retries malformed model output once and returns the determin
     const prompt = "Build a beginner USB desk light.";
     const operationId = await startDiscovery(root, prompt);
     const payload = await (await fetch(`${root}/api/discovery/${operationId}`)).json() as { status: string; proposal: { summary: string } };
-    assert.equal(payload.status, "complete");
+    assert.equal(payload.status, "ready");
     assert.equal(calls, 2);
     assert.equal(payload.proposal.summary, prompt);
   }, deps);
@@ -260,7 +260,7 @@ test("discovery API uses the safe-mode fallback without calling the local model"
     const prompt = "Build a beginner USB desk light.";
     const operationId = await startDiscovery(root, prompt);
     const payload = await (await fetch(`${root}/api/discovery/${operationId}`)).json() as { status: string; proposal: { summary: string } };
-    assert.equal(payload.status, "complete");
+    assert.equal(payload.status, "ready");
     assert.equal(payload.proposal.summary, prompt);
     assert.equal(modelCalls, 0);
   }, deps);

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   createDemoDiscoveryDependencies,
-  demoBlockedDiscoveryRequest,
+  demoMainsDiscoveryRequest,
   demoDiscoveryCitation,
   demoDiscoveryRequest,
   demoParts,
@@ -14,7 +14,7 @@ import {
 import { discoverBuild, generateGuidedLesson } from "../src/discovery.js";
 
 test("the fixture demo defines visible pipeline, parts, and substitution stages", () => {
-  assert.deepEqual(demoPipelineStages.map((entry) => entry.stage), ["queued", "retrieving", "generating", "complete"]);
+  assert.deepEqual(demoPipelineStages.map((entry) => entry.stage), ["queued", "classifying", "retrieving", "generating", "ready"]);
   assert.equal(demoPipelineStages.at(-1)?.percent, 100);
   assert.ok(demoParts.some((part) => part.name === "ESP32 DevKit"));
   assert.match(demoSubstitution.justification, /deterministic validation/i);
@@ -35,7 +35,7 @@ test("safe mode deterministically discovers a cited, fresh catalog proposal with
 
   assert.equal(first.model.source, "fallback");
   assert.equal(first.model.attempts, 0);
-  assert.equal(first.safety.outcome, "approved");
+  assert.equal(first.classification.outcome, "approved");
   assert.deepEqual(first.proposal, second.proposal);
   assert.equal(first.proposal?.citations[0]?.sourceUrl, demoDiscoveryCitation.sourceUrl);
   assert.equal(first.proposal?.billOfMaterials[0]?.inventoryMatch?.verified, true);
@@ -45,11 +45,10 @@ test("safe mode deterministically discovers a cited, fresh catalog proposal with
 });
 
 test("safe mode accepts a relevant mains project without a hazard block", async () => {
-  const result = await discoverBuild(demoBlockedDiscoveryRequest, createDemoDiscoveryDependencies());
+  const result = await discoverBuild(demoMainsDiscoveryRequest, createDemoDiscoveryDependencies());
 
   assert.equal(result.model.source, "fallback");
-  assert.equal(result.safety.outcome, "approved");
-  assert.deepEqual(result.safety.blockReasons, []);
+  assert.equal(result.classification.outcome, "approved");
   assert.ok(result.proposal);
 });
 
@@ -62,10 +61,11 @@ test("safe mode creates an approved proposal's cited lesson without exposing mod
   const firstStep = lesson.value.steps[0];
   assert.equal(lesson.source, "fallback");
   assert.equal(lesson.attempts, 0);
+  assert.equal(lesson.value.steps.length, 12);
   assert.equal(firstStep?.citations[0]?.sourceUrl, demoDiscoveryCitation.sourceUrl);
-  assert.match(firstStep?.safetyCallout ?? "", /disconnected from power/i);
-  assert.match(firstStep?.instruction ?? "", /work surface/i);
+  assert.match(firstStep?.safetyCallout ?? "", /cited guidance/i);
+  assert.match(firstStep?.instruction ?? "", /identify the esp32/i);
   assert.equal(firstStep?.matingSelections.length, 0);
-  assert.equal(firstStep?.checkpoint, undefined);
-  assert.equal(firstStep?.skills[0]?.sourceUrl, demoDiscoveryCitation.sourceUrl);
+  assert.equal("checkpoint" in (firstStep ?? {}), false);
+  assert.ok(firstStep?.skills[0]?.sourceUrl.startsWith("https://"));
 });

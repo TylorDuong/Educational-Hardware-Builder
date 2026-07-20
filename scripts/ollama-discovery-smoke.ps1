@@ -63,7 +63,7 @@ $discoveryTimer = [System.Diagnostics.Stopwatch]::StartNew()
 $operation = Invoke-RestMethod -Method Post -ContentType "application/json" -Body $discoveryRequest -Uri "$($ApiBaseUrl.TrimEnd('/'))/api/discovery"
 $discoveryTimer.Stop()
 $completed = Invoke-RestMethod -Uri "$($ApiBaseUrl.TrimEnd('/'))/api/discovery/$($operation.operationId)"
-if ($completed.status -ne "complete" -or $null -eq $completed.proposal) { throw "The live discovery smoke did not complete: $($completed | ConvertTo-Json -Depth 8 -Compress)" }
+if ($completed.status -ne "ready" -or $null -eq $completed.proposal) { throw "The live discovery smoke did not become ready: $($completed | ConvertTo-Json -Depth 8 -Compress)" }
 
 $cleanStart = $null
 if (-not [string]::IsNullOrWhiteSpace($CleanStartSeconds)) {
@@ -78,5 +78,5 @@ if (-not [string]::IsNullOrWhiteSpace($CleanStartSeconds)) {
   discoveryResponseMs = [Math]::Round($discoveryTimer.Elapsed.TotalMilliseconds, 1)
   cleanStartSeconds = $cleanStart
   operationId = $operation.operationId
-  result = "live discovery completed"
+  result = "live discovery ready"
 } | ConvertTo-Json

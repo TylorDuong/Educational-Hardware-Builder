@@ -168,7 +168,7 @@ async function respondSse(response: ServerResponse): Promise<void> {
     { operationId, stage: "queued", message: "Preparing the guided build", percent: 0 },
     { operationId, stage: "retrieving", message: "Finding cited guidance", percent: 35 },
     { operationId, stage: "generating", message: "Creating the typed step plan", percent: 70 },
-    { operationId, stage: "complete", message: "Guidance is ready", percent: 100 },
+    { operationId, stage: "ready", message: "Guidance is ready", percent: 100 },
   ]);
   response.writeHead(200, {
     "content-type": "text/event-stream",
@@ -195,7 +195,7 @@ export function createApiServer(dependencies: ApiDependencies) {
   // to the production embedding, database, or model dependencies.
   const demoDiscoveryDependencies = dependencies.demoDiscoveryDependencies
     ?? (dependencies.demoSafeMode ? createDemoDiscoveryDependencies() : undefined);
-  const discoveryOperations = new Map<string, { status: "queued" | "complete" | "blocked" | "error"; result?: Awaited<ReturnType<typeof discoverBuild>>; error?: string; events: DiscoveryProgressEvent[] }>();
+  const discoveryOperations = new Map<string, { status: "queued" | "ready" | "rejected" | "error"; result?: Awaited<ReturnType<typeof discoverBuild>>; error?: string; events: DiscoveryProgressEvent[] }>();
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
@@ -209,7 +209,7 @@ export function createApiServer(dependencies: ApiDependencies) {
         const events: DiscoveryProgressEvent[] = [{ operationId, stage: "queued", message: "Discovery request queued", percent: 0 }];
         discoveryOperations.set(operationId, { status: "queued", events });
         try {
-          events.push({ operationId, stage: "safety", message: "Checking technical relevance and good-faith use", percent: 20 });
+          events.push({ operationId, stage: "classifying", message: "Checking technical relevance and good-faith use", percent: 20 });
           events.push({ operationId, stage: "intent", message: "Validating build intent", percent: 40 });
           const result = await discoverBuild(parsed.data, {
             fetcher: demoDiscoveryDependencies?.fetcher ?? dependencies.fetcher,
@@ -222,14 +222,14 @@ export function createApiServer(dependencies: ApiDependencies) {
               },
             },
           });
-          if (result.safety.outcome === "blocked") {
-            events.push({ operationId, stage: "blocked", message: result.safety.callout, percent: 100 });
-            discoveryOperations.set(operationId, { status: "blocked", result, events });
+          if (result.classification.outcome === "rejected") {
+            events.push({ operationId, stage: "rejected", message: result.classification.message, percent: 100 });
+            discoveryOperations.set(operationId, { status: "rejected", result, events });
           } else {
             events.push({ operationId, stage: "retrieving", message: "Retrieving local cited knowledge", percent: 65 });
             events.push({ operationId, stage: "catalog", message: "Validating local proposal", percent: 85 });
-            events.push({ operationId, stage: "complete", message: "Discovery proposal is ready", percent: 100 });
-            discoveryOperations.set(operationId, { status: "complete", result, events });
+            events.push({ operationId, stage: "ready", message: "Discovery proposal is ready", percent: 100 });
+            discoveryOperations.set(operationId, { status: "ready", result, events });
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : "Discovery failed.";
@@ -248,12 +248,12 @@ export function createApiServer(dependencies: ApiDependencies) {
         const operationId = url.pathname.split("/")[3] ?? "";
         const operation = discoveryOperations.get(operationId);
         if (!operation) throw new ApiError(404, "Discovery operation was not found.");
-        return respond(response, 200, { operationId, status: operation.status, proposal: operation.result?.proposal, safety: operation.result?.safety, error: operation.error });
+        return respond(response, 200, { operationId, status: operation.status, proposal: operation.result?.proposal, classification: operation.result?.classification, error: operation.error });
       }
       if (request.method === "POST" && /^\/api\/discovery\/[0-9a-f-]+\/select$/i.test(url.pathname)) {
         const operationId = url.pathname.split("/")[3] ?? "";
         const operation = discoveryOperations.get(operationId);
-        if (!operation || operation.status !== "complete" || !operation.result?.proposal || operation.result.safety.outcome !== "approved") {
+        if (!operation || operation.status !== "ready" || !operation.result?.proposal || operation.result.classification.outcome !== "approved") {
           throw new ApiError(409, "Only a completed approved discovery proposal can start a Workshop session.");
         }
         const proposal = BuildProposalSchema.parse({ ...operation.result.proposal, selected: true });
@@ -264,10 +264,7 @@ export function createApiServer(dependencies: ApiDependencies) {
           retrieve: (query) => retrieve({ query }, dependencies),
         });
         const sessionId = workshopSessions.createSession(proposal.id, workshopStepsForLesson(lesson.value));
-        const publicLesson = PublicGuidedLessonSchema.parse({
-          ...lesson.value,
-          steps: lesson.value.steps.map(({ checkpoint: _checkpoint, ...step }) => step),
-        });
+        const publicLesson = PublicGuidedLessonSchema.parse(lesson.value);
         return respond(response, 200, {
           sessionId,
           buildId: proposal.id,

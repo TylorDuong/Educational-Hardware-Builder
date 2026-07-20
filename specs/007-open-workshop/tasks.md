@@ -12,9 +12,9 @@ the affected path applies.
 **Purpose**: Replace the safety/checkpoint contract with request classification
 and cited skill-library entries.
 
-- [ ] T001 Update request-classification, discovery-operation, guided-lesson, public-lesson, and skill-library Zod schemas in `packages/schemas/src/index.ts`.
-- [ ] T002 [P] Add schema fixtures for relevant approval, off-topic rejection, malicious rejection, cited skill links, and checkpoint-free lessons in `packages/schemas/tests/agentic-build-discovery.test.ts`.
-- [ ] T003 [P] Update schema mocks and the weather-station fixture to remove checkpoint answers and add cited skills in `packages/schemas/src/mocks.ts` and `apps/web/fixtures/weather-station.ts`.
+- [x] T001 Update request-classification, discovery-operation, guided-lesson, public-lesson, and skill-library Zod schemas in `packages/schemas/src/index.ts`.
+- [x] T002 [P] Add schema fixtures for relevant approval, off-topic rejection, malicious rejection, cited skill links, and checkpoint-free lessons in `packages/schemas/tests/agentic-build-discovery.test.ts`.
+- [x] T003 [P] Update schema mocks and the weather-station fixture to remove checkpoint answers and add cited skills in `packages/schemas/src/mocks.ts` and `apps/web/fixtures/weather-station.ts`.
 
 **Checkpoint**: Shared payloads admit open relevant discovery and directly
 navigable, skill-linked lessons only.
@@ -25,9 +25,9 @@ navigable, skill-linked lessons only.
 
 **Purpose**: Remove old safety and gated Workshop behavior before user stories.
 
-- [ ] T004 Replace hazard preflight with typed relevance/malicious request classification and deterministic fallback in `apps/web/src/agents.ts` and `apps/web/src/discovery.ts`.
+- [x] T004 Replace hazard preflight with typed relevance/malicious request classification and deterministic fallback in `apps/web/src/agents.ts` and `apps/web/src/discovery.ts`.
 - [x] T005 Remove checkpoint grading and locked-step checks while retaining selected-build identity and typed step lookup in `apps/web/src/workshop.ts` and `apps/web/src/server.ts`.
-- [ ] T006 [P] Add deterministic skills-library fixture entries for relevant technical prompts in `apps/web/src/demo-flow.ts`.
+- [x] T006 [P] Add deterministic skills-library fixture entries for relevant technical prompts in `apps/web/src/demo-flow.ts`.
 - [x] T007 Add focused server tests proving the removed checkpoint route is unavailable and direct selected-build step access remains typed in `apps/web/tests/workshop-discovery.test.ts` and `apps/web/tests/server.test.ts`.
 
 **Checkpoint**: The server has no hazard-based denial path or quiz/lock API,
@@ -44,8 +44,8 @@ malicious prompts reject before discovery work.
 proposal while off-topic and malicious prompts return typed rejections without
 proposal data.
 
-- [ ] T008 [P] [US1] Add agent classification fixtures and retry/fallback coverage in `apps/web/tests/discovery-agents.test.ts`.
-- [ ] T009 [P] [US1] Add discovery API tests for technical approval and pre-retrieval relevance/malicious rejection in `apps/web/tests/discovery.test.ts`.
+- [x] T008 [P] [US1] Add agent classification fixtures and retry/fallback coverage in `apps/web/tests/discovery-agents.test.ts`.
+- [x] T009 [P] [US1] Add discovery API tests for technical approval and pre-retrieval relevance/malicious rejection in `apps/web/tests/discovery.test.ts`.
 - [x] T010 [US1] Update discovery operation progress, status handling, and proposal promotion eligibility in `apps/web/src/server.ts`.
 - [x] T011 [US1] Update Dashboard request status and rejection rendering in `apps/web/src/sandbox.tsx`.
 
@@ -65,7 +65,7 @@ answer.
 
 - [x] T012 [P] [US2] Add direct-navigation and no-checkpoint regression coverage in `apps/web/tests/workshop-discovery.test.ts` and `apps/web/tests/integration.test.ts`.
 - [x] T013 [US2] Simplify Workshop session and selected-lesson promotion payloads in `apps/web/src/workshop.ts` and `apps/web/src/server.ts`.
-- [ ] T014 [US2] Remove checkpoint UI, answer handlers, and gated messaging while keeping completion and solver views in `apps/web/src/sandbox.tsx`.
+- [x] T014 [US2] Remove checkpoint UI, answer handlers, and gated messaging while keeping completion and solver views in `apps/web/src/sandbox.tsx`.
 
 **Checkpoint**: Every Workshop step can be read in any order and the solver
 remains the exclusive transform source.
@@ -79,8 +79,8 @@ remains the exclusive transform source.
 **Independent Test**: Inspect every fixture lesson step and verify cited skill
 links or an explicit no-additional-skills statement.
 
-- [ ] T015 [P] [US3] Add guided-lesson and public-lesson skill-link validation tests in `apps/web/tests/generated-build.test.ts`.
-- [ ] T016 [US3] Populate deterministic skill-library entries during lesson generation in `apps/web/src/discovery.ts` and `apps/web/src/demo-flow.ts`.
+- [x] T015 [P] [US3] Add guided-lesson and public-lesson skill-link validation tests in `apps/web/tests/generated-build.test.ts`.
+- [x] T016 [US3] Populate deterministic skill-library entries during lesson generation in `apps/web/src/discovery.ts` and `apps/web/src/demo-flow.ts`.
 - [x] T017 [US3] Render skill titles, relevance, and source links at every Workshop step in `apps/web/src/sandbox.tsx`.
 
 **Checkpoint**: Learners receive self-directed, cited skill support without a

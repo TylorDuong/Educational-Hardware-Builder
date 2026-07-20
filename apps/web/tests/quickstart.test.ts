@@ -54,10 +54,10 @@ test("quickstart serves fixture-safe discovery, SSE, static assets, and the five
     assert.equal(created.status, 202);
     const { operationId } = await created.json() as { operationId: string };
     const operation = await (await fetch(`${root}/api/discovery/${operationId}`)).json() as { status: string; proposal: { citations: typeof demoDiscoveryCitation[] } };
-    assert.equal(operation.status, "complete");
+    assert.equal(operation.status, "ready");
     assert.deepEqual(operation.proposal.citations, [demoDiscoveryCitation]);
     const discoveryEvents = await (await fetch(`${root}/api/discovery/${operationId}/events`)).text();
-    for (const stage of ["queued", "safety", "intent", "retrieving", "catalog", "complete"]) {
+    for (const stage of ["queued", "classifying", "intent", "retrieving", "catalog", "ready"]) {
       assert.match(discoveryEvents, new RegExp(`\\\"stage\\\":\\\"${stage}\\\"`));
     }
 

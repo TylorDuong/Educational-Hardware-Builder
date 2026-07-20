@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BuildIntentSchema, SafetyDecisionSchema, type BuildIntent } from "@educational-hardware-builder/schemas";
+import { BuildIntentSchema, RequestClassificationSchema, type BuildIntent } from "@educational-hardware-builder/schemas";
 
 import { callModel } from "../src/agents.js";
 
@@ -11,12 +11,12 @@ const safeIntent: BuildIntent = {
   exclusions: ["mains power"],
   constraints: ["usb-power-only"],
   retrievalTerms: ["USB LED module"],
-  safety: { outcome: "approved", categories: ["none"], blockReasons: [], callout: "Use USB power only." },
+  classification: { outcome: "approved", reason: "Relevant technical hardware request." },
 };
 const blockedIntent = {
   ...safeIntent,
   normalizedGoal: "Wire a mains desk light.",
-  safety: { outcome: "blocked", categories: ["mains_ac"], blockReasons: ["mains_ac"], callout: "Mains AC is hard-blocked in Beginner mode." },
+  classification: { outcome: "rejected", reason: "malicious", message: "Rejected malicious request." },
 };
 
 test("records a schema-valid local-model intent extraction", async () => {
@@ -32,7 +32,7 @@ test("records a schema-valid local-model intent extraction", async () => {
   });
   assert.equal(result.source, "live");
   assert.equal(result.attempts, 1);
-  assert.equal(result.value.safety.outcome, "approved");
+  assert.equal(result.value.classification.outcome, "approved");
 });
 
 test("retries malformed intent output exactly once before using the deterministic fallback", async () => {
@@ -53,9 +53,8 @@ test("retries malformed intent output exactly once before using the deterministi
   assert.deepEqual(result.value, safeIntent);
 });
 
-test("records forbidden hazards as a hard-blocked safety decision", () => {
-  const decision = SafetyDecisionSchema.parse(blockedIntent.safety);
-  assert.equal(decision.outcome, "blocked");
-  assert.deepEqual(decision.blockReasons, ["mains_ac"]);
-  assert.throws(() => SafetyDecisionSchema.parse({ ...blockedIntent.safety, outcome: "approved" }), /Approved safety decisions cannot include block reasons/);
+test("records typed relevance and malicious classifications", () => {
+  const decision = RequestClassificationSchema.parse(blockedIntent.classification);
+  assert.equal(decision.outcome, "rejected");
+  assert.equal(decision.reason, "malicious");
 });

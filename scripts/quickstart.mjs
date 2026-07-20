@@ -18,7 +18,8 @@ function run(arguments_, options = {}) {
 
 await run(["--filter", "@educational-hardware-builder/web", "build:sandbox"]);
 
-console.log("\nStarting the fixture-backed workshop at http://localhost:3000 (DEMO_SAFE_MODE=true).\n");
+const port = process.env.PORT ?? "3000";
+console.log(`\nStarting the fixture-backed workshop at http://localhost:${port} (DEMO_SAFE_MODE=true).\n`);
 await run(["--filter", "@educational-hardware-builder/web", "start"], {
-  env: { ...process.env, DEMO_SAFE_MODE: process.env.DEMO_SAFE_MODE ?? "true" },
+  env: { ...process.env, PORT: port, DEMO_SAFE_MODE: process.env.DEMO_SAFE_MODE ?? "true" },
 });

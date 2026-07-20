@@ -26,9 +26,9 @@ const proposal = BuildProposalSchema.parse({
     exclusions: ["mains power"],
     constraints: ["usb-power-only"],
     retrievalTerms: ["USB LED module"],
-    safety: { outcome: "approved", categories: ["none"], blockReasons: [], callout: "Use USB power only." },
+    classification: { outcome: "approved", reason: "Relevant technical hardware request." },
   },
-  safety: { outcome: "approved", categories: ["none"], blockReasons: [], callout: "Use USB power only." },
+  classification: { outcome: "approved", reason: "Relevant technical hardware request." },
   summary: "Build a USB desk light.",
   billOfMaterials: [{
     part: { id: primaryPartId, slug: "esp32-devkit", name: "ESP32 DevKit", category: "compute", electricalSpecs: {}, cadAssetIds: [] },
@@ -57,12 +57,7 @@ const lesson = {
     instruction: "Place the ESP32 and LED module on the work surface.",
     completionCondition: "Both parts are visible and disconnected from power.",
     citations: [citation],
-    checkpoint: {
-      id: "20000000-0000-4000-8000-000000000001",
-      prompt: "What must be unplugged before changing a connection?",
-      choices: ["USB power", "The work surface"],
-      correctAnswer: "USB power",
-    },
+    skills: [{ ...citation, relevance: "Explains the USB power connection for this step." }],
     matingSelections: [{
       movingPartId: primaryPartId,
       movingFeatureId: "mounting-hole-a",
@@ -94,14 +89,10 @@ test("proposal promotion contract keeps an approved selected proposal and a cite
   }
 });
 
-test("guided lesson contract retains server grading data but removes the answer from a promotion response", () => {
+test("guided lesson contract exposes cited skills without checkpoint data", () => {
   const parsedLesson = GuidedLessonSchema.parse(lesson);
-  const checkpoint = parsedLesson.steps[0]?.checkpoint;
-  assert.equal(checkpoint?.correctAnswer, "USB power");
-
-  const { correctAnswer: _correctAnswer, ...publicCheckpoint } = checkpoint!;
-  assert.equal("correctAnswer" in publicCheckpoint, false);
-  assert.deepEqual(publicCheckpoint.choices, ["USB power", "The work surface"]);
+  assert.equal("checkpoint" in (parsedLesson.steps[0] ?? {}), false);
+  assert.ok(parsedLesson.steps[0]?.skills.length);
 });
 
 test("guided lesson contract rejects uncited steps and raw coordinate or transform leaks", () => {

@@ -1,16 +1,18 @@
 import {
   BuildProposalSchema,
   GuidedLessonSchema,
-  SafetyDecisionSchema,
+  RequestClassificationSchema,
   type Citation,
   type BuildIntent,
   type BuildProposal,
   type DiscoveryRequest,
   type GuidedLesson,
   type RetrievalResult,
-  type SafetyDecision,
+  type RequestClassification,
 } from "@educational-hardware-builder/schemas";
 import { z } from "zod";
+
+import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
 
 import { callModel, runDiscoveryIntent, type AgentDependencies, type ModelCallResult } from "./agents.js";
 import {
@@ -27,13 +29,10 @@ export interface DiscoveryDependencies extends AgentDependencies {
 
 export interface DiscoveryResult {
   intent: BuildIntent;
-  safety: SafetyDecision;
+  classification: RequestClassification;
   proposal: BuildProposal | null;
   model: ModelCallResult<BuildIntent>;
 }
-
-const blocked = (category: "mains_ac" | "lipo", reason: "mains_ac" | "lipo_charging", callout: string): SafetyDecision =>
-  SafetyDecisionSchema.parse({ outcome: "blocked", categories: [category], blockReasons: [reason], callout });
 
 const primaryPart = {
   id: "7e893f29-068e-43e2-9c3c-b9ba2d9ed6db",
@@ -83,23 +82,18 @@ function fixtureGuidedLesson(proposal: BuildProposal): GuidedLesson {
   return GuidedLessonSchema.parse({
     proposalId: proposal.id,
     title: `${proposal.summary} — guided lesson`,
-    steps: [{
-      id: "10000000-0000-4000-8000-000000000010",
-      order: 1,
-      title: `Prepare the ${part}`,
-      safetyCategory: "none",
-      safetyCallout: "Keep the assembly disconnected from power while preparing parts.",
-      instruction: `Place the ${part} and its cited supporting parts on the work surface before making connections.`,
-      completionCondition: "All required parts are identified and remain disconnected from power.",
+    steps: weatherStationGoldenSteps.map((step) => ({
+      id: step.id,
+      order: step.order,
+      title: step.title,
+      safetyCategory: step.safetyCategory,
+      safetyCallout: `Review the cited guidance before ${step.title.toLowerCase()}.`,
+      instruction: step.instruction,
+      completionCondition: `Complete ${step.title.toLowerCase()} as described in the cited guidance.`,
       citations: [citation],
-      skills: [{
-        title: citation.title,
-        sourceUrl: citation.sourceUrl,
-        locator: citation.locator,
-        relevance: "Explains the connection and assembly concepts used in this step.",
-      }],
-      matingSelections: [],
-    }],
+      skills: step.skills,
+      matingSelections: step.matingSelections,
+    })),
     troubleshooting: [{
       problem: "A required part is not available.",
       explanation: "Recheck the cited proposal alternatives and verified inventory before substituting any part.",
@@ -133,7 +127,7 @@ function guidedLessonSchemaFor(proposal: BuildProposal) {
 
 /** Generates only schema-validated, proposal-cited lesson data; fixture mode never calls a model. */
 export async function generateGuidedLesson(proposal: BuildProposal, dependencies: AgentDependencies): Promise<ModelCallResult<GuidedLesson>> {
-  if (proposal.safety.outcome !== "approved") throw new Error("Guided lessons require an approved proposal.");
+  if (proposal.classification.outcome !== "approved") throw new Error("Guided lessons require an approved proposal.");
   const fallback = () => fixtureGuidedLesson(proposal);
   return callModel<GuidedLesson>({
     schema: guidedLessonSchemaFor(proposal) as z.ZodType<GuidedLesson>,
@@ -149,22 +143,22 @@ export async function generateGuidedLesson(proposal: BuildProposal, dependencies
 }
 
 /** Relevance boundary, independent of the local model's structured output. */
-export function preflightSafety(prompt: string, intent: BuildIntent): SafetyDecision {
+export function classifyRequest(prompt: string, intent: BuildIntent): RequestClassification {
   const text = `${prompt} ${intent.normalizedGoal} ${intent.constraints.join(" ")}`.toLowerCase();
   if (/\b(kill|sabotage|weaponize|evade safeguards|harm someone)\b/.test(text)) {
-    return SafetyDecisionSchema.parse({ outcome: "blocked", categories: ["none"], blockReasons: ["malicious"], callout: "This request is rejected because it expresses malicious intent." });
+    return RequestClassificationSchema.parse({ outcome: "rejected", reason: "malicious", message: "This request is rejected because it expresses malicious intent." });
   }
   if (/\b(write (an )?essay|recipe|vacation|celebrity gossip|sports score)\b/.test(text)) {
-    return SafetyDecisionSchema.parse({ outcome: "blocked", categories: ["none"], blockReasons: ["off_topic"], callout: "This request is outside technical hardware building." });
+    return RequestClassificationSchema.parse({ outcome: "rejected", reason: "off_topic", message: "This request is outside technical hardware building." });
   }
-  return SafetyDecisionSchema.parse({ ...intent.safety, outcome: "approved", blockReasons: [], callout: "Relevant technical hardware request." });
+  return RequestClassificationSchema.parse({ outcome: "approved", reason: "Relevant technical hardware request." });
 }
 
 export async function discoverBuild(request: DiscoveryRequest, dependencies: DiscoveryDependencies): Promise<DiscoveryResult> {
   const model = await runDiscoveryIntent(request.prompt, dependencies);
-  const safety = preflightSafety(request.prompt, model.value);
-  const intent = { ...model.value, safety };
-  if (safety.outcome !== "approved") return { intent, safety, proposal: null, model: { ...model, value: intent } };
+  const classification = classifyRequest(request.prompt, model.value);
+  const intent = { ...model.value, classification };
+  if (classification.outcome !== "approved") return { intent, classification, proposal: null, model: { ...model, value: intent } };
 
   const retrieved = await dependencies.retrieve(intent.retrievalTerms.join(" "));
   const retrievalCitations = retrieved.flatMap((item) => item.citations);
@@ -190,7 +184,7 @@ export async function discoverBuild(request: DiscoveryRequest, dependencies: Dis
     id: "30000000-0000-4000-8000-000000000001",
     discoveryRequestId: "20000000-0000-4000-8000-000000000001",
     intent,
-    safety,
+    classification,
     summary: intent.normalizedGoal,
     billOfMaterials: [{
       part: primaryPart,
@@ -208,5 +202,5 @@ export async function discoverBuild(request: DiscoveryRequest, dependencies: Dis
     freshness,
     selected: false,
   });
-  return { intent, safety, proposal, model: { ...model, value: intent } };
+  return { intent, classification, proposal, model: { ...model, value: intent } };
 }
