@@ -62,3 +62,29 @@ After promotion, the selected cited lesson showed its safety explanation,
 completion condition, citation, and the titled `USB LED guide` skill link with
 relevance text. The fixture Workshop steps also displayed the explicit
 no-additional-skills statement where no separate skill material was required.
+
+## Recorded verification: post-merge task evidence audit (2026-07-19)
+
+A read-only comparison of the merged implementation with T001-T017 supports
+the completed markers for T005, T007, T010-T013, and T017:
+
+- `workshop.ts` removes checkpoint grading and progression locks while retaining
+  selected-build step identity; `server.ts` has no checkpoint POST route.
+- `server.test.ts`, `workshop-discovery.test.ts`, and `integration.test.ts`
+  verify the removed route, direct selected-step access, and checkpoint-free
+  selected lessons.
+- `server.ts` records discovery progress and permits promotion only from a
+  completed approved proposal; `sandbox.tsx` renders the request outcome and
+  cited skill title, relevance, and source link (or the no-additional-skills
+  statement).
+
+The audit reran the focused GPU-free web verification successfully:
+
+```powershell
+pnpm --filter @educational-hardware-builder/web typecheck
+pnpm --filter @educational-hardware-builder/web test # 66 tests passed
+```
+
+T001-T004, T006, T008-T009, and T014-T016 remain unchecked. The merged source
+still retains some checkpoint or hazard-era contracts/fixtures, or lacks the
+specific replacement fixtures, tests, or cleanup those tasks require.
