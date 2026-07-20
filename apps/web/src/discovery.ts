@@ -12,6 +12,8 @@ import {
 } from "@educational-hardware-builder/schemas";
 import { z } from "zod";
 
+import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
+
 import { callModel, runDiscoveryIntent, type AgentDependencies, type ModelCallResult } from "./agents.js";
 import {
   findCompatibleAlternatives,
@@ -80,23 +82,18 @@ function fixtureGuidedLesson(proposal: BuildProposal): GuidedLesson {
   return GuidedLessonSchema.parse({
     proposalId: proposal.id,
     title: `${proposal.summary} — guided lesson`,
-    steps: [{
-      id: "10000000-0000-4000-8000-000000000010",
-      order: 1,
-      title: `Prepare the ${part}`,
-      safetyCategory: "none",
-      safetyCallout: "Keep the assembly disconnected from power while preparing parts.",
-      instruction: `Place the ${part} and its cited supporting parts on the work surface before making connections.`,
-      completionCondition: "All required parts are identified and remain disconnected from power.",
+    steps: weatherStationGoldenSteps.map((step) => ({
+      id: step.id,
+      order: step.order,
+      title: step.title,
+      safetyCategory: step.safetyCategory,
+      safetyCallout: `Review the cited guidance before ${step.title.toLowerCase()}.`,
+      instruction: step.instruction,
+      completionCondition: `Complete ${step.title.toLowerCase()} as described in the cited guidance.`,
       citations: [citation],
-      skills: [{
-        title: citation.title,
-        sourceUrl: citation.sourceUrl,
-        locator: citation.locator,
-        relevance: "Explains the connection and assembly concepts used in this step.",
-      }],
-      matingSelections: [],
-    }],
+      skills: step.skills,
+      matingSelections: step.matingSelections,
+    })),
     troubleshooting: [{
       problem: "A required part is not available.",
       explanation: "Recheck the cited proposal alternatives and verified inventory before substituting any part.",

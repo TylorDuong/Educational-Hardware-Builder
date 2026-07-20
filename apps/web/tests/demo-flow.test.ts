@@ -61,10 +61,11 @@ test("safe mode creates an approved proposal's cited lesson without exposing mod
   const firstStep = lesson.value.steps[0];
   assert.equal(lesson.source, "fallback");
   assert.equal(lesson.attempts, 0);
+  assert.equal(lesson.value.steps.length, 12);
   assert.equal(firstStep?.citations[0]?.sourceUrl, demoDiscoveryCitation.sourceUrl);
-  assert.match(firstStep?.safetyCallout ?? "", /disconnected from power/i);
-  assert.match(firstStep?.instruction ?? "", /work surface/i);
+  assert.match(firstStep?.safetyCallout ?? "", /cited guidance/i);
+  assert.match(firstStep?.instruction ?? "", /identify the esp32/i);
   assert.equal(firstStep?.matingSelections.length, 0);
   assert.equal("checkpoint" in (firstStep ?? {}), false);
-  assert.equal(firstStep?.skills[0]?.sourceUrl, demoDiscoveryCitation.sourceUrl);
+  assert.ok(firstStep?.skills[0]?.sourceUrl.startsWith("https://"));
 });
