@@ -54,7 +54,7 @@ export async function upsertIngestion(input: unknown, database: IngestDatabase, 
   const runId = randomUUID();
   try {
     await client.query("BEGIN");
-    await client.query(
+    const ingestionRunResult = await client.query(
       `INSERT INTO ingestion_runs (id, source_policy_id, source_policy_revision, idempotency_key, status)
        VALUES ($1, $2, $3, $4, 'processing')
        ON CONFLICT (source_policy_id, source_policy_revision, idempotency_key)
@@ -62,6 +62,7 @@ export async function upsertIngestion(input: unknown, database: IngestDatabase, 
        RETURNING id`,
       [runId, payload.sourcePolicyId, payload.sourcePolicyRevision, payload.idempotencyKey],
     );
+    const persistedRunId = ingestionRunResult.rows[0]?.id ?? runId;
     const sourceId = randomUUID();
     const sourceResult = await client.query(
       `INSERT INTO source_documents (id, source_policy_id, source_policy_revision, external_id, canonical_url, title, locator, content_hash, license, terms_status, fetched_at, expires_at)
@@ -105,9 +106,9 @@ export async function upsertIngestion(input: unknown, database: IngestDatabase, 
       );
     }
     const acceptedCount = payload.chunks.length + payload.catalogFacts.length + payload.cadAssets.length + payload.offers.length;
-    await client.query("UPDATE ingestion_runs SET status = 'accepted', accepted_count = $2, completed_at = now() WHERE id = $1", [runId, acceptedCount]);
+    await client.query("UPDATE ingestion_runs SET status = 'accepted', accepted_count = $2, completed_at = now() WHERE id = $1", [persistedRunId, acceptedCount]);
     await client.query("COMMIT");
-    return IngestUpsertResultSchema.parse({ ingestionRunId: runId, acceptedCount, rejectedCount: 0, status: "accepted" });
+    return IngestUpsertResultSchema.parse({ ingestionRunId: persistedRunId, acceptedCount, rejectedCount: 0, status: "accepted" });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw error instanceof IngestApiError ? error : new IngestApiError(503, "INGEST_TRANSACTION_FAILED", "Ingestion could not be recorded; no partial data was accepted.");

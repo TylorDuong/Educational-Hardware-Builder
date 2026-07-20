@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { WorkshopPromotionResponseSchema } from "@educational-hardware-builder/schemas";
 import { createApiServer, type ApiDependencies } from "../src/server.js";
 
 const userId = "40000000-0000-4000-8000-000000000001";
@@ -136,6 +137,19 @@ test("discovery API returns a cited safe proposal and typed progress events", as
       assert.match(stream, new RegExp(`\\\"stage\\\":\\\"${stage}\\\"`));
     }
   });
+});
+
+test("selected discovery proposal returns a public cited lesson without checkpoint answers", async () => {
+  await withServer(async (root) => {
+    const operationId = await startDiscovery(root, "I want a beginner USB desk light.");
+    const response = await fetch(`${root}/api/discovery/${operationId}/select`, { method: "POST" });
+    assert.equal(response.status, 200);
+    const promotion = WorkshopPromotionResponseSchema.parse(await response.json());
+    assert.equal(promotion.buildId, "30000000-0000-4000-8000-000000000001");
+    assert.ok(promotion.lesson.steps[0]?.citations.length);
+    assert.ok(promotion.lesson.troubleshooting.length);
+    assert.equal("correctAnswer" in (promotion.lesson.steps[0]?.checkpoint ?? {}), false);
+  }, dependencies({ demoSafeMode: true }));
 });
 
 test("discovery prefers verified inventory and labels an unavailable cached offer stale", async () => {

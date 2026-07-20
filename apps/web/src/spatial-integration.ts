@@ -11,6 +11,7 @@ import {
 } from "@educational-hardware-builder/solver";
 import type {
   AssemblyTransform,
+  GuidedLessonStep,
   MatingSelection,
   TemplateParams,
 } from "@educational-hardware-builder/schemas";
@@ -31,6 +32,22 @@ export type SolverTracedPart = {
   solverTrace: SolverTrace;
 };
 
+export type SolverIntegrationError = SolverError | {
+  code: "UNKNOWN_PART";
+  message: string;
+  partId: string;
+};
+
+export type SolverRetryMessage = {
+  code: SolverIntegrationError["code"];
+  message: string;
+  retryInstruction: string;
+};
+
+export type SelectedProposalSolveResult =
+  | { ok: true; traces: SolverTrace[]; message: string }
+  | { ok: false; failedStepId: string; selection: MatingSelection; rejection: SolverRetryMessage };
+
 export type TemplateDisplayResult =
   | { ok: true; stl: string; message: "L-bracket validated and ready to print." }
   | { ok: false; message: string };
@@ -41,7 +58,7 @@ function fixtureAsset(partId: string) {
   return asset;
 }
 
-export function formatSolverError(error: SolverError): string {
+export function formatSolverError(error: SolverIntegrationError): string {
   switch (error.code) {
     case "MISMATCHED_HOLE_COUNT":
       return `Mounting-hole count does not match: expected ${error.expected}, received ${error.actual}. Choose matching features.`;
@@ -51,11 +68,60 @@ export function formatSolverError(error: SolverError): string {
       return `${error.partIds[0]} and ${error.partIds[1]} collide on the ${error.overlapAxis}-axis. Choose a different symbolic mate.`;
     case "UNKNOWN_FEATURE":
       return `Feature ${error.featureId} is unavailable on part ${error.partId}. Choose an existing feature ID.`;
+    case "UNKNOWN_PART":
+      return `Part ${error.partId} has no approved CAD fixture. Choose a catalog part with validated symbolic features.`;
   }
 }
 
 export function solveWeatherStationSelection(selection: MatingSelection, stepId: string): SolveResult {
   return solveMatingSelection(selection, fixtureAsset(selection.movingPartId), fixtureAsset(selection.targetPartId), stepId);
+}
+
+function solveSelectedProposalSelection(selection: MatingSelection, stepId: string): SolveResult | { ok: false; error: SolverIntegrationError } {
+  const moving = weatherStationCadAssets.find((asset) => asset.partId === selection.movingPartId);
+  if (!moving) {
+    return { ok: false, error: { code: "UNKNOWN_PART", message: "Selected moving part has no approved CAD fixture.", partId: selection.movingPartId } };
+  }
+  const target = weatherStationCadAssets.find((asset) => asset.partId === selection.targetPartId);
+  if (!target) {
+    return { ok: false, error: { code: "UNKNOWN_PART", message: "Selected target part has no approved CAD fixture.", partId: selection.targetPartId } };
+  }
+  return solveMatingSelection(selection, moving, target, stepId);
+}
+
+/** Converts a deterministic solver failure into a typed retry instruction with no geometry payload. */
+export function solverRetryMessage(error: SolverIntegrationError): SolverRetryMessage {
+  return {
+    code: error.code,
+    message: formatSolverError(error),
+    retryInstruction: "Choose a different approved symbolic part and feature pairing, then retry deterministic validation. Do not provide manual geometry values.",
+  };
+}
+
+/** Solves only symbolic mates from a selected proposal lesson; transforms never originate from lesson output. */
+export function solveSelectedProposalParts(lesson: { steps: readonly Pick<GuidedLessonStep, "id" | "order" | "matingSelections">[] }): SelectedProposalSolveResult {
+  const traces: SolverTrace[] = [];
+  for (const step of [...lesson.steps].sort((left, right) => left.order - right.order)) {
+    for (const selection of step.matingSelections) {
+      const result = solveSelectedProposalSelection(selection, step.id);
+      if (!result.ok) {
+        return {
+          ok: false,
+          failedStepId: step.id,
+          selection,
+          rejection: solverRetryMessage(result.error),
+        };
+      }
+      traces.push({ selection, transform: result.transform, source: "deterministic-solver" });
+    }
+  }
+  return {
+    ok: true,
+    traces,
+    message: traces.length === 0
+      ? "This selected proposal has no symbolic assembly mates to solve."
+      : `Validated ${traces.length} symbolic assembly mate${traces.length === 1 ? "" : "s"} with the deterministic solver.`,
+  };
 }
 
 function firstFeature(partId: string): string {

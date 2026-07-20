@@ -33,11 +33,19 @@
       "waitBetweenTries": 1000
     },
     {
-      "parameters": { "jsCode": "const policy = $('Approved source-policy input').first().json;\nreturn [{ json: { version: 'v2', sourcePolicyId: policy.sourcePolicyId, sourcePolicyRevision: policy.sourcePolicyRevision, idempotencyKey: `documentation:${policy.canonicalUrl}`, source: { externalId: policy.canonicalUrl, canonicalUrl: policy.canonicalUrl, title: 'Espressif ESP-IDF documentation', locator: 'configured root', contentHash: 'REPLACE_WITH_SHA256', license: 'public documentation terms recorded', termsStatus: 'public-documentation', fetchedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString() }, chunks: [{ externalId: `${policy.canonicalUrl}:root`, content: $json.body, citation: { sourceUrl: policy.canonicalUrl, locator: 'configured root', title: 'Espressif ESP-IDF documentation' } }] } }];" },
+      "parameters": { "jsCode": "const policy = $('Approved source-policy input').first().json;\nconst { contentHash, ...sourceResponse } = $json;\nconst rawContent = typeof sourceResponse.body === 'string' ? sourceResponse.body : typeof sourceResponse.data === 'string' ? sourceResponse.data : sourceResponse;\nconst content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);\nconst chunkContent = content.slice(0, 50_000);\nreturn [{ json: { version: 'v2', sourcePolicyId: policy.sourcePolicyId, sourcePolicyRevision: policy.sourcePolicyRevision, idempotencyKey: `documentation:${policy.canonicalUrl}`, source: { externalId: policy.canonicalUrl, canonicalUrl: policy.canonicalUrl, title: 'Espressif ESP-IDF documentation', locator: 'configured root', contentHash, license: 'public documentation terms recorded', termsStatus: 'public-documentation', fetchedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString() }, chunks: [{ externalId: `${policy.canonicalUrl}:root`, content: chunkContent, citation: { sourceUrl: policy.canonicalUrl, locator: 'configured root', title: 'Espressif ESP-IDF documentation' } }] } }];" },
       "id": "docs-payload",
       "name": "Build typed documentation payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": { "action": "hash", "type": "SHA256", "binaryData": false, "value": "={{ typeof $json.body === 'string' ? $json.body : typeof $json.data === 'string' ? $json.data : JSON.stringify($json) }}", "dataPropertyName": "contentHash", "encoding": "hex" },
+      "id": "docs-content-hash",
+      "name": "Hash fetched content",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
       "position": [660, 0]
     },
     {
@@ -46,7 +54,7 @@
       "name": "Application ingest upsert",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 0],
+      "position": [1100, 0],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 1000
@@ -55,7 +63,8 @@
   "connections": {
     "Scheduled documentation refresh": { "main": [[{ "node": "Approved source-policy input", "type": "main", "index": 0 }]] },
     "Approved source-policy input": { "main": [[{ "node": "Fetch allowlisted documentation", "type": "main", "index": 0 }]] },
-    "Fetch allowlisted documentation": { "main": [[{ "node": "Build typed documentation payload", "type": "main", "index": 0 }]] },
+    "Fetch allowlisted documentation": { "main": [[{ "node": "Hash fetched content", "type": "main", "index": 0 }]] },
+    "Hash fetched content": { "main": [[{ "node": "Build typed documentation payload", "type": "main", "index": 0 }]] },
     "Build typed documentation payload": { "main": [[{ "node": "Application ingest upsert", "type": "main", "index": 0 }]] }
   },
   "active": false,

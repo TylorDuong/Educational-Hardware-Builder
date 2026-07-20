@@ -1,18 +1,40 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { GuidedLessonSchema } from "@educational-hardware-builder/schemas";
 import { bme280ToEsp32Selection } from "@educational-hardware-builder/schemas/mocks";
 
 import {
   assertSolverTraces,
   compileWeatherStationTemplate,
   formatSolverError,
+  solveSelectedProposalParts,
   solveWeatherStationSelection,
   solverTracedFixtureParts,
 } from "../src/spatial-integration.js";
 
 const stepId = "10000000-0000-4000-8000-000000000003";
 const printableStl = "solid bracket\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nendloop\nendfacet\nendsolid";
+const citation = { sourceUrl: "https://docs.example.test/usb-led-guide", locator: "Assembly", title: "USB LED guide" };
+
+function selectedLesson(selection = bme280ToEsp32Selection) {
+  return GuidedLessonSchema.parse({
+    proposalId: "30000000-0000-4000-8000-000000000001",
+    title: "Selected symbolic proposal",
+    steps: [{
+      id: stepId,
+      order: 1,
+      title: "Attach the sensor",
+      safetyCategory: "none",
+      safetyCallout: "Keep power disconnected while fitting the sensor.",
+      instruction: "Use the approved symbolic mate from this selected proposal.",
+      completionCondition: "The deterministic solver accepts the selected mate.",
+      citations: [citation],
+      matingSelections: [selection],
+    }],
+    troubleshooting: [],
+  });
+}
 
 test("the real solver provides actionable details for a rejected symbolic mate", () => {
   const result = solveWeatherStationSelection({
@@ -24,6 +46,34 @@ test("the real solver provides actionable details for a rejected symbolic mate",
   if (result.ok) return;
   assert.equal(result.error.code, "INCOMPATIBLE_SPACING");
   assert.match(formatSolverError(result.error), /expected 3 mm, received 2.5 mm/);
+});
+
+test("selected proposal mates receive transforms only from the deterministic solver", () => {
+  const result = solveSelectedProposalParts(selectedLesson());
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.traces.length, 1);
+  assert.deepEqual(result.traces[0]?.selection, bme280ToEsp32Selection);
+  assert.equal(result.traces[0]?.source, "deterministic-solver");
+  assert.equal(result.traces[0]?.transform.stepId, stepId);
+  assert.match(result.message, /Validated 1 symbolic assembly mate/);
+});
+
+test("selected proposal solver rejection supplies a typed symbolic retry without coordinates", () => {
+  const rejectedSelection = {
+    ...bme280ToEsp32Selection,
+    targetPartId: "f2b8d2a1-5725-4dae-a2ce-0874aa5c8fd3",
+    targetFeatureId: "breadboard-anchor-1",
+  };
+  const result = solveSelectedProposalParts(selectedLesson(rejectedSelection));
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.failedStepId, stepId);
+  assert.deepEqual(result.selection, rejectedSelection);
+  assert.equal(result.rejection.code, "INCOMPATIBLE_SPACING");
+  assert.match(result.rejection.message, /expected 3 mm, received 2.5 mm/);
+  assert.match(result.rejection.retryInstruction, /approved symbolic part and feature pairing/);
+  assert.doesNotMatch(`${result.rejection.message} ${result.rejection.retryInstruction}`, /position|quaternion|matrix|transform/i);
 });
 
 test("every sandbox part carries a deterministic solver trace", () => {

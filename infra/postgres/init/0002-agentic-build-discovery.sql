@@ -24,6 +24,50 @@ CREATE TABLE IF NOT EXISTS source_policies (
   CHECK (source_class <> 'documentation' OR offer_rules IS NULL)
 );
 
+-- Application-owned policies are seeded into the datastore so source-document
+-- and ingestion-run foreign keys enforce the same allowlist as the API.
+INSERT INTO source_policies (
+  id, revision, enabled, source_class, allowed_url_patterns, allowed_facts,
+  refresh_interval_hours, max_staleness_hours, terms, cad_asset_rules, offer_rules
+) VALUES
+  (
+    'espressif-documentation', 1, true, 'documentation',
+    '["https://www.espressif.com/sites/default/files/documentation/**", "https://docs.espressif.com/**"]'::jsonb,
+    '["citation", "documentation", "part_metadata", "cad_metadata"]'::jsonb,
+    720, 2160,
+    '{"evidenceRequired": true, "acceptedStatuses": ["public-documentation", "redistribution-permitted"], "prohibitedUses": ["automated-login", "browser-automation", "unapproved-scraping"]}'::jsonb,
+    '{"sourceUrlRequired": true, "identifiableLicenseRequired": true, "allowedLicenses": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"], "rejectAmbiguousLicense": true}'::jsonb,
+    NULL
+  ),
+  (
+    'bosch-sensortec-documentation', 1, true, 'documentation',
+    '["https://www.bosch-sensortec.com/products/environmental-sensors/**", "https://www.bosch-sensortec.com/media/**"]'::jsonb,
+    '["citation", "documentation", "part_metadata", "cad_metadata"]'::jsonb,
+    720, 2160,
+    '{"evidenceRequired": true, "acceptedStatuses": ["public-documentation", "redistribution-permitted"], "prohibitedUses": ["automated-login", "browser-automation", "unapproved-scraping"]}'::jsonb,
+    '{"sourceUrlRequired": true, "identifiableLicenseRequired": true, "allowedLicenses": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"], "rejectAmbiguousLicense": true}'::jsonb,
+    NULL
+  ),
+  (
+    'adafruit-catalog', 1, true, 'vendor_catalog',
+    '["https://www.adafruit.com/product/**", "https://cdn-shop.adafruit.com/datasheets/**"]'::jsonb,
+    '["citation", "catalog_offer", "part_metadata", "datasheet"]'::jsonb,
+    24, 72,
+    '{"evidenceRequired": true, "acceptedStatuses": ["public-catalog", "redistribution-permitted"], "prohibitedUses": ["checkout", "credentialed-purchase", "browser-automation", "unapproved-scraping"]}'::jsonb,
+    NULL,
+    '{"cachedLinksOnly": true, "checkoutAllowed": false, "requireObservedAt": true, "requireExpiresAt": true, "requireProviderSku": true}'::jsonb
+  )
+ON CONFLICT (id, revision) DO UPDATE SET
+  enabled = EXCLUDED.enabled,
+  source_class = EXCLUDED.source_class,
+  allowed_url_patterns = EXCLUDED.allowed_url_patterns,
+  allowed_facts = EXCLUDED.allowed_facts,
+  refresh_interval_hours = EXCLUDED.refresh_interval_hours,
+  max_staleness_hours = EXCLUDED.max_staleness_hours,
+  terms = EXCLUDED.terms,
+  cad_asset_rules = EXCLUDED.cad_asset_rules,
+  offer_rules = EXCLUDED.offer_rules;
+
 CREATE TABLE IF NOT EXISTS source_documents (
   id uuid PRIMARY KEY,
   source_policy_id text NOT NULL,

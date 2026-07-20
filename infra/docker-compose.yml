@@ -8,7 +8,9 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://hardware_builder:hardware_builder_dev@postgres:5432/hardware_builder
-      OLLAMA_URL: http://ollama:11434
+      # Set WEB_OLLAMA_URL=http://host.docker.internal:11434 to use a native
+      # Windows Ollama installation (for example, an AMD GPU via Vulkan).
+      OLLAMA_URL: ${WEB_OLLAMA_URL:-http://ollama:11434}
       DEMO_SAFE_MODE: ${DEMO_SAFE_MODE:-false}
       INGEST_API_TOKEN: ${INGEST_API_TOKEN:-local-dev-ingest-token}
     ports:

@@ -6,10 +6,12 @@ import { fileURLToPath } from "node:url";
 
 import { Pool } from "pg";
 import {
+  BuildProposalSchema,
   CitationSchema,
   DiscoveryProgressEventSchema,
   DiscoveryRequestSchema,
   InventoryPartSchema,
+  PublicGuidedLessonSchema,
   RetrievalQuerySchema,
   RetrievalResultSchema,
   type SourcePolicy,
@@ -19,10 +21,12 @@ import {
 } from "@educational-hardware-builder/schemas";
 
 import { progressSse, runResearch } from "./agents.js";
+import { createDemoDiscoveryDependencies } from "./demo-flow.js";
 import { listInventoryParts } from "./integration.js";
 import { IngestApiError, upsertIngestion, type IngestDatabase } from "./ingest.js";
-import { discoverBuild } from "./discovery.js";
-import { WorkshopAccessError, WorkshopSessions } from "./workshop.js";
+import { discoverBuild, generateGuidedLesson, type DiscoveryDependencies } from "./discovery.js";
+import { WorkshopAccessError, WorkshopSessions, weatherStationBuildId, workshopStepsForLesson } from "./workshop.js";
+import { applicationSourcePolicies } from "./source-policies.js";
 
 type Queryable = Pick<Pool, "query">;
 type Fetcher = typeof fetch;
@@ -33,6 +37,8 @@ export interface ApiDependencies {
   ollamaUrl: string;
   vramMb?: number;
   demoSafeMode?: boolean;
+  /** Allows focused tests to exercise alternate local-only discovery fixtures. */
+  demoDiscoveryDependencies?: DiscoveryDependencies;
   staticDir?: string;
   ingestApiToken?: string;
   sourcePolicies?: readonly SourcePolicy[];
@@ -185,6 +191,10 @@ function respondDiscoverySse(response: ServerResponse, events: readonly Discover
 
 export function createApiServer(dependencies: ApiDependencies) {
   const workshopSessions = new WorkshopSessions();
+  // Safe mode is a complete local fixture path: discovery must not fall through
+  // to the production embedding, database, or model dependencies.
+  const demoDiscoveryDependencies = dependencies.demoDiscoveryDependencies
+    ?? (dependencies.demoSafeMode ? createDemoDiscoveryDependencies() : undefined);
   const discoveryOperations = new Map<string, { status: "queued" | "complete" | "blocked" | "error"; result?: Awaited<ReturnType<typeof discoverBuild>>; error?: string; events: DiscoveryProgressEvent[] }>();
   return createServer(async (request, response) => {
     try {
@@ -202,11 +212,11 @@ export function createApiServer(dependencies: ApiDependencies) {
           events.push({ operationId, stage: "safety", message: "Applying server safety policy", percent: 20 });
           events.push({ operationId, stage: "intent", message: "Validating build intent", percent: 40 });
           const result = await discoverBuild(parsed.data, {
-            fetcher: dependencies.fetcher,
-            ollamaUrl: dependencies.ollamaUrl,
+            fetcher: demoDiscoveryDependencies?.fetcher ?? dependencies.fetcher,
+            ollamaUrl: demoDiscoveryDependencies?.ollamaUrl ?? dependencies.ollamaUrl,
             demoSafeMode: dependencies.demoSafeMode,
-            retrieve: (query) => retrieve({ query }, dependencies),
-            catalog: {
+            retrieve: demoDiscoveryDependencies?.retrieve ?? ((query) => retrieve({ query }, dependencies)),
+            catalog: demoDiscoveryDependencies?.catalog ?? {
               pool: {
                 query: (sql, values) => dependencies.pool.query(sql, [...values]),
               },
@@ -240,6 +250,35 @@ export function createApiServer(dependencies: ApiDependencies) {
         if (!operation) throw new ApiError(404, "Discovery operation was not found.");
         return respond(response, 200, { operationId, status: operation.status, proposal: operation.result?.proposal, safety: operation.result?.safety, error: operation.error });
       }
+      if (request.method === "POST" && /^\/api\/discovery\/[0-9a-f-]+\/select$/i.test(url.pathname)) {
+        const operationId = url.pathname.split("/")[3] ?? "";
+        const operation = discoveryOperations.get(operationId);
+        if (!operation || operation.status !== "complete" || !operation.result?.proposal || operation.result.safety.outcome !== "approved") {
+          throw new ApiError(409, "Only a completed safe discovery proposal can start a Workshop session.");
+        }
+        const proposal = BuildProposalSchema.parse({ ...operation.result.proposal, selected: true });
+        const lesson = await generateGuidedLesson(proposal, {
+          fetcher: dependencies.fetcher,
+          ollamaUrl: dependencies.ollamaUrl,
+          demoSafeMode: dependencies.demoSafeMode,
+          retrieve: (query) => retrieve({ query }, dependencies),
+        });
+        const sessionId = workshopSessions.createSession(proposal.id, workshopStepsForLesson(lesson.value));
+        const publicLesson = PublicGuidedLessonSchema.parse({
+          ...lesson.value,
+          steps: lesson.value.steps.map((step) => {
+            const { checkpoint, ...withoutCheckpoint } = step;
+            if (!checkpoint) return withoutCheckpoint;
+            const { correctAnswer: _correctAnswer, ...publicCheckpoint } = checkpoint;
+            return { ...withoutCheckpoint, checkpoint: publicCheckpoint };
+          }),
+        });
+        return respond(response, 200, {
+          sessionId,
+          buildId: proposal.id,
+          lesson: publicLesson,
+        });
+      }
       if (request.method === "POST" && url.pathname === "/api/ingest/v2/upsert") {
         if (!dependencies.ingestApiToken) throw new ApiError(503, "Ingestion API is not configured.");
         if (request.headers.authorization !== `Bearer ${dependencies.ingestApiToken}`) throw new ApiError(401, "Ingestion API authentication failed.");
@@ -247,7 +286,11 @@ export function createApiServer(dependencies: ApiDependencies) {
           throw new ApiError(503, "Ingestion database transactions are unavailable.");
         }
         try {
-          return respond(response, 202, await upsertIngestion(await readJson(request), dependencies.pool as IngestDatabase, dependencies.sourcePolicies ?? []));
+          return respond(response, 202, await upsertIngestion(
+            await readJson(request),
+            dependencies.pool as IngestDatabase,
+            dependencies.sourcePolicies ?? applicationSourcePolicies,
+          ));
         } catch (error) {
           if (error instanceof IngestApiError) throw new ApiError(error.status, error.message);
           throw error;
@@ -287,19 +330,23 @@ export function createApiServer(dependencies: ApiDependencies) {
       }
       if (request.method === "GET" && url.pathname.startsWith("/api/workshop/steps/")) {
         const stepId = decodeURIComponent(url.pathname.slice("/api/workshop/steps/".length));
-        const step = workshopSessions.accessStep(url.searchParams.get("sessionId") ?? "demo", stepId);
-        const { checkpoint, ...withoutCheckpoint } = step;
-        return respond(response, 200, {
-          ...withoutCheckpoint,
-          checkpoint: checkpoint ? { id: checkpoint.id, prompt: checkpoint.prompt, choices: checkpoint.choices } : undefined,
-        });
+        return respond(response, 200, workshopSessions.accessStep(
+          url.searchParams.get("sessionId") ?? "demo",
+          url.searchParams.get("buildId") ?? weatherStationBuildId,
+          stepId,
+        ));
       }
       if (request.method === "POST" && request.url === "/api/workshop/checkpoints") {
-        const body = await readJson(request) as { sessionId?: unknown; checkpointId?: unknown; answer?: unknown };
+        const body = await readJson(request) as { sessionId?: unknown; buildId?: unknown; checkpointId?: unknown; answer?: unknown };
         if (typeof body.sessionId !== "string" || typeof body.checkpointId !== "string" || typeof body.answer !== "string") {
           throw new ApiError(400, "Checkpoint responses require a session, checkpoint, and answer.");
         }
-        return respond(response, 200, workshopSessions.gradeCheckpoint(body.sessionId, body.checkpointId, body.answer));
+        return respond(response, 200, workshopSessions.gradeCheckpoint(
+          body.sessionId,
+          typeof body.buildId === "string" ? body.buildId : weatherStationBuildId,
+          body.checkpointId,
+          body.answer,
+        ));
       }
       if (request.method === "GET" && await serveStatic(url.pathname, response, dependencies.staticDir ?? fileURLToPath(new URL("../dist/", import.meta.url)))) {
         return;

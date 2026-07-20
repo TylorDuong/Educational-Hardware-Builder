@@ -1,15 +1,18 @@
 import {
   BuildProposalSchema,
+  GuidedLessonSchema,
   SafetyDecisionSchema,
   type Citation,
   type BuildIntent,
   type BuildProposal,
   type DiscoveryRequest,
+  type GuidedLesson,
   type RetrievalResult,
   type SafetyDecision,
 } from "@educational-hardware-builder/schemas";
+import { z } from "zod";
 
-import { runDiscoveryIntent, type AgentDependencies, type ModelCallResult } from "./agents.js";
+import { callModel, runDiscoveryIntent, type AgentDependencies, type ModelCallResult } from "./agents.js";
 import {
   findCompatibleAlternatives,
   findFreshCatalogOffers,
@@ -48,6 +51,100 @@ function uniqueCitations(citations: readonly Citation[]): Citation[] {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
+  });
+}
+
+const citationKey = (citation: Citation): string => `${citation.sourceUrl}\u0000${citation.locator}\u0000${citation.title}`;
+
+const guidedLessonJsonSchema = {
+  type: "object",
+  required: ["proposalId", "title", "steps", "troubleshooting"],
+  additionalProperties: false,
+  properties: {
+    proposalId: { type: "string", format: "uuid" },
+    title: { type: "string", minLength: 1 },
+    steps: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        required: ["id", "order", "title", "safetyCategory", "safetyCallout", "instruction", "completionCondition", "citations", "matingSelections"],
+        additionalProperties: false,
+      },
+    },
+    troubleshooting: { type: "array" },
+  },
+} as const;
+
+function fixtureGuidedLesson(proposal: BuildProposal): GuidedLesson {
+  const citation = proposal.citations[0];
+  if (!citation) throw new Error("A guided lesson requires at least one proposal citation.");
+  const part = proposal.billOfMaterials[0]?.part.name ?? "selected low-voltage part";
+  return GuidedLessonSchema.parse({
+    proposalId: proposal.id,
+    title: `${proposal.summary} — guided lesson`,
+    steps: [{
+      id: "10000000-0000-4000-8000-000000000010",
+      order: 1,
+      title: `Prepare the ${part}`,
+      safetyCategory: "none",
+      safetyCallout: "Keep the assembly disconnected from power while preparing parts.",
+      instruction: `Place the ${part} and its cited supporting parts on the work surface before making connections.`,
+      completionCondition: "All required parts are identified and remain disconnected from power.",
+      citations: [citation],
+      checkpoint: {
+        id: "20000000-0000-4000-8000-000000000010",
+        prompt: "What should remain disconnected while you prepare the parts?",
+        choices: ["Power", "The cited guide"],
+        correctAnswer: "Power",
+      },
+      matingSelections: [],
+    }],
+    troubleshooting: [{
+      problem: "A required part is not available.",
+      explanation: "Recheck the cited proposal alternatives and verified inventory before substituting any part.",
+      citations: [citation],
+    }],
+  });
+}
+
+function guidedLessonSchemaFor(proposal: BuildProposal) {
+  const permittedCitations = new Set(proposal.citations.map(citationKey));
+  return GuidedLessonSchema.superRefine((lesson, context) => {
+    if (lesson.proposalId !== proposal.id) {
+      context.addIssue({ code: "custom", path: ["proposalId"], message: "Guided lesson must belong to the selected proposal." });
+    }
+    for (const [index, step] of lesson.steps.entries()) {
+      step.citations.forEach((citation, citationIndex) => {
+        if (!permittedCitations.has(citationKey(citation))) {
+          context.addIssue({ code: "custom", path: ["steps", index, "citations", citationIndex], message: "Lesson citations must come from the proposal retrieval set." });
+        }
+      });
+    }
+    for (const [index, item] of lesson.troubleshooting.entries()) {
+      item.citations.forEach((citation, citationIndex) => {
+        if (!permittedCitations.has(citationKey(citation))) {
+          context.addIssue({ code: "custom", path: ["troubleshooting", index, "citations", citationIndex], message: "Troubleshooting citations must come from the proposal retrieval set." });
+        }
+      });
+    }
+  });
+}
+
+/** Generates only schema-validated, proposal-cited lesson data; fixture mode never calls a model. */
+export async function generateGuidedLesson(proposal: BuildProposal, dependencies: AgentDependencies): Promise<ModelCallResult<GuidedLesson>> {
+  if (proposal.safety.outcome !== "approved") throw new Error("Guided lessons require an approved proposal.");
+  const fallback = () => fixtureGuidedLesson(proposal);
+  return callModel<GuidedLesson>({
+    schema: guidedLessonSchemaFor(proposal) as z.ZodType<GuidedLesson>,
+    jsonSchema: guidedLessonJsonSchema,
+    prompt: `Generate a beginner guided hardware lesson for this approved proposal. Return only JSON. Every step must provide a safety callout before its instruction, cite only the supplied proposal citations, use symbolic mating IDs only, and never emit coordinates, transforms, matrices, or electrical design values.\n\nProposal: ${JSON.stringify(proposal)}`,
+    model: "llama3.1:8b",
+    temperature: 0.2,
+    fallback,
+    fetcher: dependencies.fetcher,
+    ollamaUrl: dependencies.ollamaUrl,
+    demoSafeMode: dependencies.demoSafeMode,
   });
 }
 

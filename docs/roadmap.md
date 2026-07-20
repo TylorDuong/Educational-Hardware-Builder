@@ -1,20 +1,20 @@
 # Product Roadmap
 
-The original MVP is complete. This roadmap converts its remaining operational and product risks into a sequence that keeps the fixture-backed demo reliable while expanding live capability deliberately.
+The original MVP and superseded authored-build sprint are historical. The active direction is Agentic Build Discovery: preserve the fixture-backed demo while deliberately adding cited local discovery, cached sourcing, server-gated lessons, and background-only ingestion.
 
-## Now: stabilize the MVP
+## Now: complete the Agentic Build Discovery handoff
 
-1. **Make the default demo repeatable.** Add a CI job that runs `pnpm test`, `pnpm typecheck`, and `pnpm build`; document its green result in release notes.
-2. **Add a smoke test for `pnpm quickstart`.** Start the built server in `DEMO_SAFE_MODE=true`, request `/api/health`, and load the workshop root to prevent a broken first-run path.
-3. **Publish a demo checklist.** Cover browser support, reset procedure, fixture-mode behavior, screenshots, and the expected recovery message when a live dependency is unavailable.
+1. **Keep the fixture path repeatable.** `DEMO_SAFE_MODE=true` must complete safe discovery, source selection, and a cited lesson with no Docker, GPU, live model, or vendor request. The quickstart smoke protects discovery routes, typed SSE, static assets, and the five-tab shell.
+2. **Verify the local-stack boundary.** Compose must validate before startup; n8n may use only its ingestion API credential and `POST /api/ingest/v2/upsert`, while `ingestion/source-policy.yml` limits documentation and vendor refreshes to allowlisted HTTPS records.
+3. **Record the human evidence.** A developer must separately confirm the n8n API-only smoke, local-Ollama timing measurements, and browser flow. These are release gates, not claims made by fixture tests.
 
-Exit criteria: a new contributor can clone, install, run `pnpm quickstart`, and complete the weather-station flow without Docker or model downloads.
+Exit criteria: a new contributor can clone, install, run `pnpm quickstart`, complete a safe fixture discovery, see a hard-blocked unsafe request, and follow the documented path for optional local-stack evidence.
 
 ## Next: validate live services
 
-1. **Pin and verify model availability.** Confirm the exact Ollama tags (`llama3.2:3b`, `llama3.1:8b`, `qwen2.5-coder:7b`, and `nomic-embed-text`) before a live rehearsal.
-2. **Exercise the Compose stack end to end.** Start services, run `scripts/demo-reset.ps1`, seed the cited corpus, verify `/api/health`, and record a live/fixture decision for each workshop step.
-3. **Harden operations.** Add health/readiness reporting for Postgres, Ollama, and OpenSCAD, timeouts around model calls, and a concise operator recovery guide.
+1. **Pin and verify model availability.** Confirm the exact Ollama tags (`llama3.2:3b`, `llama3.1:8b`, `qwen2.5-coder:7b`, and `nomic-embed-text`) before a live rehearsal, then record first-token, retrieval, and clean-start measurements.
+2. **Exercise the Compose stack end to end.** Run `docker compose -f infra/docker-compose.yml config`, start services, run `scripts/demo-reset.ps1` only against disposable demo data, seed the cited corpus, verify `/api/health`, and record a live/fixture decision for each workshop step.
+3. **Harden ingestion operations.** Keep source-policy revisions, ingestion errors, offer freshness, and API-only n8n audit evidence visible; add concise recovery guidance for Postgres, Ollama, OpenSCAD, and failed refreshes.
 
 Exit criteria: a documented demo machine passes a live rehearsal and fixture mode remains an explicit, tested fallback.
 

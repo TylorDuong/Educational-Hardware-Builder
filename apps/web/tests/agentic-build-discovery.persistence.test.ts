@@ -13,6 +13,9 @@ async function migration(): Promise<string> {
 test("migration enforces idempotent source and ingestion identities", async () => {
   const sql = await migration();
 
+  assert.match(sql, /INSERT INTO source_policies/);
+  assert.match(sql, /'adafruit-catalog', 1, true, 'vendor_catalog'/);
+  assert.match(sql, /ON CONFLICT \(id, revision\) DO UPDATE SET/);
   assert.match(sql, /UNIQUE \(source_policy_id, source_policy_revision, external_id, content_hash\)/);
   assert.match(sql, /UNIQUE \(source_policy_id, source_policy_revision, idempotency_key\)/);
   assert.match(sql, /FOREIGN KEY \(source_policy_id, source_policy_revision\) REFERENCES source_policies \(id, revision\)/);

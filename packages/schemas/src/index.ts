@@ -428,6 +428,19 @@ export const GuidedLessonSchema = z.object({
     citations: z.array(CitationSchema).min(1),
   }).strict()).default([]),
 }).strict();
+/** Lesson data returned to a learner; checkpoint answers remain server-only. */
+export const PublicCheckpointSchema = CheckpointSchema.omit({ correctAnswer: true });
+export const PublicGuidedLessonStepSchema = GuidedLessonStepSchema.extend({
+  checkpoint: PublicCheckpointSchema.optional(),
+});
+export const PublicGuidedLessonSchema = GuidedLessonSchema.extend({
+  steps: z.array(PublicGuidedLessonStepSchema).min(1),
+});
+export const WorkshopPromotionResponseSchema = z.object({
+  sessionId: z.string().uuid(),
+  buildId: z.string().uuid(),
+  lesson: PublicGuidedLessonSchema,
+}).strict();
 
 export const DiscoveryOperationStatusSchema = z.enum([
   "queued",
@@ -504,5 +517,7 @@ export type BuildProposalBomEntry = z.infer<typeof BuildProposalBomEntrySchema>;
 export type BuildProposal = z.infer<typeof BuildProposalSchema>;
 export type GuidedLessonStep = z.infer<typeof GuidedLessonStepSchema>;
 export type GuidedLesson = z.infer<typeof GuidedLessonSchema>;
+export type PublicGuidedLesson = z.infer<typeof PublicGuidedLessonSchema>;
+export type WorkshopPromotionResponse = z.infer<typeof WorkshopPromotionResponseSchema>;
 export type DiscoveryOperation = z.infer<typeof DiscoveryOperationSchema>;
 export type DiscoveryProgressEvent = z.infer<typeof DiscoveryProgressEventSchema>;

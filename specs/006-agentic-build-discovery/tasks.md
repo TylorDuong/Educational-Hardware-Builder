@@ -70,7 +70,7 @@ data.
 - [x] T017 [US2] Add catalog repository queries for verified inventory matching, compatible alternatives, and freshness filtering in `apps/web/src/catalog.ts`.
 - [x] T018 [US2] Add offer/compatibility API and ranking tests in `apps/web/tests/catalog.test.ts` and `apps/web/tests/discovery.test.ts`.
 - [x] T019 [US2] Extend proposal generation to return validated BOM entries, alternatives, cached offers, source links, and freshness state in `apps/web/src/discovery.ts`.
-- [ ] T020 [US2] Render parts, inventory gaps, alternatives, shop links, source provenance, and stale labels in existing Inventory/Research panels in `apps/web/src/sandbox.tsx`.
+- [x] T020 [US2] Render parts, inventory gaps, alternatives, shop links, source provenance, and stale labels in existing Inventory/Research panels in `apps/web/src/sandbox.tsx`.
 
 **Checkpoint**: Every displayed choice is attributable, locally cached, and
 honest about freshness; checkout and live shop calls remain absent.
@@ -86,12 +86,12 @@ lesson with symbolic deterministic assembly support.
 wrong answer produces cited re-explanation; symbolic selections alone reach the
 solver.
 
-- [ ] T021 [US3] Add guided-lesson and proposal-promotion contract tests for citations, safety-first order, checkpoints, and coordinate leaks in `apps/web/tests/generated-build.test.ts`.
-- [ ] T022 [US3] Implement typed guided lesson generation, citation-subset validation, and deterministic fixture fallback in `apps/web/src/discovery.ts`.
-- [ ] T023 [US3] Make Workshop sessions, locked-step checks, explanations, and checkpoint grading build-scoped in `apps/web/src/workshop.ts` and `apps/web/src/server.ts`.
-- [ ] T024 [US3] Add build-scoped Workshop tests for denial, wrong answer, correct unlock, and weather-station regression in `apps/web/tests/workshop-discovery.test.ts`.
-- [ ] T025 [US3] Extend deterministic solver integration for selected symbolic proposal parts and typed rejection/retry messaging in `apps/web/src/spatial-integration.ts` and `apps/web/tests/spatial-integration.test.ts`.
-- [ ] T026 [US3] Render the selected lesson's citations, safety callouts, checkpoints, troubleshooting, and solver result in `apps/web/src/sandbox.tsx`.
+- [x] T021 [US3] Add guided-lesson and proposal-promotion contract tests for citations, safety-first order, checkpoints, and coordinate leaks in `apps/web/tests/generated-build.test.ts`.
+- [x] T022 [US3] Implement typed guided lesson generation, citation-subset validation, and deterministic fixture fallback in `apps/web/src/discovery.ts`.
+- [x] T023 [US3] Make Workshop sessions, locked-step checks, explanations, and checkpoint grading build-scoped in `apps/web/src/workshop.ts` and `apps/web/src/server.ts`.
+- [x] T024 [US3] Add build-scoped Workshop tests for denial, wrong answer, correct unlock, and weather-station regression in `apps/web/tests/workshop-discovery.test.ts`.
+- [x] T025 [US3] Extend deterministic solver integration for selected symbolic proposal parts and typed rejection/retry messaging in `apps/web/src/spatial-integration.ts` and `apps/web/tests/spatial-integration.test.ts`.
+- [x] T026 [US3] Render the selected lesson's citations, safety callouts, checkpoints, troubleshooting, and solver result in `apps/web/src/sandbox.tsx`.
 
 **Checkpoint**: A learner can safely advance through a selected proposal while
 the server owns gates and the solver owns transforms.
@@ -107,18 +107,18 @@ has an observable local-stack ingestion path when services are enabled.
 lesson from fixtures; local Compose can perform one allowlisted ingestion
 without n8n direct database access.
 
-- [ ] T027 [US4] Add deterministic safe-mode discovery/catalog/lesson fixtures and regression scenarios in `apps/web/src/demo-flow.ts` and `apps/web/tests/demo-flow.test.ts`.
-- [ ] T028 [US4] Add safe-mode end-to-end discovery, blocked hazard, offer freshness, and Workshop tests in `apps/web/tests/integration.test.ts`.
-- [ ] T029 [US4] Add quickstart smoke coverage for discovery routes, SSE assets, and five-tab rendering in `apps/web/tests/quickstart.test.ts` or `scripts/quickstart-smoke.mjs`.
-- [ ] T030 [US4] Update `README.md`, `docs/roadmap.md`, and `specs/006-agentic-build-discovery/quickstart.md` with fixture, local-stack, source-policy, reset, and human-verification instructions.
+- [x] T027 [US4] Add deterministic safe-mode discovery/catalog/lesson fixtures and regression scenarios in `apps/web/src/demo-flow.ts` and `apps/web/tests/demo-flow.test.ts`.
+- [x] T028 [US4] Add safe-mode end-to-end discovery, blocked hazard, offer freshness, and Workshop tests in `apps/web/tests/integration.test.ts`.
+- [x] T029 [US4] Add quickstart smoke coverage for discovery routes, SSE assets, and five-tab rendering in `apps/web/tests/quickstart.test.ts` or `scripts/quickstart-smoke.mjs`.
+- [x] T030 [US4] Update `README.md`, `docs/roadmap.md`, and `specs/006-agentic-build-discovery/quickstart.md` with fixture, local-stack, source-policy, reset, and human-verification instructions.
 
 ---
 
 ## Phase 7: Verification and handoff
 
-- [ ] T031 Run schemas, solver, and SCAD tests/typechecks; record results and required negative-path coverage in `specs/006-agentic-build-discovery/quickstart.md`.
-- [ ] T032 Run web tests, web typecheck, sandbox build, and `git diff --check`; record results in `specs/006-agentic-build-discovery/quickstart.md`.
-- [ ] T033 Run the source-policy/n8n local-stack smoke and record explicit developer confirmation that n8n used only the upsert API in `specs/006-agentic-build-discovery/quickstart.md`.
+- [x] T031 Run schemas, solver, and SCAD tests/typechecks; record results and required negative-path coverage in `specs/006-agentic-build-discovery/quickstart.md`.
+- [x] T032 Run web tests, web typecheck, sandbox build, and `git diff --check`; record results in `specs/006-agentic-build-discovery/quickstart.md`.
+- [x] T033 Run the source-policy/n8n local-stack smoke and record explicit developer confirmation that n8n used only the upsert API in `specs/006-agentic-build-discovery/quickstart.md`.
 - [ ] T034 Run a local-Ollama discovery smoke through the Make target and record first-token/retrieval/clean-start measurements in `specs/006-agentic-build-discovery/quickstart.md`.
 - [ ] T035 Run `pnpm quickstart` with `DEMO_SAFE_MODE=true`, complete a safe discovery and blocked-hazard browser flow, and record explicit human confirmation in `specs/006-agentic-build-discovery/quickstart.md`.
 - [ ] T036 Prepare a focused pull request from `codex/authored-build` to `main`, noting that `specs/005-authored-build` is superseded history and `.sprint/status.yml` remains unedited.
