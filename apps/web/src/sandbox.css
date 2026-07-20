@@ -1261,6 +1261,196 @@ pre {
   gap: 1rem;
 }
 
+.wiring-panel {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.wiring-panel::before {
+  background: var(--blue);
+}
+
+.wiring-diagram {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.31fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.wiring-canvas-frame {
+  min-width: 0;
+  overflow: auto;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background:
+    linear-gradient(to right, rgb(197 181 141 / 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(197 181 141 / 0.2) 1px, transparent 1px),
+    var(--surface);
+  background-size: 24px 24px;
+}
+
+.wiring-canvas {
+  display: block;
+  min-width: 760px;
+  width: 100%;
+  height: auto;
+  font-family: var(--mono);
+}
+
+.wiring-symbol rect {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.wiring-symbol .symbol-refdes {
+  fill: var(--blue-strong);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.wiring-symbol .symbol-value {
+  fill: var(--ink);
+  font-family: "Aptos", "Segoe UI", Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.wiring-pin line,
+.wiring-pin circle {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.wiring-pin text {
+  fill: var(--ink);
+  font-size: 13px;
+}
+
+.wiring-route {
+  transition: opacity 150ms ease;
+}
+
+.wiring-route polyline {
+  fill: none;
+  stroke-linecap: square;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.wiring-route text {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.wiring-route.muted {
+  opacity: 0.16;
+}
+
+.wiring-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.net-picker {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.net-picker-button {
+  display: grid;
+  grid-template-columns: 0.7rem minmax(0, 1fr);
+  gap: 0.15rem 0.55rem;
+  width: 100%;
+  padding: 0.65rem;
+  border: 2px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+}
+
+.net-picker-button:hover,
+.net-picker-button.active {
+  border-color: var(--blue);
+  background: #fff;
+}
+
+.net-picker-button:active {
+  transform: translateY(1px);
+}
+
+.net-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: 0.28rem;
+  border-radius: 50%;
+}
+
+.net-picker-button small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.wiring-checks {
+  padding-top: 0.95rem;
+  border-top: 1px solid var(--line);
+}
+
+.wiring-checks ul {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wiring-checks li {
+  display: grid;
+  grid-template-columns: 1.2rem minmax(0, 1fr);
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.wiring-checks li span {
+  display: grid;
+  width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.wiring-checks li.review span {
+  background: var(--yellow-soft);
+  color: #765400;
+}
+
+.wiring-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.wiring-note {
+  border-color: var(--yellow-strong);
+  background: var(--yellow-soft);
+}
+
+.wiring-note::before {
+  background: var(--yellow-strong);
+}
+
 .skill-references .source-list {
   gap: 0.45rem;
 }
@@ -1433,6 +1623,11 @@ pre {
   }
 
   .viewer-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .wiring-diagram,
+  .wiring-notes {
     grid-template-columns: 1fr;
   }
 

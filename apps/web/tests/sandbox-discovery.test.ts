@@ -6,10 +6,10 @@ async function sandboxSource(): Promise<string> {
   return readFile(new URL("../src/sandbox.tsx", import.meta.url), "utf8");
 }
 
-test("Dashboard preserves discovery behavior, five-tab navigation, and section help", async () => {
+test("Dashboard preserves discovery behavior, six-tab navigation, and section help", async () => {
   const source = await sandboxSource();
 
-  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Workshop"\] as const/);
+  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Wiring", "Workshop"\] as const/);
   assert.match(source, /function PageHeading/);
   assert.match(source, /function SectionHelpModal/);
   assert.match(source, /className="help-trigger"/);
@@ -55,6 +55,9 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /setActiveTab\("Workshop"\)/);
   assert.match(source, /Opening your lesson/);
   assert.match(source, /function SelectedWorkshopPanel/);
+  assert.match(source, /function WiringPanel/);
+  assert.match(source, /WiringDiagram netlist=\{weatherStationWiringNetlist\}/);
+  assert.match(source, /activeTab === "Wiring"/);
   assert.match(source, /function InteractiveAssemblyViewer/);
   assert.match(source, /createSchematicScene/);
   assert.match(source, /routes=\{schematicScene\.routes\}/);

@@ -25,12 +25,14 @@ import { matchedInventoryPartIds, parseOwnedParts, type OwnedPartInput } from ".
 import { createSchematicScene } from "./schematic-scene.js";
 import { applicationSourcePolicies } from "./source-policies.js";
 import { solveSelectedProposalParts } from "./spatial-integration.js";
+import { weatherStationWiringNetlist } from "../../../packages/schemas/fixtures/weather-station-wiring.js";
+import { WiringDiagram } from "./components/WiringDiagram.js";
 
 import "./sandbox.css";
 
 const sessionId = "workshop-demo";
 const discoveryUserId = "40000000-0000-4000-8000-000000000001";
-const tabs = ["Dashboard", "Research", "Parts", "Build", "Workshop"] as const;
+const tabs = ["Dashboard", "Research", "Parts", "Build", "Wiring", "Workshop"] as const;
 const LazyMechView = lazy(async () => ({
   default: (await import("./components/MechView.js")).MechView,
 }));
@@ -75,6 +77,10 @@ const sectionGuides: Record<Tab, SectionGuide> = {
   Build: {
     title: "Checking the fit",
     detail: "The planner suggests named connections. A deterministic solver checks them before the 3D view uses them.",
+  },
+  Wiring: {
+    title: "Reading the wiring diagram",
+    detail: "Select a colored net to trace its named pins. The diagram is routed from a strict netlist, so it never guesses where a wire should go.",
   },
   Workshop: {
     title: "Using the workshop",
@@ -451,6 +457,45 @@ function BuildPanel({
           </div>
           <div className="solver-deny">RAW COORDINATES: BLOCKED</div>
           <pre aria-label="Example symbolic mating selection">{symbolicMatingPreview}</pre>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function WiringPanel({ onOpenHelp }: { onOpenHelp: (section: Tab) => void }) {
+  const citedComponents = [...weatherStationWiringNetlist.components];
+  return (
+    <section className="wiring-view">
+      <PageHeading
+        section="Wiring"
+        title="Connect the sensor"
+        caption="Trace the power and I²C wires between the BME280 breakout and ESP32-DevKitC V4."
+        onOpenHelp={onOpenHelp}
+      />
+      <section className="wiring-panel panel">
+        <div className="panel-heading">
+          <p className="eyebrow">SENSOR HARNESS</p>
+          <span className="status-indicator">CHECKED</span>
+        </div>
+        <WiringDiagram netlist={weatherStationWiringNetlist} />
+      </section>
+      <div className="wiring-notes">
+        <section className="panel wiring-note">
+          <p className="eyebrow">POWER NOTE</p>
+          <h3>Do not guess the battery lead.</h3>
+          <p>The fixture’s battery route is mechanical only. Verify the regulator or USB power module for your specific battery pack before connecting it to the ESP32.</p>
+        </section>
+        <section className="panel wiring-note">
+          <p className="eyebrow">PIN REFERENCES</p>
+          <ul className="source-list">
+            {citedComponents.map((component) => (
+              <li key={component.refdes}>
+                <a href={component.citation.sourceUrl} target="_blank" rel="noreferrer">{component.refdes}: {component.citation.title}</a>
+                <span>{component.citation.locator}</span>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </section>
@@ -1284,6 +1329,8 @@ function Workshop() {
       )
       : activeTab === "Build"
         ? <BuildPanel onOpenWorkshop={() => void startSelectedWorkshop()} isStartingWorkshop={isStartingWorkshop} onOpenHelp={setSelectedHelp} />
+        : activeTab === "Wiring"
+          ? <WiringPanel onOpenHelp={setSelectedHelp} />
         : activeTab === "Parts"
           ? <PartsPanel discovery={discovery} ownedParts={ownedParts} onOpenWorkshop={() => setActiveTab("Build")} onOpenHelp={setSelectedHelp} />
           : isStartingWorkshop

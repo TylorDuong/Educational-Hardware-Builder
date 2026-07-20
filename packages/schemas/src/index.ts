@@ -260,6 +260,56 @@ export const SchematicLayoutResultSchema = z.discriminatedUnion("outcome", [
   SchematicLayoutRejectedResultSchema,
 ]);
 
+/**
+ * Electrical intent stays entirely symbolic. The deterministic wiring renderer owns every
+ * symbol position and every orthogonal segment; model-facing payloads can only name pins.
+ */
+export const ElectricalPinTypeSchema = z.enum([
+  "power_in",
+  "power_out",
+  "input",
+  "output",
+  "bidirectional",
+  "passive",
+]);
+
+export const ElectricalPinSchema = z.object({
+  name: NonEmptyTextSchema.max(80),
+  type: ElectricalPinTypeSchema,
+}).strict();
+
+export const ElectricalComponentRoleSchema = z.enum(["input", "logic", "output", "power"]);
+
+export const ElectricalComponentSchema = z.object({
+  refdes: z.string().regex(/^[A-Z][A-Z0-9]*$/),
+  role: ElectricalComponentRoleSchema,
+  value: NonEmptyTextSchema.max(160),
+  /** A known local symbol template; its dimensions and pin positions are renderer-owned. */
+  libraryRef: NonEmptyTextSchema.max(160),
+  pins: z.record(ElectricalPinSchema).refine((pins) => Object.keys(pins).length > 0, {
+    message: "An electrical component must define at least one named pin",
+  }),
+  citation: CitationSchema,
+}).strict();
+
+export const ElectricalNetConnectionSchema = z.object({
+  refdes: z.string().regex(/^[A-Z][A-Z0-9]*$/),
+  pin: NonEmptyTextSchema.max(80),
+}).strict();
+
+export const ElectricalNetSchema = z.object({
+  name: NonEmptyTextSchema.max(160),
+  kind: z.enum(["power", "signal"]),
+  connections: z.array(ElectricalNetConnectionSchema).min(2).max(100),
+}).strict();
+
+/** Strict netlist handoff used by the wiring tab and future Extractor/Librarian/Architect flow. */
+export const ElectricalNetlistSchema = z.object({
+  projectName: NonEmptyTextSchema.max(160),
+  components: z.array(ElectricalComponentSchema).min(1).max(100),
+  nets: z.array(ElectricalNetSchema).min(1).max(200),
+}).strict();
+
 /** Model-facing selection is symbolic: it never contains raw transforms. */
 export const MatingSelectionSchema = z.object({
   movingPartId: z.string().uuid(),
@@ -682,6 +732,13 @@ export type SchematicLayoutReadyResult = z.infer<typeof SchematicLayoutReadyResu
 export type SchematicLayoutQuarantinedResult = z.infer<typeof SchematicLayoutQuarantinedResultSchema>;
 export type SchematicLayoutRejectedResult = z.infer<typeof SchematicLayoutRejectedResultSchema>;
 export type SchematicLayoutResult = z.infer<typeof SchematicLayoutResultSchema>;
+export type ElectricalPinType = z.infer<typeof ElectricalPinTypeSchema>;
+export type ElectricalPin = z.infer<typeof ElectricalPinSchema>;
+export type ElectricalComponentRole = z.infer<typeof ElectricalComponentRoleSchema>;
+export type ElectricalComponent = z.infer<typeof ElectricalComponentSchema>;
+export type ElectricalNetConnection = z.infer<typeof ElectricalNetConnectionSchema>;
+export type ElectricalNet = z.infer<typeof ElectricalNetSchema>;
+export type ElectricalNetlist = z.infer<typeof ElectricalNetlistSchema>;
 export type MatingSelection = z.infer<typeof MatingSelectionSchema>;
 export type AssemblyTransform = z.infer<typeof AssemblyTransformSchema>;
 export type TemplateParams = z.infer<typeof TemplateParamsSchema>;
