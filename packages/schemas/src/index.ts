@@ -296,6 +296,9 @@ export const IngestionChunkSchema = z.object({
 }).strict();
 export const OfferAvailabilitySchema = z.enum(["in_stock", "out_of_stock", "backorder", "unknown"]);
 export const OfferFreshnessSchema = z.enum(["fresh", "stale"]);
+const CachedThumbnailDataUrlSchema = z.string()
+  .regex(/^data:image\/(?:avif|gif|jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Thumbnail must be a base64-encoded image data URL")
+  .max(500_000);
 export const CatalogOfferSchema = z.object({
   externalId: NonEmptyTextSchema.max(200),
   partId: z.string().uuid(),
@@ -305,6 +308,8 @@ export const CatalogOfferSchema = z.object({
   availability: OfferAvailabilitySchema,
   price: z.number().finite().positive().optional(),
   currency: z.string().regex(/^[A-Z]{3}$/).optional(),
+  /** A background-ingested image. The browser never contacts a vendor CDN to render it. */
+  thumbnailDataUrl: CachedThumbnailDataUrlSchema.optional(),
   observedAt: IsoTimestampSchema,
   expiresAt: IsoTimestampSchema,
   sourceUrl: HttpsUrlSchema,

@@ -78,6 +78,10 @@ node scripts/ingestion-smoke.mjs
 
 For a real n8n rehearsal, import only the allowlisted workflow and verify its returned ingestion run proves API-only access; repeat it to check idempotency, then submit the unlicensed fixture and confirm last-known-good data remains unchanged.
 
+### eBay price and thumbnail refresh
+
+The Parts tab can display a cached eBay listing thumbnail, price, and outbound link without making vendor requests from the browser. After `docker compose -f infra/docker-compose.yml up -d --build`, create an n8n **HTTP Basic Auth** credential named `eBay Browse API client credentials` (username: eBay Client ID; password: eBay Client Secret). Import [ingestion/workflows/ebay-browse-catalog-refresh.json](ingestion/workflows/ebay-browse-catalog-refresh.json), then run its manual trigger once. It refreshes the approved ESP32 DevKit and BME280 queries, keeps only US new fixed-price listings, downloads each thumbnail into the local catalog cache, and submits it through the existing authenticated ingest endpoint. The displayed price is labelled with its check date and expires after 24 hours.
+
 ## Architecture
 
 | Area | Location | Responsibility |

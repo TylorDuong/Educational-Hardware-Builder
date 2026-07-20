@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   BuildProposalSchema,
+  CatalogOfferSchema,
   CitationSchema,
   DiscoveryRequestSchema,
   GuidedLessonSchema,
@@ -197,6 +198,12 @@ describe("agentic build discovery contracts", () => {
       chunks: [{ externalId: "catalog:bad-expiry:summary", content: "A cited product description.", citation }],
       offers: [{ ...staleOffer, expiresAt: "2025-12-31T00:00:00.000Z" }],
     })).toThrow();
+  });
+
+  it("accepts only locally cached offer thumbnails", () => {
+    const thumbnail = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    expect(CatalogOfferSchema.parse({ ...staleOffer, thumbnailDataUrl: thumbnail }).thumbnailDataUrl).toBe(thumbnail);
+    expect(() => CatalogOfferSchema.parse({ ...staleOffer, thumbnailDataUrl: "https://i.ebayimg.com/images/example.jpg" })).toThrow();
   });
 
   it("rejects raw coordinates and prevents forbidden hazards from exposing a BOM", () => {

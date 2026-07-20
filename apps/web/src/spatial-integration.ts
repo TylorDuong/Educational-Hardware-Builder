@@ -26,11 +26,27 @@ export type SolverTrace = {
 
 export type SolverTracedPart = {
   id: string;
+  name: string;
+  purpose: string;
+  displaySize: [number, number, number];
   cadAssetUrl: string;
   color: string;
   transform: AssemblyTransform;
   solverTrace: SolverTrace;
 };
+
+const fixturePartPresentation = new Map<string, Omit<SolverTracedPart, "id" | "cadAssetUrl" | "color" | "transform" | "solverTrace">>([
+  ["7e893f29-068e-43e2-9c3c-b9ba2d9ed6db", { name: "ESP32 DevKit", purpose: "Runs the weather-station program and reads the sensor over I2C.", displaySize: [1.2, 0.7, 0.12] }],
+  ["5cfc4a97-32ef-45c3-9162-ec2a9094fd85", { name: "BME280 sensor", purpose: "Measures temperature, humidity, and pressure for the weather station.", displaySize: [0.65, 0.5, 0.12] }],
+  ["a9baf14d-fdd8-4374-a646-8cc2c9f7e93f", { name: "Weatherproof enclosure", purpose: "Protects the electronics while leaving the sensor exposed to air.", displaySize: [2.2, 1.6, 0.75] }],
+  ["cd8a91d4-909e-4bba-9e07-047ab5b4bb7b", { name: "L-bracket", purpose: "Provides the validated mechanical support for the sensor mount.", displaySize: [0.9, 0.25, 1.1] }],
+  ["f2b8d2a1-5725-4dae-a2ce-0874aa5c8fd3", { name: "Mini breadboard", purpose: "Provides temporary, solder-free connections during prototyping.", displaySize: [1.8, 0.9, 0.2] }],
+  ["63a0ac08-8a40-49b0-b152-f55ef7329374", { name: "USB-C cable", purpose: "Supplies regulated power and provides a programming connection.", displaySize: [2.1, 0.14, 0.14] }],
+  ["4e4fd2a7-b9a4-490c-9dfe-d4f9683ac1e2", { name: "Jumper wires", purpose: "Carry power and I2C signals between the board and sensor.", displaySize: [1.5, 0.1, 0.1] }],
+  ["c6870a5c-25a3-45a9-a7ef-3f45e69d2fb3", { name: "M3 fastener", purpose: "Secures the enclosure and bracket at approved mounting points.", displaySize: [0.18, 0.18, 0.55] }],
+  ["dcd6795b-d669-4bd7-944f-35a2708cf7b2", { name: "AA battery pack", purpose: "Provides the build's portable power source after inspection.", displaySize: [1.45, 0.75, 0.42] }],
+  ["b2e6a1bb-4e50-4f1e-b31a-807232832f03", { name: "Weatherproof grommet", purpose: "Protects the cable where it enters the enclosure.", displaySize: [0.38, 0.38, 0.2] }],
+]);
 
 export type SolverIntegrationError = SolverError | {
   code: "UNKNOWN_PART";
@@ -144,8 +160,11 @@ export function solverTracedFixtureParts(stepId: string): SolverTracedPart[] {
     };
     const result = solveWeatherStationSelection(selection, stepId);
     if (!result.ok) throw new Error(`Fixture solver rejected ${asset.partId}: ${formatSolverError(result.error)}`);
+    const presentation = fixturePartPresentation.get(asset.partId);
+    if (!presentation) throw new Error(`Fixture part ${asset.partId} is missing a learner-facing display description.`);
     return {
       id: asset.id,
+      ...presentation,
       cadAssetUrl: asset.filePath,
       color: index % 2 ? "#22c55e" : "#38bdf8",
       transform: result.transform,

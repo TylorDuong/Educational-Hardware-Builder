@@ -56,6 +56,15 @@ INSERT INTO source_policies (
     '{"evidenceRequired": true, "acceptedStatuses": ["public-catalog", "redistribution-permitted"], "prohibitedUses": ["checkout", "credentialed-purchase", "browser-automation", "unapproved-scraping"]}'::jsonb,
     NULL,
     '{"cachedLinksOnly": true, "checkoutAllowed": false, "requireObservedAt": true, "requireExpiresAt": true, "requireProviderSku": true}'::jsonb
+  ),
+  (
+    'ebay-browse-catalog', 1, true, 'vendor_catalog',
+    '["https://api.ebay.com/buy/browse/**", "https://www.ebay.com/itm/**", "https://i.ebayimg.com/**"]'::jsonb,
+    '["citation", "catalog_offer", "part_metadata"]'::jsonb,
+    24, 48,
+    '{"evidenceRequired": true, "acceptedStatuses": ["public-catalog"], "prohibitedUses": ["checkout", "credentialed-purchase", "browser-automation", "unapproved-scraping"]}'::jsonb,
+    NULL,
+    '{"cachedLinksOnly": true, "checkoutAllowed": false, "requireObservedAt": true, "requireExpiresAt": true, "requireProviderSku": true}'::jsonb
   )
 ON CONFLICT (id, revision) DO UPDATE SET
   enabled = EXCLUDED.enabled,
@@ -135,6 +144,7 @@ CREATE TABLE IF NOT EXISTS catalog_offers (
   availability text NOT NULL CHECK (availability IN ('in_stock', 'out_of_stock', 'backorder', 'unknown')),
   price numeric(12, 2),
   currency char(3),
+  thumbnail_data_url text,
   observed_at timestamptz NOT NULL,
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -144,6 +154,7 @@ CREATE TABLE IF NOT EXISTS catalog_offers (
   CHECK (length(trim(provider)) > 0),
   CHECK (length(trim(provider_sku)) > 0),
   CHECK ((price IS NULL AND currency IS NULL) OR (price > 0 AND currency ~ '^[A-Z]{3}$')),
+  CHECK (thumbnail_data_url IS NULL OR thumbnail_data_url ~ '^data:image/(avif|gif|jpeg|png|webp);base64,[A-Za-z0-9+/=]+$'),
   CHECK (expires_at >= observed_at)
 );
 

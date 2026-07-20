@@ -16,6 +16,7 @@ const payload = {
   version: "v2", sourcePolicyId: "vendor-catalog", sourcePolicyRevision: 1, idempotencyKey: "vendor:one:v1",
   source: { externalId: "vendor:one", canonicalUrl: "https://vendor.example.test/products/one", title: "One", locator: "product", contentHash: "a".repeat(64), license: "catalog terms", termsStatus: "public-catalog", fetchedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-02T00:00:00.000Z" },
   chunks: [{ externalId: "vendor:one:chunk", content: "Cited product", citation: { sourceUrl: "https://vendor.example.test/products/one", locator: "product", title: "One" } }],
+  offers: [{ externalId: "vendor:one:offer", partId: "40000000-0000-4000-8000-000000000001", provider: "Vendor", providerSku: "ONE", purchaseUrl: "https://vendor.example.test/products/one", availability: "in_stock", price: 9.99, currency: "USD", thumbnailDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", observedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-02T00:00:00.000Z", sourceUrl: "https://vendor.example.test/products/one", citation: { sourceUrl: "https://vendor.example.test/products/one", locator: "product", title: "One" } }],
 };
 
 function database(failAt?: RegExp) {
@@ -69,11 +70,24 @@ test("application-owned policies include the allowlisted vendor refresh endpoint
   });
 });
 
+test("application-owned policies allow only the eBay Browse API and cached listing media", () => {
+  const policy = applicationSourcePolicies.find((candidate) => candidate.id === "ebay-browse-catalog");
+  assert.ok(policy);
+  assert.deepEqual(policy.allowedUrlPatterns, [
+    "https://api.ebay.com/buy/browse/**",
+    "https://www.ebay.com/itm/**",
+    "https://i.ebayimg.com/**",
+  ]);
+  assert.equal(policy.offers?.cachedLinksOnly, true);
+  assert.equal(policy.offers?.checkoutAllowed, false);
+});
+
 test("uses conflict-safe identities for replayed ingestion", async () => {
   const db = database();
   const result = await upsertIngestion(payload, db, [policy]);
   assert.ok(db.sql.some((statement) => statement.includes("ON CONFLICT (source_policy_id, source_policy_revision, idempotency_key)")));
   assert.ok(db.sql.some((statement) => statement.includes("ON CONFLICT (source_policy_id, source_policy_revision, external_id, content_hash)")));
+  assert.ok(db.sql.some((statement) => statement.includes("thumbnail_data_url")));
   assert.ok(db.sql.includes("COMMIT"));
   assert.equal(result.ingestionRunId, "50000000-0000-4000-8000-000000000001");
 });

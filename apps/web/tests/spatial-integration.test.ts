@@ -81,6 +81,19 @@ test("every sandbox part carries a deterministic solver trace", () => {
   assert.equal(parts.length, 10);
   assert.doesNotThrow(() => assertSolverTraces(parts));
   assert.equal(parts[0]?.solverTrace.source, "deterministic-solver");
+  assert.ok(parts.every((part) => part.name.length > 0 && part.purpose.length > 0));
+  assert.deepEqual(parts.map((part) => part.name), [
+    "ESP32 DevKit",
+    "BME280 sensor",
+    "Weatherproof enclosure",
+    "L-bracket",
+    "Mini breadboard",
+    "USB-C cable",
+    "Jumper wires",
+    "M3 fastener",
+    "AA battery pack",
+    "Weatherproof grommet",
+  ]);
 });
 
 test("template compilation returns a printable STL and never exposes raw compiler stderr", async () => {

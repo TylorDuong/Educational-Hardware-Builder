@@ -66,6 +66,7 @@ const demoFreshOffer = {
   availability: "in_stock",
   price: "9.99",
   currency: "USD",
+  thumbnail_data_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   observed_at: "2026-07-18T00:00:00.000Z",
   expires_at: "2099-07-20T00:00:00.000Z",
   source_url: demoDiscoveryCitation.sourceUrl,
