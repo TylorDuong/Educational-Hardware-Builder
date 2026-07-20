@@ -27,6 +27,7 @@ import "./sandbox.css";
 
 const sessionId = "workshop-demo";
 const discoveryUserId = "40000000-0000-4000-8000-000000000001";
+const discoveryInventoryPartIds = ["7e893f29-068e-43e2-9c3c-b9ba2d9ed6db"];
 const tabs = ["Dashboard", "Research", "Build", "Parts", "Workshop"] as const;
 const LazyMechView = lazy(async () => ({ default: (await import("./components/MechView.js")).MechView }));
 
@@ -229,7 +230,7 @@ function Workshop() {
         prompt: projectPrompt,
         mode: "beginner",
         userId: discoveryUserId,
-        inventoryPartIds: [],
+        inventoryPartIds: discoveryInventoryPartIds,
         constraints: ["local catalog only"],
       });
       const response = await fetch("/api/discovery", {

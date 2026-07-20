@@ -10,6 +10,7 @@ test("Dashboard renders validated discovery results and preserves the existing f
   const source = await sandboxSource();
   assert.match(source, /const tabs = \["Dashboard", "Research", "Build", "Parts", "Workshop"\] as const/);
   assert.match(source, /DiscoveryRequestSchema\.parse/);
+  assert.match(source, /inventoryPartIds: discoveryInventoryPartIds/);
   assert.match(source, /fetch\("\/api\/discovery"/);
   assert.match(source, /new EventSource\(`\/api\/discovery\/\$\{payload\.operationId\}\/events`\)/);
   assert.match(source, /DiscoveryProgressEventSchema\.parse/);
