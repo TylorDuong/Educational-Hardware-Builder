@@ -13,6 +13,7 @@ import {
   type LearningConcept,
   type PublicGuidedLesson,
   type RequestClassification,
+  type SourceDigest,
 } from "@educational-hardware-builder/schemas";
 
 import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
@@ -34,7 +35,7 @@ import "./sandbox.css";
 
 const sessionId = "workshop-demo";
 const discoveryUserId = "40000000-0000-4000-8000-000000000001";
-const tabs = ["Dashboard", "Research", "Parts", "Build", "Wiring", "Workshop"] as const;
+const tabs = ["Dashboard", "Research", "Parts", "Build", "Workshop"] as const;
 const LazyMechView = lazy(async () => ({
   default: (await import("./components/MechView.js")).MechView,
 }));
@@ -75,6 +76,7 @@ type WorkshopStepView = {
   safetyCallout?: string;
   whyItMatters?: string;
   concepts: readonly LearningConcept[];
+  sourceDigest: SourceDigest;
 };
 type ModelVisualGuide = {
   title: string;
@@ -105,26 +107,114 @@ const fixtureWorkshopSteps: readonly WorkshopStepView[] = weatherStationGoldenSt
     title: step.lesson.title,
     explanation: step.lesson.content,
   }],
+  sourceDigest: step.sourceDigest,
 }));
+
+type ResearchBrief = {
+  build: string;
+  conceptualParts: readonly { title: string; detail: string }[];
+  useCases: readonly string[];
+  alternativeBuilds: readonly string[];
+};
+
+const weatherStationResearchBrief: ResearchBrief = {
+  build: "A compact weather station that reads temperature, humidity, and pressure through an ESP32.",
+  conceptualParts: [
+    { title: "A controller", detail: "Reads the sensor and turns its values into something you can check." },
+    { title: "An environmental sensor", detail: "Measures the conditions you want the project to report." },
+    { title: "Power and connections", detail: "Supplies the electronics and carries the named signals between modules." },
+    { title: "A mount or casing", detail: "Keeps the build together while leaving the sensor exposed to the air." },
+  ],
+  useCases: [
+    "Monitor conditions in a room, greenhouse, or workshop.",
+    "Learn how a controller reads a digital I2C sensor.",
+    "Use it as the starting point for a small data-logging or display project.",
+  ],
+  alternativeBuilds: [
+    "A USB-powered desk sensor without an enclosure.",
+    "A weather display that adds a small screen to the same sensing core.",
+    "A battery-powered logger built around the same measurements.",
+  ],
+};
+
+const conceptualPartByCategory: Record<string, { title: string; detail: string }> = {
+  compute: { title: "A controller", detail: "Reads inputs and coordinates what the build does." },
+  sensor: { title: "A sensor or input", detail: "Turns something in the physical world into a signal the controller can use." },
+  power: { title: "A suitable power path", detail: "Supplies the electronics in the way the cited build documents." },
+  passive: { title: "Supporting electronics", detail: "Shapes, protects, or stabilizes the main circuit." },
+  fastener: { title: "Fasteners or mounting hardware", detail: "Keeps parts in the intended physical relationship." },
+  mechanical: { title: "A mount or casing", detail: "Supports and protects the electronics while keeping the useful parts accessible." },
+};
+
+function distinctText(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function researchBriefFor(proposal?: BuildProposal): ResearchBrief {
+  if (!proposal) return weatherStationResearchBrief;
+
+  const conceptualParts = distinctText(proposal.billOfMaterials.map((entry) => entry.part.category))
+    .map((category) => conceptualPartByCategory[category])
+    .filter((part): part is { title: string; detail: string } => part !== undefined);
+
+  const projectLanguage = [
+    proposal.summary,
+    proposal.intent.normalizedGoal,
+    ...proposal.intent.capabilities,
+  ].join(" ").toLowerCase();
+  const impliedFunctionalPart = /sensor|measure|detect|weather|temperature|humidity|pressure/.test(projectLanguage)
+    ? conceptualPartByCategory.sensor
+    : /light|led|display|motor|actuator|output/.test(projectLanguage)
+      ? { title: "An output or actuator", detail: "Makes the build's result visible or creates a physical response." }
+      : undefined;
+
+  for (const additionalPart of [
+    impliedFunctionalPart,
+    conceptualPartByCategory.power,
+    conceptualPartByCategory.mechanical,
+  ]) {
+    if (!additionalPart) continue;
+    if (conceptualParts.length >= 4 || conceptualParts.some((part) => part.title === additionalPart.title)) continue;
+    conceptualParts.push(additionalPart);
+  }
+
+  const capabilities = proposal.intent.capabilities
+    .slice(0, 3)
+    .map((capability) => `Explore ${capability.toLowerCase()} in a hands-on prototype.`);
+  const useCases = capabilities.length > 0 ? capabilities : [
+    "Learn the core system before turning it into a more focused project.",
+    "Build a working prototype you can inspect, adapt, and improve.",
+  ];
+  const alternatives = proposal.billOfMaterials.flatMap((entry) => (
+    entry.alternatives.map((alternative) => `${alternative.name} in place of ${entry.part.name} when the cited catalog marks it as compatible.`)
+  ));
+
+  return {
+    build: proposal.summary,
+    conceptualParts: conceptualParts.length > 0 ? conceptualParts : weatherStationResearchBrief.conceptualParts,
+    useCases,
+    alternativeBuilds: alternatives.length > 0 ? distinctText(alternatives) : [
+      "A simpler bench prototype before adding a casing.",
+      "A version that changes the input or output module while keeping the same core goal.",
+    ],
+  };
+}
 
 function visualGuideForStep(step: WorkshopStepView): StepVisualGuide {
   const title = step.title.toLowerCase();
-  if (title.includes("ground")) {
+  const supportsWeatherStationWiring = weatherStationGoldenSteps.some((fixtureStep) => fixtureStep.id === step.id);
+  if (supportsWeatherStationWiring && title === "connect ground") {
     return { kind: "diagram", title: "Trace the shared ground", description: "The highlighted net shows the two named pins that share the circuit reference.", initialNet: "GND" };
   }
-  if (title.includes("sensor power")) {
+  if (supportsWeatherStationWiring && title === "connect sensor power") {
     return { kind: "diagram", title: "Trace the 3.3 V supply", description: "The highlighted power net shows the documented source and destination for the sensor supply.", initialNet: "3V3" };
   }
-  if (title.includes("i2c data")) {
+  if (supportsWeatherStationWiring && title === "wire i2c data") {
     return { kind: "diagram", title: "Trace the I2C data line", description: "The highlighted net makes the sensor and controller data endpoints explicit.", initialNet: "I2C_SDA" };
   }
-  if (title.includes("i2c clock")) {
+  if (supportsWeatherStationWiring && title === "wire i2c clock") {
     return { kind: "diagram", title: "Trace the I2C clock line", description: "The highlighted net makes the timing connection distinct from the I2C data line.", initialNet: "I2C_SCL" };
   }
-  if (title.includes("inspect wiring")) {
-    return { kind: "diagram", title: "Inspect the complete wiring plan", description: "Select any named net to compare its endpoints with the physical assembly before power is connected." };
-  }
-
   const mate = step.matingSelections[0];
   if (mate) {
     return {
@@ -177,10 +267,6 @@ const sectionGuides: Record<Tab, SectionGuide> = {
   Build: {
     title: "Checking the fit",
     detail: "The planner suggests named connections. A deterministic solver checks them before the 3D view uses them.",
-  },
-  Wiring: {
-    title: "Reading the wiring diagram",
-    detail: "Select a colored net to trace its named pins. The diagram is routed from a strict netlist, so it never guesses where a wire should go.",
   },
   Workshop: {
     title: "Using the workshop",
@@ -456,14 +542,16 @@ function ResearchPanel({
   const citations = proposal?.citations ?? weatherStationGoldenSteps.slice(0, 3).flatMap((step) => step.lesson.citations);
   const title = proposal ? proposal.intent.normalizedGoal : "Weather station";
   const offers = proposal?.billOfMaterials.flatMap((entry) => entry.offers) ?? [];
+  const brief = researchBriefFor(proposal);
 
   return (
     <section className="research-view">
-      <PageHeading section="Research" title="Learn the basics" caption="Sources used for this plan." onOpenHelp={onOpenHelp} />
+      <PageHeading section="Research" title="Understand the build first" caption="Start with the plain-language plan. Sources are ready when you want to go deeper." onOpenHelp={onOpenHelp} />
       <div className="research-layout">
         <section className="research-content">
           <div className="research-context">
             <h3>{title}</h3>
+            <p className="research-purpose">{brief.build}</p>
             {proposal ? (
               <section className="catalog-provenance">
                 <h4>Saved parts data</h4>
@@ -485,6 +573,39 @@ function ResearchPanel({
               </section>
             ) : null}
           </div>
+
+          <section className="research-brief" aria-labelledby="research-brief-title">
+            <header>
+              <p className="eyebrow">BUILD BRIEF</p>
+              <h2 id="research-brief-title">What you will make</h2>
+              <p>{brief.build}</p>
+            </header>
+            <div className="research-brief-grid">
+              <section>
+                <h3>Conceptual parts you need</h3>
+                <ul className="research-brief-list">
+                  {brief.conceptualParts.map((part) => (
+                    <li key={part.title}>
+                      <strong>{part.title}</strong>
+                      <span>{part.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              <section>
+                <h3>Potential use cases</h3>
+                <ul className="research-brief-list">
+                  {brief.useCases.map((useCase) => <li key={useCase}>{useCase}</li>)}
+                </ul>
+              </section>
+              <section>
+                <h3>Alternative builds</h3>
+                <ul className="research-brief-list">
+                  {brief.alternativeBuilds.map((alternative) => <li key={alternative}>{alternative}</li>)}
+                </ul>
+              </section>
+            </div>
+          </section>
 
           <div className="research-card-grid">
             {citations.map((citation, index) => (
@@ -557,45 +678,6 @@ function BuildPanel({
           </div>
           <div className="solver-deny">RAW COORDINATES: BLOCKED</div>
           <pre aria-label="Example symbolic mating selection">{symbolicMatingPreview}</pre>
-        </section>
-      </div>
-    </section>
-  );
-}
-
-function WiringPanel({ onOpenHelp }: { onOpenHelp: (section: Tab) => void }) {
-  const citedComponents = [...weatherStationWiringNetlist.components];
-  return (
-    <section className="wiring-view">
-      <PageHeading
-        section="Wiring"
-        title="Connect the sensor"
-        caption="Trace the power and I²C wires between the BME280 breakout and ESP32-DevKitC V4."
-        onOpenHelp={onOpenHelp}
-      />
-      <section className="wiring-panel panel">
-        <div className="panel-heading">
-          <p className="eyebrow">SENSOR HARNESS</p>
-          <span className="status-indicator">CHECKED</span>
-        </div>
-        <WiringDiagram netlist={weatherStationWiringNetlist} />
-      </section>
-      <div className="wiring-notes">
-        <section className="panel wiring-note">
-          <p className="eyebrow">POWER NOTE</p>
-          <h3>Do not guess the battery lead.</h3>
-          <p>The fixture’s battery route is mechanical only. Verify the regulator or USB power module for your specific battery pack before connecting it to the ESP32.</p>
-        </section>
-        <section className="panel wiring-note">
-          <p className="eyebrow">PIN REFERENCES</p>
-          <ul className="source-list">
-            {citedComponents.map((component) => (
-              <li key={component.refdes}>
-                <a href={component.citation.sourceUrl} target="_blank" rel="noreferrer">{component.refdes}: {component.citation.title}</a>
-                <span>{component.citation.locator}</span>
-              </li>
-            ))}
-          </ul>
         </section>
       </div>
     </section>
@@ -792,8 +874,9 @@ function SkillReferenceList({
   onOpen: (skill: SkillReference) => void;
 }) {
   return (
-    <section className="skill-references">
-      <h3>Further reading</h3>
+    <details className="skill-references">
+      <summary>Need a deeper explanation?</summary>
+      <p className="helper">These cited references are optional follow-up reading. The step explanation above is the place to start.</p>
       {skills.length > 0 ? (
         <ul className="learning-source-list">
           {skills.map((skill) => (
@@ -813,7 +896,7 @@ function SkillReferenceList({
           ))}
         </ul>
       ) : <p className="helper">No separate skill reference is needed for this step.</p>}
-    </section>
+    </details>
   );
 }
 
@@ -863,7 +946,7 @@ function InteractiveAssemblyViewer({
   const [selectedPartId, setSelectedPartId] = useState<string>();
   const [hoveredPartId, setHoveredPartId] = useState<string>();
   const [selectEnclosures, setSelectEnclosures] = useState(false);
-  const [disassembleOnHover, setDisassembleOnHover] = useState(true);
+  const [disassembleOnHover, setDisassembleOnHover] = useState(false);
   const [resetViewKey, setResetViewKey] = useState(0);
   const selectedPart = parts.find((part) => part.id === selectedPartId);
   const hoveredPart = parts.find((part) => part.id === hoveredPartId);
@@ -952,7 +1035,7 @@ function InteractiveAssemblyViewer({
               <p>{selectedPart.purpose}</p>
               <p className="focus-hint">The selected part stays solid while the rest of the model spreads out for inspection.</p>
             </>
-          ) : hoveredPart ? <p>Previewing {hoveredPart.name}. Click it to select and centre it.</p> : guide ? <p>{guide.description}</p> : <p>Hover over a part to preview it, or select one to keep it centred.</p>}
+          ) : hoveredPart ? <p>Previewing {hoveredPart.name}. Click it to select and centre it.</p> : guide ? <p>{guide.description}</p> : <p>{disassembleOnHover ? "Hover over a part to preview it, or select one to keep it centred." : "Hover preview is off; click a part to select and inspect it."}</p>}
           <label className="hover-toggle">
             <input type="checkbox" checked={disassembleOnHover} onChange={(event) => {
               setDisassembleOnHover(event.target.checked);
@@ -995,10 +1078,21 @@ function InteractiveAssemblyViewer({
   );
 }
 
-function CitationList({ citations, heading = "Cited sources" }: { citations: readonly Citation[]; heading?: string }) {
+function SourceDigestBlock({ sourceDigest }: { sourceDigest: SourceDigest }) {
   return (
-    <section className="citation-library">
-      <h3>{heading}</h3>
+    <section className="learning-block source-digest-block">
+      <h3>In plain language</h3>
+      <p>{sourceDigest.summary}</p>
+      <span className="source-digest-citation">Based on {sourceDigest.citation.title}, {sourceDigest.citation.locator}.</span>
+    </section>
+  );
+}
+
+function CitationList({ citations, heading = "Check the original source" }: { citations: readonly Citation[]; heading?: string }) {
+  return (
+    <details className="citation-library">
+      <summary>{heading}</summary>
+      <p className="helper">Open a cited source if you want additional context or the step explanation does not answer your question.</p>
       <ul className="learning-source-list">
         {citations.map((citation) => (
           <li key={citation.sourceUrl + ":" + citation.locator}>
@@ -1012,26 +1106,53 @@ function CitationList({ citations, heading = "Cited sources" }: { citations: rea
           </li>
         ))}
       </ul>
-    </section>
+    </details>
   );
 }
 
 function WorkshopTimeline({
   steps,
   activeIndex,
-  reviewedStepIds,
+  completedStepIds,
   showingOverview,
   onMove,
   onShowOverview,
 }: {
   steps: readonly WorkshopStepView[];
   activeIndex: number;
-  reviewedStepIds: ReadonlySet<string>;
+  completedStepIds: ReadonlySet<string>;
   showingOverview: boolean;
   onMove: (index: number) => void;
   onShowOverview: () => void;
 }) {
-  const reviewedCount = steps.filter((step) => reviewedStepIds.has(step.id)).length;
+  const timelineTrackRef = useRef<HTMLOListElement>(null);
+  const completedCount = steps.filter((step) => completedStepIds.has(step.id)).length;
+  const progressPercent = steps.length === 0 ? 0 : Math.round((completedCount / steps.length) * 100);
+
+  useEffect(() => {
+    const track = timelineTrackRef.current;
+    if (!track) return;
+    const reduceMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (showingOverview) {
+      track.scrollTo({ left: 0, behavior: reduceMotion ? "auto" : "smooth" });
+      return;
+    }
+    const currentStep = track.querySelector<HTMLElement>(`[data-timeline-step="${activeIndex}"]`);
+    if (!currentStep) return;
+    track.scrollTo({
+      left: Math.max(0, currentStep.offsetLeft - (track.clientWidth - currentStep.offsetWidth) / 2),
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [activeIndex, completedCount, showingOverview]);
+
+  const moveToPrevious = () => {
+    if (!showingOverview && activeIndex > 0) onMove(activeIndex - 1);
+  };
+  const moveToNext = () => {
+    if (showingOverview && steps.length > 0) onMove(0);
+    else if (activeIndex < steps.length - 1) onMove(activeIndex + 1);
+  };
+
   return (
     <section className="workshop-timeline" aria-label="Workshop learning plan">
       <div className="timeline-heading">
@@ -1039,9 +1160,22 @@ function WorkshopTimeline({
           <p className="eyebrow">LEARNING PLAN</p>
           <h2>See the whole build, then zoom into each action.</h2>
         </div>
-        <p>{reviewedCount} of {steps.length} steps reviewed. Every step remains available.</p>
+        <div className="timeline-progress" aria-label={`${progressPercent}% of Workshop steps complete`}>
+          <span>{progressPercent}% complete</span>
+          <div
+            className="timeline-progress-meter"
+            role="progressbar"
+            aria-label="Workshop completion"
+            aria-valuemin={0}
+            aria-valuemax={steps.length}
+            aria-valuenow={completedCount}
+          >
+            <span style={{ width: `${progressPercent}%` }} />
+          </div>
+          <small>{completedCount} of {steps.length} steps complete. Every step remains available.</small>
+        </div>
       </div>
-      <nav className="timeline-scroll" aria-label="Workshop step navigation">
+      <nav className="timeline-controls" aria-label="Workshop step navigation">
         <button
           type="button"
           className={showingOverview ? "timeline-overview active" : "timeline-overview"}
@@ -1049,18 +1183,23 @@ function WorkshopTimeline({
           onClick={onShowOverview}
         >
           <span className="timeline-step-number">VIEW</span>
-          <span>Full build</span>
+          <span>Assembly</span>
         </button>
-        <ol>
+        <button type="button" className="timeline-arrow" aria-label="Go to previous Workshop step" disabled={showingOverview || activeIndex === 0} onClick={moveToPrevious}>
+          <span aria-hidden="true">‹</span>
+        </button>
+        <div className="timeline-viewport">
+          <ol ref={timelineTrackRef} className="timeline-track">
           {steps.map((step, index) => {
-            const reviewed = reviewedStepIds.has(step.id);
+            const completed = completedStepIds.has(step.id);
             const current = !showingOverview && activeIndex === index;
-            const status = current ? "current" : reviewed ? "reviewed" : "available";
+            const status = current ? "current" : completed ? "completed" : "available";
             return (
               <li key={step.id}>
                 <button
                   type="button"
                   className={`timeline-step ${status}`}
+                  data-timeline-step={index}
                   aria-current={current ? "step" : undefined}
                   aria-label={`Step ${step.order}: ${step.title}. ${status}.`}
                   onClick={() => onMove(index)}
@@ -1071,7 +1210,11 @@ function WorkshopTimeline({
               </li>
             );
           })}
-        </ol>
+          </ol>
+        </div>
+        <button type="button" className="timeline-arrow" aria-label="Go to next Workshop step" disabled={!showingOverview && activeIndex === steps.length - 1} onClick={moveToNext}>
+          <span aria-hidden="true">›</span>
+        </button>
       </nav>
     </section>
   );
@@ -1201,6 +1344,8 @@ function WorkshopStepDetails({
         <p>{step.instruction}</p>
       </section>
 
+      <SourceDigestBlock sourceDigest={step.sourceDigest} />
+
       <section className="learning-block why-block">
         <h3>Why this matters</h3>
         <p>{whyItMatters}</p>
@@ -1241,7 +1386,9 @@ function WorkshopStepDetails({
         <button type="button" disabled={activeIndex === 0} onClick={() => onMove(activeIndex - 1)}>Previous</button>
         <button type="button" onClick={onShowOverview}>Build overview</button>
         <button type="button" disabled={activeIndex === totalSteps - 1} onClick={() => onMove(activeIndex + 1)}>Next</button>
-        {activeIndex === totalSteps - 1 ? <button className="primary" type="button" onClick={onComplete}>Finish build</button> : null}
+        <button className="primary" type="button" onClick={onComplete}>
+          {activeIndex === totalSteps - 1 ? "Finish build" : "Mark complete and continue"}
+        </button>
       </nav>
     </article>
   );
@@ -1253,7 +1400,7 @@ function WorkshopExperience({
   activeIndex,
   complete,
   showingOverview,
-  reviewedStepIds,
+  completedStepIds,
   message,
   onMove,
   onShowOverview,
@@ -1268,7 +1415,7 @@ function WorkshopExperience({
   activeIndex: number;
   complete: boolean;
   showingOverview: boolean;
-  reviewedStepIds: ReadonlySet<string>;
+  completedStepIds: ReadonlySet<string>;
   message: string;
   onMove: (index: number) => void;
   onShowOverview: () => void;
@@ -1302,7 +1449,7 @@ function WorkshopExperience({
       <WorkshopTimeline
         steps={steps}
         activeIndex={activeIndex}
-        reviewedStepIds={reviewedStepIds}
+        completedStepIds={completedStepIds}
         showingOverview={showingOverview}
         onMove={onMove}
         onShowOverview={onShowOverview}
@@ -1389,7 +1536,7 @@ function WorkshopPanel({
   activeIndex,
   complete,
   showingOverview,
-  reviewedStepIds,
+  completedStepIds,
   message,
   retryDemo,
   onMove,
@@ -1402,7 +1549,7 @@ function WorkshopPanel({
   activeIndex: number;
   complete: boolean;
   showingOverview: boolean;
-  reviewedStepIds: ReadonlySet<string>;
+  completedStepIds: ReadonlySet<string>;
   message: string;
   retryDemo?: SolverRetryDemo;
   onMove: (index: number) => void;
@@ -1419,7 +1566,7 @@ function WorkshopPanel({
       activeIndex={activeIndex}
       complete={complete}
       showingOverview={showingOverview}
-      reviewedStepIds={reviewedStepIds}
+      completedStepIds={completedStepIds}
       message={message}
       onMove={onMove}
       onShowOverview={onShowOverview}
@@ -1448,7 +1595,7 @@ function SelectedWorkshopPanel({
   activeIndex,
   complete,
   showingOverview,
-  reviewedStepIds,
+  completedStepIds,
   message,
   onMove,
   onShowOverview,
@@ -1460,7 +1607,7 @@ function SelectedWorkshopPanel({
   activeIndex: number;
   complete: boolean;
   showingOverview: boolean;
-  reviewedStepIds: ReadonlySet<string>;
+  completedStepIds: ReadonlySet<string>;
   message: string;
   onMove: (index: number) => void;
   onShowOverview: () => void;
@@ -1476,7 +1623,7 @@ function SelectedWorkshopPanel({
       activeIndex={activeIndex}
       complete={complete}
       showingOverview={showingOverview}
-      reviewedStepIds={reviewedStepIds}
+      completedStepIds={completedStepIds}
       message={message}
       onMove={onMove}
       onShowOverview={onShowOverview}
@@ -1503,7 +1650,7 @@ function Workshop() {
   const [hasStarted, setHasStarted] = useState(false);
   const [complete, setComplete] = useState(false);
   const [showingOverview, setShowingOverview] = useState(true);
-  const [reviewedStepIds, setReviewedStepIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [completedStepIds, setCompletedStepIds] = useState<ReadonlySet<string>>(() => new Set());
   const [retryDemo, setRetryDemo] = useState<SolverRetryDemo>();
   const [selectedWorkshop, setSelectedWorkshop] = useState<SelectedWorkshop>();
   const [selectedSkill, setSelectedSkill] = useState<SkillReference>();
@@ -1520,7 +1667,7 @@ function Workshop() {
     setHasStarted(false);
     setComplete(false);
     setShowingOverview(true);
-    setReviewedStepIds(new Set());
+    setCompletedStepIds(new Set());
     setActiveIndex(0);
     setRetryDemo(undefined);
     setDiscovery(undefined);
@@ -1640,9 +1787,24 @@ function Workshop() {
     setActiveIndex(index);
     setComplete(false);
     setShowingOverview(false);
-    setReviewedStepIds((previous) => previous.has(target.id) ? previous : new Set([...previous, target.id]));
     setRetryDemo(undefined);
     setMessage("Step " + target.order + " is ready.");
+  }
+
+  function markStepComplete(stepId: string) {
+    setCompletedStepIds((previous) => previous.has(stepId) ? previous : new Set([...previous, stepId]));
+  }
+
+  async function completeFixtureStep() {
+    const step = weatherStationGoldenSteps[activeIndex];
+    if (!step) return;
+    markStepComplete(step.id);
+    if (activeIndex === weatherStationGoldenSteps.length - 1) {
+      setComplete(true);
+      setMessage("All Workshop steps are complete. You can revisit any of them at any time.");
+      return;
+    }
+    await moveTo(activeIndex + 1);
   }
 
   async function startSelectedWorkshop() {
@@ -1657,7 +1819,7 @@ function Workshop() {
       setActiveIndex(0);
       setComplete(false);
       setShowingOverview(true);
-      setReviewedStepIds(new Set());
+      setCompletedStepIds(new Set());
       setMessage("Your lesson is ready. You can choose any step.");
     } catch (error) {
       const nextMessage = error instanceof Error ? error.message : "The selected lesson could not be started.";
@@ -1680,8 +1842,20 @@ function Workshop() {
     setActiveIndex(index);
     setComplete(false);
     setShowingOverview(false);
-    setReviewedStepIds((previous) => previous.has(target.id) ? previous : new Set([...previous, target.id]));
     setMessage("Step " + target.order + " is ready.");
+  }
+
+  async function completeSelectedStep() {
+    const workshop = selectedWorkshop;
+    const step = workshop?.lesson.steps[activeIndex];
+    if (!workshop || !step) return;
+    markStepComplete(step.id);
+    if (activeIndex === workshop.lesson.steps.length - 1) {
+      setComplete(true);
+      setMessage("All Workshop steps are complete. You can revisit any of them at any time.");
+      return;
+    }
+    await moveSelectedTo(activeIndex + 1);
   }
 
   function showWorkshopOverview() {
@@ -1717,8 +1891,6 @@ function Workshop() {
       )
       : activeTab === "Build"
         ? <BuildPanel onOpenWorkshop={() => void startSelectedWorkshop()} isStartingWorkshop={isStartingWorkshop} onOpenHelp={setSelectedHelp} />
-        : activeTab === "Wiring"
-          ? <WiringPanel onOpenHelp={setSelectedHelp} />
         : activeTab === "Parts"
           ? <PartsPanel discovery={discovery} ownedParts={ownedParts} onOpenWorkshop={() => setActiveTab("Build")} onOpenHelp={setSelectedHelp} />
           : isStartingWorkshop
@@ -1736,11 +1908,11 @@ function Workshop() {
                   activeIndex={activeIndex}
                   complete={complete}
                   showingOverview={showingOverview}
-                  reviewedStepIds={reviewedStepIds}
+                  completedStepIds={completedStepIds}
                   message={message}
                   onMove={(index) => void moveSelectedTo(index)}
                   onShowOverview={showWorkshopOverview}
-                  onComplete={() => setComplete(true)}
+                  onComplete={() => void completeSelectedStep()}
                   onOpenSkill={setSelectedSkill}
                   onOpenHelp={setSelectedHelp}
                 />
@@ -1750,13 +1922,13 @@ function Workshop() {
                   activeIndex={activeIndex}
                   complete={complete}
                   showingOverview={showingOverview}
-                  reviewedStepIds={reviewedStepIds}
+                  completedStepIds={completedStepIds}
                   message={message}
                   retryDemo={retryDemo}
                   onMove={(index) => void moveTo(index)}
                   onShowOverview={showWorkshopOverview}
                   onRetry={() => setRetryDemo(runSolverRetryDemo())}
-                  onComplete={() => setComplete(true)}
+                  onComplete={() => void completeFixtureStep()}
                   onOpenSkill={setSelectedSkill}
                   onOpenHelp={setSelectedHelp}
                 />

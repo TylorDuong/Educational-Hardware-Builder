@@ -4,7 +4,8 @@ import { useRef } from "react";
 
 /** The view is scaled once as a scene; all part data stays in solver-owned millimetres. */
 const SCENE_MM_SCALE = 1 / 25;
-const EXPLODE_SPEED_PER_SECOND = 6;
+/** At 60 fps this reaches 99% of the requested disassembly distance in roughly half a second. */
+export const DISASSEMBLY_TRANSITION_SECONDS = 0.5;
 export const MAX_DISASSEMBLY_FACTOR = 0.8;
 const HOVER_PROXIMITY_RADIUS_NDC = 0.5;
 
@@ -85,6 +86,12 @@ export function exponentialDisassemblyFactor(pointerDistanceNdc: number): number
   return MAX_DISASSEMBLY_FACTOR * proximity ** 2;
 }
 
+/** Distance-independent easing keeps a large enclosure and a small board equally responsive. */
+export function disassemblyTransitionRatio(deltaSeconds: number): number {
+  if (deltaSeconds <= 0) return 0;
+  return 1 - 0.01 ** (deltaSeconds / DISASSEMBLY_TRANSITION_SECONDS);
+}
+
 function sceneCentroid(parts: readonly MechViewPart[]): MillimetrePoint {
   if (parts.length === 0) return [0, 0, 0];
   const total = parts.reduce<MillimetrePoint>((sum, part) => {
@@ -158,7 +165,7 @@ function FixturePart({
     const deltaZ = targetPosition[2] - mesh.position.z;
     const distance = Math.hypot(deltaX, deltaY, deltaZ);
     if (distance <= 0.0001) return;
-    const ratio = Math.min(1, (delta * EXPLODE_SPEED_PER_SECOND) / distance);
+    const ratio = disassemblyTransitionRatio(delta);
     mesh.position.x += deltaX * ratio;
     mesh.position.y += deltaY * ratio;
     mesh.position.z += deltaZ * ratio;
@@ -252,7 +259,7 @@ export function MechView({
   highlightIds,
   selectedPartId,
   hoveredPartId,
-  disassembleOnHover = true,
+  disassembleOnHover = false,
   selectEnclosures = false,
   cameraTarget,
   resetViewKey = 0,

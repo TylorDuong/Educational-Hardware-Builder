@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DISASSEMBLY_TRANSITION_SECONDS,
+  disassemblyTransitionRatio,
   exponentialDisassemblyFactor,
   explodeFromFocus,
   isPartSelectable,
@@ -33,4 +35,10 @@ test("hover disassembly increases exponentially as the pointer approaches and st
   assert.equal(exponentialDisassemblyFactor(0), MAX_DISASSEMBLY_FACTOR);
   assert.equal(exponentialDisassemblyFactor(0.5), 0);
   assert.ok(exponentialDisassemblyFactor(0.1) > exponentialDisassemblyFactor(0.2));
+});
+
+test("disassembly reaches its full target in about half a second regardless of part size", () => {
+  assert.equal(disassemblyTransitionRatio(0), 0);
+  assert.ok(disassemblyTransitionRatio(DISASSEMBLY_TRANSITION_SECONDS) >= 0.99);
+  assert.ok(disassemblyTransitionRatio(DISASSEMBLY_TRANSITION_SECONDS / 2) > 0.8);
 });

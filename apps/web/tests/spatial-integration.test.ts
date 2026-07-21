@@ -28,6 +28,10 @@ function selectedLesson(selection = bme280ToEsp32Selection) {
       safetyCallout: "Keep power disconnected while fitting the sensor.",
       instruction: "Use the approved symbolic mate from this selected proposal.",
       completionCondition: "The deterministic solver accepts the selected mate.",
+      sourceDigest: {
+        summary: "The cited assembly guidance describes the named connection, while the deterministic solver supplies the placement used by the model.",
+        citation,
+      },
       citations: [citation],
       matingSelections: [selection],
     }],

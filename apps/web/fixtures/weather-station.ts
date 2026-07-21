@@ -37,6 +37,7 @@ const step = (
   completionCondition,
   whyItMatters: content,
   concepts: [{ title: lessonTitle, explanation: content }],
+  sourceDigest: { summary: content, citation },
   skills: [{ ...citation, relevance: `Explains the technique used while you ${title.toLowerCase()}.` }],
   matingSelections: [],
 });

@@ -5,7 +5,7 @@ import { layoutElectricalNetlist } from "@educational-hardware-builder/solver";
 
 import { weatherStationWiringNetlist } from "../../../packages/schemas/fixtures/weather-station-wiring.js";
 
-test("wiring tab consumes deterministic symbol and orthogonal-route output", () => {
+test("Workshop wiring guides consume deterministic symbol and orthogonal-route output", () => {
   const layout = layoutElectricalNetlist(weatherStationWiringNetlist);
 
   assert.deepEqual(layout.symbols.map((symbol) => symbol.refdes), ["U2", "U1"]);

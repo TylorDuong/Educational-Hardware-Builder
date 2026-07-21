@@ -22,6 +22,14 @@ export const weatherStationStepFixture: StepPlan = {
     title: "I2C bus",
     explanation: "I2C uses named data and clock wires so the controller can communicate with addressed devices.",
   }],
+  sourceDigest: {
+    summary: "The cited I2C guide explains that the controller and sensor share a data wire and a clock wire. In this build, the named VIN and GND connections power the sensor, while SDA and SCL give it the two paths it needs to communicate with the ESP32.",
+    citation: {
+      sourceUrl: "https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2c.html",
+      locator: "I2C Introduction",
+      title: "ESP-IDF I2C API Reference",
+    },
+  },
   skills: [{
     sourceUrl: "https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2c.html",
     locator: "I2C Introduction",

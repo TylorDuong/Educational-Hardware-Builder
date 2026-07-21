@@ -303,7 +303,7 @@ export const ElectricalNetSchema = z.object({
   connections: z.array(ElectricalNetConnectionSchema).min(2).max(100),
 }).strict();
 
-/** Strict netlist handoff used by the wiring tab and future Extractor/Librarian/Architect flow. */
+/** Strict netlist handoff used by Workshop wiring guides and future Extractor/Librarian/Architect flow. */
 export const ElectricalNetlistSchema = z.object({
   projectName: NonEmptyTextSchema.max(160),
   components: z.array(ElectricalComponentSchema).min(1).max(100),
@@ -346,6 +346,16 @@ export const LearningConceptSchema = z.object({
   explanation: NonEmptyTextSchema.max(1_500),
 }).strict();
 
+/** A beginner-friendly explanation generated from one of the step's cited local source excerpts. */
+export const SourceDigestSchema = z.object({
+  summary: NonEmptyTextSchema.max(2_000),
+  citation: CitationSchema,
+}).strict();
+
+const citationIdentity = (citation: z.infer<typeof CitationSchema>): string => (
+  `${citation.sourceUrl}\u0000${citation.locator}\u0000${citation.title}`
+);
+
 export const StepPlanSchema = z.object({
   id: z.string().uuid(),
   order: z.number().int().positive(),
@@ -356,9 +366,18 @@ export const StepPlanSchema = z.object({
   completionCondition: NonEmptyTextSchema.max(1_000).optional(),
   whyItMatters: NonEmptyTextSchema.max(2_000).optional(),
   concepts: z.array(LearningConceptSchema).default([]),
+  sourceDigest: SourceDigestSchema,
   skills: z.array(SkillLibraryEntrySchema).default([]),
   matingSelections: z.array(MatingSelectionSchema).default([]),
-}).strict();
+}).strict().superRefine((step, context) => {
+  if (!step.lesson.citations.some((citation) => citationIdentity(citation) === citationIdentity(step.sourceDigest.citation))) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["sourceDigest", "citation"],
+      message: "A source digest must cite one of the step's lesson sources.",
+    });
+  }
+});
 
 /** A complete, fixture-backed beginner build available to the Workshop. */
 export const AuthoredBuildManifestSchema = z.object({
@@ -653,10 +672,19 @@ export const GuidedLessonStepSchema = z.object({
   completionCondition: NonEmptyTextSchema.max(1_000),
   whyItMatters: NonEmptyTextSchema.max(2_000).optional(),
   concepts: z.array(LearningConceptSchema).default([]),
+  sourceDigest: SourceDigestSchema,
   citations: z.array(CitationSchema).min(1),
   skills: z.array(SkillLibraryEntrySchema).default([]),
   matingSelections: z.array(MatingSelectionSchema).default([]),
-}).strict();
+}).strict().superRefine((step, context) => {
+  if (!step.citations.some((citation) => citationIdentity(citation) === citationIdentity(step.sourceDigest.citation))) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["sourceDigest", "citation"],
+      message: "A source digest must cite one of the step's cited sources.",
+    });
+  }
+});
 export const GuidedLessonSchema = z.object({
   proposalId: z.string().uuid(),
   title: NonEmptyTextSchema.max(300),
@@ -755,6 +783,7 @@ export type AssemblyTransform = z.infer<typeof AssemblyTransformSchema>;
 export type TemplateParams = z.infer<typeof TemplateParamsSchema>;
 export type Lesson = z.infer<typeof LessonSchema>;
 export type LearningConcept = z.infer<typeof LearningConceptSchema>;
+export type SourceDigest = z.infer<typeof SourceDigestSchema>;
 export type StepPlan = z.infer<typeof StepPlanSchema>;
 export type AuthoredBuildManifest = z.infer<typeof AuthoredBuildManifestSchema>;
 export type BuildSelection = z.infer<typeof BuildSelectionSchema>;

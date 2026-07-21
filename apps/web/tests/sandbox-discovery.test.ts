@@ -6,10 +6,10 @@ async function sandboxSource(): Promise<string> {
   return readFile(new URL("../src/sandbox.tsx", import.meta.url), "utf8");
 }
 
-test("Dashboard preserves discovery behavior, six-tab navigation, and section help", async () => {
+test("Dashboard preserves discovery behavior, five-tab navigation, and section help", async () => {
   const source = await sandboxSource();
 
-  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Wiring", "Workshop"\] as const/);
+  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Workshop"\] as const/);
   assert.match(source, /function PageHeading/);
   assert.match(source, /function SectionHelpModal/);
   assert.match(source, /className="help-trigger"/);
@@ -26,6 +26,11 @@ test("Dashboard preserves discovery behavior, six-tab navigation, and section he
   assert.match(source, /YOUR PLAN/);
 
   assert.match(source, /function ResearchPanel/);
+  assert.match(source, /function researchBriefFor/);
+  assert.match(source, /What you will make/);
+  assert.match(source, /Conceptual parts you need/);
+  assert.match(source, /Potential use cases/);
+  assert.match(source, /Alternative builds/);
   assert.match(source, /Saved parts data/);
   assert.match(source, /See the research/);
   assert.match(source, /onOpenBuild=\{\(\) => setActiveTab\("Research"\)\}/);
@@ -55,9 +60,11 @@ test("Dashboard preserves discovery behavior, six-tab navigation, and section he
   assert.match(source, /setActiveTab\("Workshop"\)/);
   assert.match(source, /Opening your lesson/);
   assert.match(source, /function SelectedWorkshopPanel/);
-  assert.match(source, /function WiringPanel/);
-  assert.match(source, /WiringDiagram netlist=\{weatherStationWiringNetlist\}/);
-  assert.match(source, /activeTab === "Wiring"/);
+  assert.doesNotMatch(source, /function WiringPanel/);
+  assert.doesNotMatch(source, /activeTab === "Wiring"/);
+  assert.match(source, /function WorkshopStepVisual/);
+  assert.match(source, /supportsWeatherStationWiring/);
+  assert.match(source, /WiringDiagram key=\{`\$\{step\.id\}/);
   assert.match(source, /function InteractiveAssemblyViewer/);
   assert.match(source, /createSchematicScene/);
   assert.match(source, /routes=\{schematicScene\.routes\}/);
@@ -70,8 +77,9 @@ test("Dashboard preserves discovery behavior, six-tab navigation, and section he
   assert.match(source, /disassembleOnHover=\{disassembleOnHover\}/);
   assert.match(source, /selectEnclosures=\{selectEnclosures\}/);
   assert.match(source, /onHover=\{previewPart\}/);
-  assert.match(source, /const \[disassembleOnHover, setDisassembleOnHover\] = useState\(true\)/);
+  assert.match(source, /const \[disassembleOnHover, setDisassembleOnHover\] = useState\(false\)/);
   assert.match(source, /Disassemble on hover/);
+  assert.match(source, /Hover preview is off; click a part to select and inspect it/);
   assert.match(source, /Select enclosures/);
   assert.match(source, /Automatic: click through enclosures to the parts inside/);
   assert.match(source, /Center &amp; reset model/);
@@ -79,10 +87,16 @@ test("Dashboard preserves discovery behavior, six-tab navigation, and section he
   assert.match(source, /className=\{part\.id === selectedPart\?\.id \? "part-picker active" : "part-picker"\}/);
   assert.doesNotMatch(source, /Spread parts out/);
   assert.match(source, /function WorkshopTimeline/);
+  assert.match(source, /timelineTrackRef/);
+  assert.match(source, /scrollTo\(/);
+  assert.match(source, /role="progressbar"/);
+  assert.match(source, /Mark complete and continue/);
   assert.match(source, /Full 3D build overview/);
+  assert.match(source, /In plain language/);
   assert.match(source, /Why this matters/);
   assert.match(source, /Concepts to notice/);
-  assert.match(source, /Further reading/);
+  assert.match(source, /Need a deeper explanation\?/);
+  assert.match(source, /Check the original source/);
   assert.match(source, /Before you begin/);
   assert.match(source, /When something does not work/);
   assert.match(source, /Fit check/);

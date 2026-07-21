@@ -29,6 +29,10 @@ const lesson = GuidedLessonSchema.parse({
       safetyCallout: "Keep USB power disconnected while arranging the parts.",
       instruction: "Place the cited ESP32 and LED module on the work surface.",
       completionCondition: "Both parts are identified and disconnected from power.",
+      sourceDigest: {
+        summary: "The cited USB guide keeps this build on the USB power path, so identify the parts before connecting power.",
+        citation,
+      },
       citations: [citation],
       skills: [{ ...citation, relevance: "Explains the power-path terminology used in this step." }],
       matingSelections: [],
@@ -41,6 +45,10 @@ const lesson = GuidedLessonSchema.parse({
       safetyCallout: "Inspect the cited parts before continuing.",
       instruction: "Confirm both cited parts are ready for the next step.",
       completionCondition: "The parts are ready for the next guided step.",
+      sourceDigest: {
+        summary: "The cited guide uses a named USB path, which gives you a simple reference while checking the prepared parts.",
+        citation,
+      },
       citations: [citation],
       skills: [],
       matingSelections: [],
