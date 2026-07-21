@@ -44,7 +44,6 @@ import {
   ScrollReveal,
   ShapeGrid,
   SpecularButton,
-  SpotlightCard,
   TiltedCard,
 } from "./components/react-bits.js";
 import {
@@ -130,7 +129,8 @@ type GalleryProject = {
   parts: readonly string[];
   research: readonly string[];
   steps: readonly string[];
-  preview: "lamp" | "arcade" | "garden" | "audio" | "weather";
+  imageUrl?: string;
+  imageAlt?: string;
 };
 type GalleryDetailView = "overview" | "parts" | "research" | "model" | "lesson";
 
@@ -779,41 +779,18 @@ function Dashboard({
             See more
           </a>
         </div>
-        <div className="template-grid">
-          <SpotlightCard className="template-card template-card--plant">
-            <span className="template-card__type">Smart Home</span>
-            <h3>Plant guardian</h3>
-            <p>Water a plant only when it needs it, with a pump and a simple controller.</p>
-            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[0])}>Use this prompt</button>
-          </SpotlightCard>
-          <SpotlightCard className="template-card template-card--macro">
-            <span className="template-card__type">Desk Upgrade</span>
-            <h3>Editing macropad</h3>
-            <p>Make a tactile six-key controller with a rotary encoder for focused work.</p>
-            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[4])}>Use this prompt</button>
-          </SpotlightCard>
-          <SpotlightCard className="template-card template-card--lamp">
-            <img src="/images/lumos-smart-lamp.jpg" alt="LUMOS smart lamp project reference" loading="lazy" />
-            <div>
-              <span className="template-card__type">Referenced project</span>
-              <h3>Smart light study</h3>
-              <p>Explore an open hardware lighting project before shaping your own version.</p>
-              <a href="https://www.hackster.io/JontyDIY/lumos-smart-lamp-for-better-sleep-d5987e" target="_blank" rel="noreferrer">View source</a>
-              <small>Image: Jonty, CC BY via Hackster</small>
-            </div>
-          </SpotlightCard>
-          <SpotlightCard className="template-card template-card--retro">
-            <span className="template-card__type">Retro Gaming</span>
-            <h3>Pocket arcade</h3>
-            <p>Plan a compact cabinet with a small screen and familiar arcade controls.</p>
-            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[10])}>Use this prompt</button>
-          </SpotlightCard>
-          <SpotlightCard className="template-card template-card--utility">
-            <span className="template-card__type">Practical Utility</span>
-            <h3>Wildlife camera trap</h3>
-            <p>Combine a motion trigger, a battery, and a weather-ready housing.</p>
-            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[16])}>Use this prompt</button>
-          </SpotlightCard>
+        <div className="gallery-grid" aria-label="Gallery previews">
+          {galleryProjects.slice(0, 3).map((project) => (
+            <article className="gallery-card" key={project.id}>
+              <button type="button" onClick={onOpenGallery} aria-label={`Open ${project.title} in the Gallery`}>
+                <GalleryPreview project={project} />
+                <span className="gallery-card__technology">{project.technology}</span>
+                <strong>{project.title}</strong>
+                <span className="gallery-card__creator">By {project.creator}</span>
+                <p>{project.summary}</p>
+              </button>
+            </article>
+          ))}
         </div>
       </section>
     </section>
@@ -1102,49 +1079,59 @@ type PartCardView = {
   quantity: number;
   price?: number;
   currency?: string;
-  thumbnailDataUrl?: string;
+  imageUrl?: string;
+  imageAlt?: string;
   sourceUrl?: string;
   sourceLabel?: string;
   freshness?: "fresh" | "stale";
   alternatives: readonly { id: string; name: string; category: string }[];
 };
 
-function partCardsFor(discovery?: DiscoveryView): readonly PartCardView[] {
-  if (discovery?.proposal) {
-    return discovery.proposal.billOfMaterials.map((entry) => {
-      const primaryOffer = entry.offers.find((offer) => offer.price !== undefined && offer.currency === "USD") ?? entry.offers[0];
-      return {
-        id: entry.part.id,
-        name: learnerPartName(entry.part.name, entry.part.category),
-        category: entry.part.category,
-        role: learnerFriendlyText(entry.rationale),
-        quantity: entry.quantity,
-        price: primaryOffer?.currency === "USD" ? primaryOffer.price : undefined,
-        currency: primaryOffer?.currency,
-        thumbnailDataUrl: primaryOffer?.thumbnailDataUrl,
-        sourceUrl: primaryOffer?.sourceUrl,
-        sourceLabel: primaryOffer ? primaryOffer.provider + " / " + primaryOffer.providerSku : undefined,
-        freshness: entry.freshness,
-        alternatives: entry.alternatives.map((alternative) => ({
-          id: alternative.id,
-          name: learnerPartName(alternative.name, alternative.category),
-          category: alternative.category,
-        })),
-      };
-    });
-  }
-
+function demoPartCards(): readonly PartCardView[] {
   return demoParts.map((part, index) => ({
     id: part.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     name: learnerPartName(part.name),
-    category: "saved demo part",
+    category: part.status,
     role: part.role,
     quantity: 1,
-    price: part.name === "ESP32 DevKit" ? 9.99 : undefined,
-    currency: part.name === "ESP32 DevKit" ? "USD" : undefined,
+    price: part.estimatedPrice,
+    currency: "USD",
+    imageUrl: part.imageUrl,
+    imageAlt: part.imageAlt,
     freshness: "fresh",
     alternatives: [{ id: "demo-" + index, name: demoSubstitution.selected, category: "compatible saved option" }],
   }));
+}
+
+function isFixtureKitProposal(discovery?: DiscoveryView): boolean {
+  return discovery?.proposal?.intent.constraints.includes("local catalog only") ?? false;
+}
+
+function partCardsFor(discovery?: DiscoveryView): readonly PartCardView[] {
+  if (!discovery?.proposal || isFixtureKitProposal(discovery)) return demoPartCards();
+
+  return discovery.proposal.billOfMaterials.map((entry) => {
+    const primaryOffer = entry.offers.find((offer) => offer.price !== undefined && offer.currency === "USD") ?? entry.offers[0];
+    return {
+      id: entry.part.id,
+      name: learnerPartName(entry.part.name, entry.part.category),
+      category: entry.part.category,
+      role: learnerFriendlyText(entry.rationale),
+      quantity: entry.quantity,
+      price: primaryOffer?.currency === "USD" ? primaryOffer.price : undefined,
+      currency: primaryOffer?.currency,
+      imageUrl: primaryOffer?.thumbnailDataUrl,
+      imageAlt: primaryOffer ? learnerPartName(entry.part.name, entry.part.category) + " listing thumbnail" : undefined,
+      sourceUrl: primaryOffer?.sourceUrl,
+      sourceLabel: primaryOffer ? primaryOffer.provider + " / " + primaryOffer.providerSku : undefined,
+      freshness: entry.freshness,
+      alternatives: entry.alternatives.map((alternative) => ({
+        id: alternative.id,
+        name: learnerPartName(alternative.name, alternative.category),
+        category: alternative.category,
+      })),
+    };
+  });
 }
 
 function PartsPanel({
@@ -1157,6 +1144,7 @@ function PartsPanel({
   onOpenHelp: (section: Tab) => void;
 }) {
   const parts = partCardsFor(discovery);
+  const isDemoParts = !discovery?.proposal || isFixtureKitProposal(discovery);
   const savedTotal = parts.reduce((sum, part) => sum + (part.price ?? 0) * part.quantity, 0);
   const pricedCount = parts.filter((part) => part.price !== undefined).length;
 
@@ -1177,18 +1165,18 @@ function PartsPanel({
               <p className="eyebrow">SOURCING QUEUE</p>
               <h2>{parts.length} parts in this plan</h2>
             </div>
-            <span>Saved records only</span>
+            <span>{isDemoParts ? "Demo estimates" : "Saved records only"}</span>
           </div>
           <AnimatedList
             items={parts}
             getKey={(part) => part.id}
             renderItem={(part) => (
-              <TiltedCard className="part-card" rotateAmplitude={4} scaleOnHover={1.015}>
-                <div className="part-card__visual">
-                  {part.thumbnailDataUrl
-                    ? <img src={part.thumbnailDataUrl} alt={part.name + " listing thumbnail"} loading="lazy" />
-                    : <span>{part.name.slice(0, 3).toUpperCase()}</span>}
-                </div>
+              <TiltedCard className={part.imageUrl ? "part-card" : "part-card part-card--without-image"} rotateAmplitude={4} scaleOnHover={1.015}>
+                {part.imageUrl ? (
+                  <div className="part-card__visual">
+                    <img src={part.imageUrl} alt={part.imageAlt ?? part.name + " sample image"} loading="lazy" />
+                  </div>
+                ) : null}
                 <div className="part-card__copy">
                   <div className="part-card__title">
                     <span>{part.category}</span>
@@ -1198,7 +1186,7 @@ function PartsPanel({
                   <div className="part-card__meta">
                     <span>Qty {part.quantity}</span>
                     <span className={part.freshness === "stale" ? "freshness stale" : "freshness fresh"}>
-                      {part.freshness === "stale" ? "Needs a price check" : "Saved option ready"}
+                      {isDemoParts ? "Demo estimate" : part.freshness === "stale" ? "Needs a price check" : "Saved option ready"}
                     </span>
                   </div>
                   <div className="part-card__source">
@@ -1224,13 +1212,22 @@ function PartsPanel({
         <aside className="parts-summary">
           <BorderGlow backgroundColor="#FFFDF5" glowColor="210 99% 45%" borderRadius={14} glowRadius={0} glowIntensity={0}>
             <section className="parts-summary__inner">
-              <p className="eyebrow">SAVED TOTAL</p>
+              <p className="eyebrow">TOTAL</p>
               <h2>{pricedCount > 0 ? <CountUp value={savedTotal} prefix="$" /> : "Estimate in progress"}</h2>
-              <p>{pricedCount} of {parts.length} parts have a USD price in the saved catalog.</p>
+              <p>{isDemoParts ? `Estimated cost for all ${parts.length} kit parts.` : `${pricedCount} of ${parts.length} parts have a USD price in the saved catalog.`}</p>
               <dl>
-                <div><dt>Included</dt><dd>{pricedCount} priced records</dd></div>
-                <div><dt>Still needed</dt><dd>{parts.length - pricedCount} price checks</dd></div>
-                <div><dt>Source mode</dt><dd>Local records</dd></div>
+                {isDemoParts ? (
+                  <>
+                    <div><dt>Included</dt><dd>{parts.length} kit parts</dd></div>
+                    <div><dt>Pricing mode</dt><dd>Demo estimates</dd></div>
+                  </>
+                ) : (
+                  <>
+                    <div><dt>Included</dt><dd>{pricedCount} priced records</dd></div>
+                    <div><dt>Still needed</dt><dd>{parts.length - pricedCount} price checks</dd></div>
+                    <div><dt>Source mode</dt><dd>Local records</dd></div>
+                  </>
+                )}
               </dl>
             </section>
           </BorderGlow>
@@ -1459,7 +1456,7 @@ function InteractiveAssemblyViewer({
 function SourceDigestBlock({ sourceDigest }: { sourceDigest: SourceDigest }) {
   return (
     <section className="learning-block source-digest-block">
-      <h3>In plain language</h3>
+      <h3>How to do it</h3>
       <p>{learnerFriendlyText(sourceDigest.summary)}</p>
       <span className="source-digest-citation">Based on {sourceDigest.citation.title}, {sourceDigest.citation.locator}.</span>
     </section>
@@ -1780,6 +1777,7 @@ function WorkshopExperience({
   onMove,
   onShowOverview,
   onComplete,
+  onShare,
   onOpenSkill,
   onOpenHelp,
   visualSupplement,
@@ -2031,7 +2029,8 @@ const galleryProjects: readonly GalleryProject[] = [
     parts: ["ESP32 controller", "Addressable LED strip", "Diffused lamp housing", "USB power"],
     research: ["How warm light changes a room", "Safe low-voltage LED wiring", "Diffusion and enclosure choices"],
     steps: ["Plan the lighting behavior", "Prepare the enclosure", "Connect the LEDs", "Test the sleep routine"],
-    preview: "lamp",
+    imageUrl: "/images/gallery/lumos-sleep-lamp.jpg",
+    imageAlt: "Sample desk lamp for the Lumos sleep lamp project",
   },
   {
     id: "pocket-arcade",
@@ -2042,7 +2041,6 @@ const galleryProjects: readonly GalleryProject[] = [
     parts: ["Raspberry Pi Zero", "Five-inch display", "Arcade buttons", "Printed enclosure"],
     research: ["Portable display connections", "Button matrix basics", "Designing a compact enclosure"],
     steps: ["Mock up the cabinet", "Mount the controls", "Connect the display", "Load and test the build"],
-    preview: "arcade",
   },
   {
     id: "desktop-garden",
@@ -2053,7 +2051,8 @@ const galleryProjects: readonly GalleryProject[] = [
     parts: ["ESP32 controller", "Capacitive soil sensor", "Mini pump", "Water-safe tubing"],
     research: ["Reading capacitive soil sensors", "Low-flow pumping", "Keeping electronics dry"],
     steps: ["Map the water path", "Wire the sensor", "Mount the pump", "Tune the watering threshold"],
-    preview: "garden",
+    imageUrl: "/images/gallery/desktop-garden.jpg",
+    imageAlt: "Sample indoor plant for the Desktop garden keeper project",
   },
   {
     id: "sound-desk",
@@ -2064,23 +2063,14 @@ const galleryProjects: readonly GalleryProject[] = [
     parts: ["Audio sensor", "Microcontroller", "LED matrix", "Acrylic frame"],
     research: ["Sampling a sound signal", "Mapping sound to light", "Working with translucent acrylic"],
     steps: ["Test the sensor", "Build the frame", "Connect the matrix", "Shape the light response"],
-    preview: "audio",
+    imageUrl: "/images/gallery/sound-desk.jpg",
+    imageAlt: "Sample electronics project for the sound-reactive desk object",
   },
 ];
 
 function GalleryPreview({ project }: { project: GalleryProject }) {
-  if (project.preview === "lamp") {
-    return <img src="/images/lumos-smart-lamp.jpg" alt="Lumos smart lamp project preview" loading="lazy" />;
-  }
-
-  return (
-    <div className={`gallery-preview gallery-preview--${project.preview}`} aria-hidden="true">
-      <span className="gallery-preview__base" />
-      <span className="gallery-preview__screen" />
-      <span className="gallery-preview__detail gallery-preview__detail--one" />
-      <span className="gallery-preview__detail gallery-preview__detail--two" />
-    </div>
-  );
+  if (!project.imageUrl) return null;
+  return <img src={project.imageUrl} alt={project.imageAlt ?? project.title + " project preview"} loading="lazy" />;
 }
 
 function GalleryPanel({
@@ -2229,7 +2219,8 @@ function Workshop() {
       parts: ["ESP32 controller", "BME280 sensor", "Breadboard and jumpers", "USB power"],
       research: ["Environmental sensing basics", "I2C signal connections", "Protecting a sensor in an enclosure"],
       steps: ["Prepare the controller", "Connect the sensor", "Check the I2C lines", "Verify the readings"],
-      preview: "weather",
+      imageUrl: "/images/gallery/weather-station.jpg",
+      imageAlt: "Sample breadboard electronics project for the shared weather station",
     };
   }, [discovery?.proposal?.intent.normalizedGoal, hasSharedProject, selectedWorkshop?.lesson.title]);
 
@@ -2381,7 +2372,7 @@ function Workshop() {
     markStepComplete(step.id);
     if (activeIndex === weatherStationGoldenSteps.length - 1) {
       setComplete(true);
-      setMessage("All Workshop steps are complete. You can revisit any of them at any time.");
+      shareCompletedProject();
       return;
     }
     await moveTo(activeIndex + 1);
@@ -2432,7 +2423,7 @@ function Workshop() {
     markStepComplete(step.id);
     if (activeIndex === workshop.lesson.steps.length - 1) {
       setComplete(true);
-      setMessage("All Workshop steps are complete. You can revisit any of them at any time.");
+      shareCompletedProject();
       return;
     }
     await moveSelectedTo(activeIndex + 1);

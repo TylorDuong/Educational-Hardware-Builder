@@ -76,6 +76,15 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(css, /\.app-shell\.has-floating-workshop-timeline/);
 
   assert.match(source, /function PartsPanel/);
+  assert.match(source, /function demoPartCards/);
+  assert.match(source, /function isFixtureKitProposal/);
+  assert.match(source, /if \(!discovery\?\.proposal \|\| isFixtureKitProposal\(discovery\)\) return demoPartCards\(\)/);
+  assert.match(source, /category: part\.status/);
+  assert.match(source, /className=\{part\.imageUrl \? "part-card" : "part-card part-card--without-image"\}/);
+  assert.match(source, /<img src=\{part\.imageUrl\} alt=\{part\.imageAlt/);
+  assert.match(source, /<p className="eyebrow">TOTAL<\/p>/);
+  assert.doesNotMatch(source, /SAVED TOTAL/);
+  assert.match(source, /Estimated cost for all \$\{parts\.length\} kit parts\./);
   assert.match(source, /What parts do you have\? \(optional\)/);
   assert.match(source, /function ReportedOwnedParts/);
   assert.match(source, /Ready for planning/);
@@ -149,7 +158,8 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /See the whole build, then zoom into each action\./);
   assert.match(source, /learnerFriendlyText/);
   assert.match(source, /learnerPartName/);
-  assert.match(source, /In plain language/);
+  assert.match(source, /How to do it/);
+  assert.doesNotMatch(source, /In plain language/);
   assert.match(source, /Why this matters/);
   assert.match(source, /Concepts to notice/);
   assert.match(source, /Need a deeper explanation\?/);
@@ -160,7 +170,17 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /solveSelectedProposalParts/);
   assert.match(source, /role="alert"/);
   assert.match(source, /function GalleryPanel/);
+  assert.match(source, /function GalleryPreview/);
+  assert.match(source, /if \(!project\.imageUrl\) return null/);
+  assert.match(source, /imageUrl: "\/images\/gallery\/lumos-sleep-lamp\.jpg"/);
+  assert.doesNotMatch(source, /gallery-preview--/);
+  assert.match(redesign, /\.gallery-card img/);
+  assert.doesNotMatch(redesign, /\.gallery-preview/);
   assert.match(source, /Share to Gallery/);
+  assert.match(source, /galleryProjects\.slice\(0, 3\)/);
+  assert.match(source, /aria-label=\{`Open \$\{project\.title\} in the Gallery`\}/);
+  assert.match(source, /if \(activeIndex === weatherStationGoldenSteps\.length - 1\) \{\s+setComplete\(true\);\s+shareCompletedProject\(\);/);
+  assert.match(source, /if \(activeIndex === workshop\.lesson\.steps\.length - 1\) \{\s+setComplete\(true\);\s+shareCompletedProject\(\);/);
   assert.match(source, /3D view/);
   assert.match(source, /className="template-section__more"/);
   assert.match(source, /onOpenGallery=\{\(\) => selectTab\("Gallery"\)\}/);
