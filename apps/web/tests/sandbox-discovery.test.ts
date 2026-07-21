@@ -10,8 +10,12 @@ async function sandboxCss(): Promise<string> {
   return readFile(new URL("../src/sandbox.css", import.meta.url), "utf8");
 }
 
+async function redesignCss(): Promise<string> {
+  return readFile(new URL("../src/redesign.css", import.meta.url), "utf8");
+}
+
 test("Dashboard preserves discovery behavior, four-tab navigation, and section help", async () => {
-  const [source, css] = await Promise.all([sandboxSource(), sandboxCss()]);
+  const [source, css, redesign] = await Promise.all([sandboxSource(), sandboxCss(), redesignCss()]);
 
   assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Workshop"\] as const/);
   assert.match(source, /function PageHeading/);
@@ -31,6 +35,7 @@ test("Dashboard preserves discovery behavior, four-tab navigation, and section h
   assert.match(source, /BuildProposalSchema\.parse/);
   assert.match(source, /function DiscoverySummary/);
   assert.match(source, /YOUR PLAN/);
+  assert.match(source, /if \(classification\.outcome === "approved" && proposal\) \{[\s\S]*setActiveTab\("Research"\)/);
 
   assert.match(source, /function ResearchPanel/);
   assert.match(source, /function researchBriefFor/);
@@ -52,6 +57,7 @@ test("Dashboard preserves discovery behavior, four-tab navigation, and section h
   assert.match(css, /\.app-tabs[\s\S]*position: sticky/);
   assert.match(css, /\.workflow-navigation[\s\S]*position: fixed/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(redesign, /\.workflow-navigation \{\s+position: fixed;/);
   assert.match(css, /\.workshop-timeline[\s\S]*position: fixed/);
   assert.match(css, /\.app-shell\.has-floating-workshop-timeline/);
 
@@ -83,6 +89,9 @@ test("Dashboard preserves discovery behavior, four-tab navigation, and section h
   assert.doesNotMatch(source, /function WiringPanel/);
   assert.doesNotMatch(source, /activeTab === "Wiring"/);
   assert.match(source, /function WorkshopStepVisual/);
+  assert.doesNotMatch(source, /function SimilarProjects/);
+  assert.doesNotMatch(source, /Build with confidence\./);
+  assert.doesNotMatch(source, /References for your next iteration\./);
   assert.match(source, /supportsWeatherStationWiring/);
   assert.match(source, /WiringDiagram key=\{`\$\{step\.id\}/);
   assert.match(source, /function InteractiveAssemblyViewer/);

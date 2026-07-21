@@ -47,7 +47,6 @@ import {
   AnimatedList,
   CountUp,
   CurvedInput,
-  Masonry,
   Stepper,
   TextType,
 } from "./components/experience-primitives.js";
@@ -1780,48 +1779,6 @@ function WorkshopStepDetails({
   );
 }
 
-function SimilarProjects({ steps }: { steps: readonly WorkshopStepView[] }) {
-  const citations = steps.flatMap((step) => step.citations)
-    .filter((citation, index, values) => values.findIndex((value) => value.sourceUrl === citation.sourceUrl && value.locator === citation.locator) === index)
-    .slice(0, 3);
-
-  return (
-    <section className="similar-projects">
-      <header>
-        <p className="eyebrow">SIMILAR PROJECTS</p>
-        <h2>References for your next iteration.</h2>
-        <p>Browse a mix of documented ideas, diagrams, and source links without leaving the build context.</p>
-      </header>
-      <Masonry className="similar-projects__grid">
-        <SpotlightCard className="similar-project similar-project--photo">
-          <img src="/images/lumos-smart-lamp.jpg" alt="LUMOS smart lamp project reference" loading="lazy" />
-          <div>
-            <span>Referenced project</span>
-            <h3>LUMOS smart lamp</h3>
-            <p>A lighting project with open source files, a clear physical form, and an electronics assembly story.</p>
-            <a href="https://www.hackster.io/JontyDIY/lumos-smart-lamp-for-better-sleep-d5987e" target="_blank" rel="noreferrer">Open project</a>
-            <small>Image: Jonty, CC BY via Hackster</small>
-          </div>
-        </SpotlightCard>
-        <SpotlightCard className="similar-project similar-project--diagram">
-          <span>Working diagram</span>
-          <h3>Named signal paths</h3>
-          <p>Use the same visual language when you compare a source-backed connection with your own build.</p>
-          <WiringDiagram netlist={weatherStationWiringNetlist} initialNet="I2C_SDA" />
-        </SpotlightCard>
-        {citations.map((citation) => (
-          <SpotlightCard className="similar-project similar-project--reference" key={citation.sourceUrl + ":" + citation.locator}>
-            <span>Source link</span>
-            <h3>{citation.title}</h3>
-            <p>Find the relevant detail at {citation.locator}.</p>
-            <a href={citation.sourceUrl} target="_blank" rel="noreferrer">Open reference</a>
-          </SpotlightCard>
-        ))}
-      </Masonry>
-    </section>
-  );
-}
-
 function WorkshopExperience({
   lessonTitle,
   steps,
@@ -1873,20 +1830,13 @@ function WorkshopExperience({
 
   return (
     <section className="workshop-view workshop-view--redesigned">
-      <header className="workshop-hero">
-        <div>
-          <p className="eyebrow">WORKSHOP</p>
-          <h1>Build with confidence.</h1>
-          <p>Move freely between the 3D model, cited instructions, and the exact action you want to understand next.</p>
-        </div>
-        <button type="button" className="landing-help-link" onClick={() => onOpenHelp("Workshop")}>How to use the Workshop</button>
-      </header>
       <div className="workshop-experience__layout">
         <aside className="workshop-stepper">
           <div className="workshop-stepper__heading">
             <p className="eyebrow">BUILD PATH</p>
             <h2>Make it one action at a time.</h2>
             <p>{completedStepIds.size} of {steps.length} steps complete. Every step is available now.</p>
+            <button type="button" className="landing-help-link workshop-stepper__help" onClick={() => onOpenHelp("Workshop")}>How to use the Workshop</button>
           </div>
           <Stepper
             steps={steps.map((workshopStep) => ({
@@ -1931,7 +1881,6 @@ function WorkshopExperience({
               />
             </div>
           )}
-          <SimilarProjects steps={steps} />
         </div>
       </div>
     </section>
@@ -2212,6 +2161,7 @@ function Workshop() {
       if (classification.outcome === "approved" && proposal) {
         setHasStarted(true);
         setMessage("Your plan is ready.");
+        setActiveTab("Research");
       } else {
         setHasStarted(false);
         setDiscoveryError(classification.message);
