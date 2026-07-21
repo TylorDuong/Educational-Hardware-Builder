@@ -33,7 +33,6 @@ import {
 import { type MechViewPart, type MechViewRoute } from "./components/MechView.js";
 import { matchedInventoryPartIds, parseOwnedParts, type OwnedPartInput } from "./owned-parts.js";
 import { createSchematicScene } from "./schematic-scene.js";
-import { applicationSourcePolicies } from "./source-policies.js";
 import { solveSelectedProposalParts } from "./spatial-integration.js";
 import { nextSelectedPartId } from "./workshop-selection.js";
 import { learnerFriendlyText, learnerPartName } from "./learner-language.js";
@@ -45,7 +44,6 @@ import {
   ScrollReveal,
   ShapeGrid,
   SpecularButton,
-  SplitText,
   SpotlightCard,
   TiltedCard,
 } from "./components/react-bits.js";
@@ -349,13 +347,6 @@ const sectionGuides: Record<Tab, SectionGuide> = {
   },
 };
 
-const boundaryPolicies = [
-  ["DIRECT LOGINS", "BLOCKED"],
-  ["BROWSER TOOLS", "BLOCKED"],
-  ["LIVE SHOPPING", "SAVED DATA ONLY"],
-  ["SOURCES", "REQUIRED"],
-] as const;
-
 const discoveryPipelineStages: readonly Progress[] = [
   { stage: "queued", message: "Queueing your discovery request", percent: 0 },
   { stage: "classifying", message: "Checking technical relevance and good-faith use", percent: 20 },
@@ -515,16 +506,25 @@ function SectionHelpModal({ section, onClose }: { section?: Tab; onClose: () => 
   );
 }
 
-function Pipeline({ stages }: { stages: readonly Progress[] }) {
+function Pipeline({
+  stages,
+  progress,
+}: {
+  stages: readonly Progress[];
+  progress: Progress;
+}) {
   return (
-    <ol className="pipeline terminal-log" aria-label="Discovery pipeline">
+    <ol className="pipeline discovery-timeline" aria-label="Discovery progress">
       {discoveryPipelineStages.map((definition) => {
-        const stage = stages.find((entry) => entry.stage === definition.stage);
-        const state = stage ? "done" : "pending";
+        const isCurrent = progress.stage === definition.stage && definition.stage !== "ready";
+        const isDone = stages.some((entry) => entry.stage === definition.stage);
+        const state = isCurrent ? "active" : isDone ? "done" : "pending";
         return (
-          <li key={definition.stage} className={state}>
-            <strong>{definition.stage}</strong>
-            <span>{stage?.message ?? definition.message}</span>
+          <li key={definition.stage} className={state} aria-current={isCurrent ? "step" : undefined}>
+            <span className="discovery-timeline__marker" aria-hidden="true" />
+            <span className="discovery-timeline__label">
+              {definition.stage.charAt(0).toUpperCase() + definition.stage.slice(1)}
+            </span>
           </li>
         );
       })}
@@ -548,65 +548,35 @@ function ServerStatus() {
   );
 }
 
-function DiscoverySummary({ discovery }: { discovery: DiscoveryView }) {
-  const interpretedRequest = discovery.proposal?.intent.normalizedGoal ?? discovery.prompt;
-  const { classification, proposal } = discovery;
-  return (
-    <section className="discovery-summary">
-      <p className="eyebrow">YOUR IDEA</p>
-      <h3>{learnerFriendlyText(interpretedRequest)}</h3>
-      <p><strong>Status:</strong> {classification.outcome}</p>
-      <p className="message">{classification.outcome === "approved" ? classification.reason : classification.message}</p>
-      {proposal ? (
-        <>
-          <p className="eyebrow">YOUR PLAN</p>
-          <h3>{learnerFriendlyText(proposal.summary)}</h3>
-          <p>{proposal.billOfMaterials.length} parts, with saved source details.</p>
-          <ul className="source-list">
-            {proposal.citations.map((citation) => (
-              <li key={citation.sourceUrl + ":" + citation.locator}>
-                <a href={citation.sourceUrl} target="_blank" rel="noreferrer">{citation.title}</a>
-                <span>{citation.locator}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-    </section>
-  );
-}
-
 function Dashboard({
   prompt,
   ownedPartsText,
   progress,
   stages,
-  discovery,
   error,
   isDiscovering,
   onPromptChange,
   onOwnedPartsChange,
   onStart,
   onOpenHelp,
+  onOpenGallery,
 }: {
   prompt: string;
   ownedPartsText: string;
   progress: Progress;
   stages: readonly Progress[];
-  discovery?: DiscoveryView;
   error?: string;
   isDiscovering: boolean;
   onPromptChange: (value: string) => void;
   onOwnedPartsChange: (value: string) => void;
   onStart: (options: DiscoveryOptions) => void;
   onOpenHelp: (section: Tab) => void;
+  onOpenGallery: () => void;
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [budget, setBudget] = useState("");
   const [microcontroller, setMicrocontroller] = useState("");
   const [formFactor, setFormFactor] = useState("");
-  const complete = progress.stage === "ready";
-  const rejected = progress.stage === "rejected";
   const parsedBudget = Number(budget);
 
   const addModifier = (modifier: string) => {
@@ -640,7 +610,7 @@ function Dashboard({
         <div className="landing-hero__wash" aria-hidden="true" />
         <div className="landing-hero__copy">
           <p className="eyebrow">SPARKBUILD</p>
-          <SplitText text="Ignite your next tech project." className="landing-title" tag="h1" />
+          <h1 className="landing-title">Ignite your next tech project.</h1>
           <p className="landing-lede">Tell SparkBuild what you want to build. It researches real, cited parts and generates a hands-on, self-paced build guide so you actually learn the skills as you go.</p>
           <button type="button" className="landing-help-link" onClick={() => onOpenHelp("Dashboard")}>
             How SparkBuild works
@@ -763,19 +733,9 @@ function Dashboard({
       </section>
 
       <section className="landing-result" aria-live="polite">
-        <div className="landing-result__heading">
-          <p className="eyebrow">DISCOVERY STATUS</p>
-          <h2>{progress.message}</h2>
-        </div>
-        <div className="landing-result__body">
-          <Pipeline stages={stages} />
-          {error ? <p className="message" role="alert">{error}</p> : null}
-          {!error && rejected ? <p className="message" role="alert">This request cannot make a hardware plan.</p> : null}
-          {discovery ? <DiscoverySummary discovery={discovery} /> : null}
-          {complete && discovery?.proposal
-            ? <p className="helper">Your plan is ready. Research, Parts, and Workshop are now open.</p>
-            : <p className="helper">Your sources, parts, and build steps will appear here when discovery is ready.</p>}
-        </div>
+        <p className="eyebrow">DISCOVERY STATUS</p>
+        <Pipeline stages={stages} progress={progress} />
+        {error ? <p className="message" role="alert">{error}</p> : null}
       </section>
 
       <section className="how-it-works">
@@ -804,8 +764,20 @@ function Dashboard({
 
       <section className="template-section">
         <div className="template-section__intro">
-          <p className="eyebrow">STARTING POINTS</p>
-          <h2>Try a build with a little personality.</h2>
+          <div>
+            <p className="eyebrow">STARTING POINTS</p>
+            <h2>Try a build with a little personality.</h2>
+          </div>
+          <a
+            className="template-section__more"
+            href="#gallery"
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenGallery();
+            }}
+          >
+            See more
+          </a>
         </div>
         <div className="template-grid">
           <SpotlightCard className="template-card template-card--plant">
@@ -885,13 +857,12 @@ function ResearchPanel({
           {activeCategory === "Concepts" ? (
             <>
               <header className="research-reader__heading">
-                <p className="eyebrow">BUILD BRIEF</p>
-                <h2>What you will make</h2>
+                <h2>Build Brief</h2>
                 <p>{learnerFriendlyText(brief.build)}</p>
               </header>
               <div className="research-concept-grid">
                 <section>
-                  <h3>Conceptual parts you need</h3>
+                  <h3>Component Breakdown</h3>
                   {brief.conceptualParts.map((part) => (
                     <article key={part.title}>
                       <h4>{part.title}</h4>
@@ -900,7 +871,7 @@ function ResearchPanel({
                   ))}
                 </section>
                 <section>
-                  <h3>Potential use cases</h3>
+                  <h3>Use Cases</h3>
                   {brief.useCases.map((useCase) => <p className="research-note" key={useCase}>{useCase}</p>)}
                   <h3 className="research-subheading">Alternative builds</h3>
                   {brief.alternativeBuilds.map((alternative) => <p className="research-note" key={alternative}>{learnerFriendlyText(alternative)}</p>)}
@@ -964,16 +935,6 @@ function ResearchPanel({
             </>
           ) : null}
         </section>
-        <aside className="research-policy">
-          <p className="eyebrow">LOCAL FIRST</p>
-          <h2>Saved, cited, and ready when you are.</h2>
-          <dl>
-            {boundaryPolicies.map(([label, value]) => (
-              <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
-            ))}
-          </dl>
-          <p>{applicationSourcePolicies.length} source rules keep this learning material grounded.</p>
-        </aside>
       </div>
     </section>
   );
@@ -1274,10 +1235,6 @@ function PartsPanel({
             </section>
           </BorderGlow>
           <ReportedOwnedParts ownedParts={ownedParts} />
-          <section className="parts-summary__note">
-            <h3>Keep the estimate honest.</h3>
-            <p>Totals only use prices saved with a source record. Missing or stale prices stay visible instead of being guessed.</p>
-          </section>
         </aside>
       </div>
     </section>
@@ -2508,13 +2465,13 @@ function Workshop() {
         ownedPartsText={ownedPartsText}
         progress={progress}
         stages={pipelineStages}
-        discovery={discovery}
         error={discoveryError}
         isDiscovering={isDiscovering}
         onPromptChange={setProjectPrompt}
         onOwnedPartsChange={setOwnedPartsText}
         onStart={(options) => void startDiscovery(options)}
         onOpenHelp={setSelectedHelp}
+        onOpenGallery={() => selectTab("Gallery")}
       />
     )
     : activeTab === "Research"

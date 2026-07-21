@@ -21,6 +21,8 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /function PageHeading/);
   assert.match(source, /function AppTabs/);
   assert.match(source, /aria-label="Primary navigation"/);
+  assert.match(source, /<h1 className="landing-title">Ignite your next tech project\.<\/h1>/);
+  assert.doesNotMatch(source, /<SplitText text="Ignite your next tech project\."/);
   assert.match(source, /function SectionHelpModal/);
   assert.match(source, /className="help-trigger"/);
   assert.match(source, /const sectionGuides/);
@@ -33,17 +35,29 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /DiscoveryProgressEventSchema\.parse/);
   assert.match(source, /RequestClassificationSchema\.parse/);
   assert.match(source, /BuildProposalSchema\.parse/);
-  assert.match(source, /function DiscoverySummary/);
-  assert.match(source, /YOUR PLAN/);
+  assert.match(source, /function Pipeline/);
+  assert.match(source, /className="pipeline discovery-timeline"/);
+  assert.match(source, /className="discovery-timeline__marker"/);
+  assert.match(source, /<Pipeline stages=\{stages\} progress=\{progress\} \/>/);
+  assert.doesNotMatch(source, /terminal-log/);
+  assert.doesNotMatch(source, /function DiscoverySummary/);
+  assert.match(redesign, /\.discovery-timeline__marker/);
   assert.match(source, /if \(classification\.outcome === "approved" && proposal\) \{[\s\S]*setActiveTab\("Research"\)/);
 
   assert.match(source, /function ResearchPanel/);
   assert.match(source, /function researchBriefFor/);
-  assert.match(source, /What you will make/);
-  assert.match(source, /Conceptual parts you need/);
-  assert.match(source, /Potential use cases/);
+  assert.match(source, /<h2>Build Brief<\/h2>/);
+  assert.match(source, /<h3>Component Breakdown<\/h3>/);
+  assert.match(source, /<h3>Use Cases<\/h3>/);
+  assert.doesNotMatch(source, /What you will make/);
+  assert.doesNotMatch(source, /Conceptual parts you need/);
+  assert.doesNotMatch(source, /Potential use cases/);
   assert.match(source, /Alternative builds/);
   assert.match(source, /Saved parts data/);
+  assert.doesNotMatch(source, /LOCAL FIRST/);
+  assert.doesNotMatch(source, /DIRECT LOGINS/);
+  assert.doesNotMatch(source, /BROWSER TOOLS/);
+  assert.doesNotMatch(source, /LIVE SHOPPING/);
   assert.match(source, /activeTab === "Dashboard"/);
   assert.match(source, /const shellClassName = hasFloatingWorkshopTimeline/);
   assert.match(source, /has-floating-workflow-navigation/);
@@ -80,6 +94,7 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.doesNotMatch(source, /activeTab === "Build"/);
   assert.match(source, /See source/);
   assert.match(source, /Saved option needs a check/);
+  assert.doesNotMatch(source, /Keep the estimate honest/);
 
   assert.match(source, /WorkshopPromotionResponseSchema\.parse/);
   assert.match(source, /"\/api\/discovery\/" \+ discovery\.operationId \+ "\/select"/);
@@ -147,4 +162,7 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /function GalleryPanel/);
   assert.match(source, /Share to Gallery/);
   assert.match(source, /3D view/);
+  assert.match(source, /className="template-section__more"/);
+  assert.match(source, /onOpenGallery=\{\(\) => selectTab\("Gallery"\)\}/);
+  assert.match(redesign, /\.app-topbar \.app-tabs \{[\s\S]*grid-template-columns: repeat\(5, minmax\(max-content, 1fr\)\)/);
 });

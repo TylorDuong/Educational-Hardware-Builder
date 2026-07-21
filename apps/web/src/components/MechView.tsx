@@ -142,6 +142,27 @@ export function isPartSelectable(part: Pick<MechViewPart, "isContainer">, select
   return selectEnclosures || part.isContainer !== true;
 }
 
+/** Enclosures remain transparent wireframe context, even when they are selected or highlighted. */
+export function fixturePartMaterialState(
+  part: Pick<MechViewPart, "isContainer">,
+  dimmed: boolean,
+  selectable: boolean,
+): { transparent: boolean; opacity: number; depthWrite: boolean; wireframe: boolean } {
+  const isContainer = part.isContainer === true;
+  const transparent = dimmed || isContainer;
+  const opacity = dimmed
+    ? UNFOCUSED_PART_OPACITY
+    : isContainer
+      ? selectable ? 0.28 : 0.14
+      : 1;
+  return {
+    transparent,
+    opacity,
+    depthWrite: !transparent,
+    wireframe: isContainer,
+  };
+}
+
 /**
  * Keep a concrete raycast function in both toggle states. Replacing a disabled
  * raycast with `undefined` can leave an instance without its inherited Mesh
@@ -227,9 +248,7 @@ function FixturePart({
 }) {
   const meshRef = useRef<{ position: { x: number; y: number; z: number } } | null>(null);
   const center = partCenterMm(part);
-  const transparentContainer = part.isContainer === true && !highlighted;
-  const containerSelectionReady = part.isContainer === true && selectable;
-  const transparent = dimmed || transparentContainer;
+  const material = fixturePartMaterialState(part, dimmed, selectable);
   useFrame((_state, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
@@ -271,10 +290,10 @@ function FixturePart({
       <meshStandardMaterial
         color={highlighted ? "#e65f54" : part.color ?? "#0172e4"}
         emissive={highlighted ? "#54231f" : "#000000"}
-        transparent={transparent}
-        opacity={dimmed ? UNFOCUSED_PART_OPACITY : transparentContainer ? containerSelectionReady ? 0.28 : 0.14 : 1}
-        depthWrite={!transparent}
-        wireframe={transparentContainer}
+        transparent={material.transparent}
+        opacity={material.opacity}
+        depthWrite={material.depthWrite}
+        wireframe={material.wireframe}
       />
     </mesh>
   );
