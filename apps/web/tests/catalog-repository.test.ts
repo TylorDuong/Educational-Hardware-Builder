@@ -93,6 +93,7 @@ test("catalog repository filters offers by cached offer and source-document fres
 
   assert.match(sql, /o\.expires_at > \$2/);
   assert.match(sql, /s\.expires_at > \$2/);
+  assert.match(sql, /o\.thumbnail_data_url/);
   assert.match(sql, /NULLIF\(BTRIM\(s\.license\), ''\) IS NOT NULL/);
   assert.deepEqual(values, [[partId], now.toISOString()]);
   assert.equal(offers[0]?.price, 9.99);

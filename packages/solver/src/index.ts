@@ -1,5 +1,16 @@
 import type { AssemblyTransform, CadAssetRecord, MatingSelection } from "../../schemas/src/index.js";
 
+export { solveSchematicLayout } from "./schematic-layout.js";
+export { layoutElectricalNetlist } from "./wiring-layout.js";
+export type {
+  ElectricalRulesCheck,
+  WiringLayout,
+  WiringPoint,
+  WiringRoute,
+  WiringSymbol,
+  WiringSymbolPin,
+} from "./wiring-layout.js";
+
 export type SolverError =
   | { code: "UNKNOWN_FEATURE"; message: string; partId: string; featureId: string }
   | { code: "MISMATCHED_HOLE_COUNT"; message: string; expected: number; actual: number }

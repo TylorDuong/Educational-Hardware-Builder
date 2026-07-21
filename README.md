@@ -1,8 +1,30 @@
 # Educational Hardware Builder
 
-A local-first, guided workshop for learning to build safe hardware projects. The Agentic Build Discovery flow turns a learner request into a typed, cited proposal, cached sourcing choices, and a server-gated lesson. It works as a reliable fixture-backed demo without Docker or local models; optional services enable local retrieval, inventory, background ingestion, and local-model experiments.
+A local-first Workshop for learning to plan and build hardware projects. A learner can describe a technical idea, explore a typed and cited proposal, review parts and sources, and follow a freely navigable learning plan with 3D and wiring views. It works as a reliable fixture-backed demo without Docker or local models; optional services enable local retrieval, inventory, background ingestion, and local-model experiments.
 
-## Quickstart
+## What I built
+
+I built a TypeScript monorepo for a local-first educational hardware-building experience. The four-tab Workshop helps a learner move from an idea to an understandable build plan:
+
+- **Dashboard** accepts a technical project request and reports typed discovery progress.
+- **Research** explains the proposal in plain language and preserves cited source material.
+- **Parts** shows verified inventory, cached sourcing choices, and parts the learner already owns.
+- **Workshop** provides directly navigable, cited steps, skill-library links, fit checks, a deterministic 3D schematic, and wiring guidance.
+
+The application keeps important boundaries deliberate: cross-package data is Zod-validated, cited learning content retains its provenance, and deterministic solver code rather than model output owns physical placement and transforms. `DEMO_SAFE_MODE` makes the core flow repeatable with local fixtures; Docker, PostgreSQL/pgvector, OpenSCAD, and Ollama expand the optional local stack.
+
+## How I used Codex and GPT-5.6
+
+I used Codex and GPT-5.6 as development tools while retaining responsibility for the product scope, review, and verification.
+
+| Tool | How I used it |
+| --- | --- |
+| Codex | I used Codex as my engineering workspace to inspect the repository and feature specs, make focused implementation and documentation changes, add or refine tests, and run the project verification commands. |
+| GPT-5.6 | I used GPT-5.6 through Codex for coding and reasoning assistance: translating requirements into TypeScript and React changes, checking schema and API-boundary edge cases, and drafting focused tests and documentation for review. |
+
+The AI tools assisted the development workflow; they are not a dependency of the learner-facing runtime. I reviewed the resulting changes and relied on the repository's type checks, tests, deterministic fixtures, and safety/provenance rules before keeping them. The optional live application path uses local Ollama, while fixture mode remains deterministic and works without a live model.
+
+## Setup and quickstart
 
 Prerequisites: Node.js 22 LTS and pnpm 11.9.0. Docker Desktop is optional for the full local stack.
 
@@ -78,6 +100,10 @@ node scripts/ingestion-smoke.mjs
 
 For a real n8n rehearsal, import only the allowlisted workflow and verify its returned ingestion run proves API-only access; repeat it to check idempotency, then submit the unlicensed fixture and confirm last-known-good data remains unchanged.
 
+### eBay price and thumbnail refresh
+
+The Parts tab can display a cached eBay listing thumbnail, price, and outbound link without making vendor requests from the browser. After `docker compose -f infra/docker-compose.yml up -d --build`, create an n8n **HTTP Basic Auth** credential named `eBay Browse API client credentials` (username: eBay Client ID; password: eBay Client Secret). Import [ingestion/workflows/ebay-browse-catalog-refresh.json](ingestion/workflows/ebay-browse-catalog-refresh.json), then run its manual trigger once. It refreshes the approved ESP32 DevKit and BME280 queries, keeps only US new fixed-price listings, downloads each thumbnail into the local catalog cache, and submits it through the existing authenticated ingest endpoint. The displayed price is labelled with its check date and expires after 24 hours.
+
 ## Architecture
 
 | Area | Location | Responsibility |
@@ -104,11 +130,11 @@ pnpm --filter @educational-hardware-builder/solver test
 pnpm --filter @educational-hardware-builder/scad-service test
 ```
 
-Tests are designed to run without Docker, a GPU, or live Ollama. The web suite includes a fixture quickstart smoke covering discovery, typed SSE, static assets, and the fixed five-tab shell. For the Agentic Build Discovery verification sequence and required human evidence, see [specs/006-agentic-build-discovery/quickstart.md](specs/006-agentic-build-discovery/quickstart.md).
+Tests are designed to run without Docker, a GPU, or live Ollama. The web suite includes a fixture quickstart smoke covering discovery, typed SSE, static assets, and the four-tab shell. For the Open Workshop verification sequence and recorded human evidence, see [specs/007-open-workshop/quickstart.md](specs/007-open-workshop/quickstart.md).
 
 ## Project status and roadmap
 
-The original MVP and superseded authored-build artifacts are historical. Active work is the Agentic Build Discovery specification in `specs/006-agentic-build-discovery/`; its remaining Docker, local-model, browser, and pull-request checks require recorded developer evidence. The next prioritized work is captured in [docs/roadmap.md](docs/roadmap.md). Use the Codex project guide in [.codex/README.md](.codex/README.md) when asking an agent to work in this repository.
+The original MVP, superseded authored-build work, and safety-gated Agentic Build Discovery artifacts are historical. The active direction is [Open Workshop](specs/007-open-workshop/spec.md): open technical discovery, freely navigable cited lessons, and on-demand skill links. The next prioritized work is captured in [docs/roadmap.md](docs/roadmap.md). Repository-specific development guidance is in [AGENTS.md](AGENTS.md).
 
 ## Contributing guardrails
 

@@ -48,6 +48,7 @@ type OfferRow = {
   availability: "in_stock" | "out_of_stock" | "backorder" | "unknown";
   price: number | string | null;
   currency: string | null;
+  thumbnail_data_url: string | null;
   observed_at: string | Date;
   expires_at: string | Date;
   source_url: string;
@@ -126,7 +127,7 @@ export async function findFreshCatalogOffers(partIds: readonly string[], now: Da
   if (partIds.length === 0) return [];
   const result = await dependencies.pool.query(
     `SELECT o.external_id, o.part_id, o.provider, o.provider_sku, o.purchase_url,
-            o.availability, o.price, o.currency, o.observed_at, o.expires_at,
+            o.availability, o.price, o.currency, o.thumbnail_data_url, o.observed_at, o.expires_at,
             s.canonical_url AS source_url,
             jsonb_build_object('sourceUrl', s.canonical_url, 'locator', s.locator, 'title', s.title) AS citation
        FROM catalog_offers o
@@ -149,6 +150,7 @@ export async function findFreshCatalogOffers(partIds: readonly string[], now: Da
     availability: row.availability,
     price: row.price === null ? undefined : Number(row.price),
     currency: row.currency ?? undefined,
+    thumbnailDataUrl: row.thumbnail_data_url ?? undefined,
     observedAt: isoTimestamp(row.observed_at),
     expiresAt: isoTimestamp(row.expires_at),
     sourceUrl: row.source_url,

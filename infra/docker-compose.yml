@@ -16,6 +16,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       ollama:
@@ -37,6 +39,24 @@ services:
       timeout: 5s
       retries: 12
       start_period: 5s
+
+  migrate:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      PGPASSWORD: hardware_builder_dev
+    volumes:
+      - ./postgres/migrations:/migrations:ro
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        for migration in /migrations/*.sql; do
+          psql -h postgres -U hardware_builder -d hardware_builder -v ON_ERROR_STOP=1 -f "$${migration}"
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   ollama:
     image: ollama/ollama:latest

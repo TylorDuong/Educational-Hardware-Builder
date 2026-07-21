@@ -99,10 +99,10 @@ export async function upsertIngestion(input: unknown, database: IngestDatabase, 
     }
     for (const offer of payload.offers) {
       await client.query(
-        `INSERT INTO catalog_offers (id, part_id, source_document_id, external_id, provider, provider_sku, purchase_url, availability, price, currency, observed_at, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         ON CONFLICT (source_document_id, external_id) DO UPDATE SET availability = EXCLUDED.availability, price = EXCLUDED.price, currency = EXCLUDED.currency, observed_at = EXCLUDED.observed_at, expires_at = EXCLUDED.expires_at`,
-        [randomUUID(), offer.partId, persistedSourceId, offer.externalId, offer.provider, offer.providerSku, offer.purchaseUrl, offer.availability, offer.price ?? null, offer.currency ?? null, offer.observedAt, offer.expiresAt],
+        `INSERT INTO catalog_offers (id, part_id, source_document_id, external_id, provider, provider_sku, purchase_url, availability, price, currency, thumbnail_data_url, observed_at, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         ON CONFLICT (source_document_id, external_id) DO UPDATE SET availability = EXCLUDED.availability, price = EXCLUDED.price, currency = EXCLUDED.currency, thumbnail_data_url = EXCLUDED.thumbnail_data_url, observed_at = EXCLUDED.observed_at, expires_at = EXCLUDED.expires_at`,
+        [randomUUID(), offer.partId, persistedSourceId, offer.externalId, offer.provider, offer.providerSku, offer.purchaseUrl, offer.availability, offer.price ?? null, offer.currency ?? null, offer.thumbnailDataUrl ?? null, offer.observedAt, offer.expiresAt],
       );
     }
     const acceptedCount = payload.chunks.length + payload.catalogFacts.length + payload.cadAssets.length + payload.offers.length;

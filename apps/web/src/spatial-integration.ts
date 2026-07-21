@@ -24,14 +24,6 @@ export type SolverTrace = {
   source: "deterministic-solver";
 };
 
-export type SolverTracedPart = {
-  id: string;
-  cadAssetUrl: string;
-  color: string;
-  transform: AssemblyTransform;
-  solverTrace: SolverTrace;
-};
-
 export type SolverIntegrationError = SolverError | {
   code: "UNKNOWN_PART";
   message: string;
@@ -122,44 +114,6 @@ export function solveSelectedProposalParts(lesson: { steps: readonly Pick<Guided
       ? "This selected proposal has no symbolic assembly mates to solve."
       : `Validated ${traces.length} symbolic assembly mate${traces.length === 1 ? "" : "s"} with the deterministic solver.`,
   };
-}
-
-function firstFeature(partId: string): string {
-  const feature = fixtureAsset(partId).matingFeatures[0];
-  if (!feature) throw new Error(`CAD fixture ${partId} has no mating feature.`);
-  return feature.id;
-}
-
-/**
- * The standalone sandbox has no model-generated transforms. Each displayed fixture is given a
- * deterministic, symbolic self-reference solely to obtain its transform from the real solver.
- */
-export function solverTracedFixtureParts(stepId: string): SolverTracedPart[] {
-  return weatherStationCadAssets.map((asset, index) => {
-    const selection: MatingSelection = {
-      movingPartId: asset.partId,
-      movingFeatureId: firstFeature(asset.partId),
-      targetPartId: asset.partId,
-      targetFeatureId: firstFeature(asset.partId),
-    };
-    const result = solveWeatherStationSelection(selection, stepId);
-    if (!result.ok) throw new Error(`Fixture solver rejected ${asset.partId}: ${formatSolverError(result.error)}`);
-    return {
-      id: asset.id,
-      cadAssetUrl: asset.filePath,
-      color: index % 2 ? "#22c55e" : "#38bdf8",
-      transform: result.transform,
-      solverTrace: { selection, transform: result.transform, source: "deterministic-solver" },
-    };
-  });
-}
-
-export function assertSolverTraces(parts: readonly SolverTracedPart[]): void {
-  for (const part of parts) {
-    if (part.solverTrace.source !== "deterministic-solver" || part.solverTrace.transform !== part.transform) {
-      throw new Error(`Rendered part ${part.id} is missing its deterministic solver trace.`);
-    }
-  }
 }
 
 function requiredValue(values: Record<string, number>, canonical: string, legacy: string): number {

@@ -56,6 +56,15 @@ const lesson = {
     safetyCallout: "Unplug USB power before making or changing connections.",
     instruction: "Place the ESP32 and LED module on the work surface.",
     completionCondition: "Both parts are visible and disconnected from power.",
+    whyItMatters: "Separating preparation from power helps a learner inspect the named parts and connections first.",
+    concepts: [{
+      title: "Power path",
+      explanation: "The source and destination of the USB connection should be traceable before it is energized.",
+    }],
+    sourceDigest: {
+      summary: "The cited USB guide keeps the LED on the USB power path, so prepare the parts while power is disconnected and trace the connection before you energize it.",
+      citation,
+    },
     citations: [citation],
     skills: [{ ...citation, relevance: "Explains the USB power connection for this step." }],
     matingSelections: [{
@@ -93,6 +102,10 @@ test("guided lesson contract exposes cited skills without checkpoint data", () =
   const parsedLesson = GuidedLessonSchema.parse(lesson);
   assert.equal("checkpoint" in (parsedLesson.steps[0] ?? {}), false);
   assert.ok(parsedLesson.steps[0]?.skills.length);
+  assert.match(parsedLesson.steps[0]?.whyItMatters ?? "", /inspect/i);
+  assert.equal(parsedLesson.steps[0]?.concepts[0]?.title, "Power path");
+  assert.match(parsedLesson.steps[0]?.sourceDigest.summary ?? "", /USB guide/i);
+  assert.deepEqual(parsedLesson.steps[0]?.sourceDigest.citation, citation);
 });
 
 test("guided lesson contract rejects uncited steps and raw coordinate or transform leaks", () => {
@@ -131,6 +144,29 @@ test("guided lesson generation retries an uncited model result and accepts a pro
   assert.equal(result.attempts, 2);
   assert.equal(result.value.proposalId, proposal.id);
   assert.deepEqual(result.value.steps[0]?.citations, [citation]);
+});
+
+test("guided lesson generation gives the lesson agent local cited excerpts to digest", async () => {
+  let prompt = "";
+  const result = await generateGuidedLesson(proposal, {
+    retrieve: async () => [{
+      chunkId: "d2719a8a-8cc8-4c52-babb-455a70b1f631",
+      content: "The guide keeps the LED module on the USB power path.",
+      score: 0.91,
+      citations: [citation],
+    }],
+    fetcher: (async (_url, init) => {
+      prompt = String(init?.body);
+      return Response.json({ response: JSON.stringify(lesson) });
+    }) as typeof fetch,
+    ollamaUrl: "http://ollama.test",
+  });
+
+  assert.equal(result.source, "live");
+  assert.match(prompt, /Grounded local source excerpts/);
+  assert.match(prompt, /LED module on the USB power path/);
+  assert.match(prompt, /sourceDigest/);
+  assert.match(prompt, /ESP32 microcontroller/);
 });
 
 test("guided lesson generation uses the deterministic cited fixture fallback in safe mode", async () => {

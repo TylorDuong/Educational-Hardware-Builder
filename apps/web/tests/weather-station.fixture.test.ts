@@ -17,6 +17,11 @@ test("the hand-authored weather-station fixture is a complete symbolic golden pa
   assert.equal(weatherStationTemplateRequests[0]?.templateId, "l-bracket");
   for (const item of weatherStationGoldenSteps) {
     assert.ok(item.lesson.citations.length > 0);
+    assert.ok(item.whyItMatters);
+    assert.ok(item.concepts.length > 0);
+    assert.ok(item.sourceDigest.summary);
+    assert.ok(item.lesson.citations.some((citation) => citation.sourceUrl === item.sourceDigest.citation.sourceUrl));
+    assert.ok(item.completionCondition);
     for (const selection of item.matingSelections) {
       assert.equal("positionMm" in selection, false);
       assert.equal("quaternion" in selection, false);

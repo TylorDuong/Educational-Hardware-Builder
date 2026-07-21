@@ -76,4 +76,29 @@ export const applicationSourcePolicies: readonly SourcePolicy[] = [
       requireProviderSku: true,
     },
   },
+  {
+    id: "ebay-browse-catalog",
+    revision: 1,
+    enabled: true,
+    sourceClass: "vendor_catalog",
+    allowedUrlPatterns: [
+      "https://api.ebay.com/buy/browse/**",
+      "https://www.ebay.com/itm/**",
+      "https://i.ebayimg.com/**",
+    ],
+    allowedFacts: ["citation", "catalog_offer", "part_metadata"],
+    refresh: { intervalHours: 24, maxStalenessHours: 48 },
+    terms: {
+      evidenceRequired: true,
+      acceptedStatuses: ["public-catalog"],
+      prohibitedUses: ["checkout", "credentialed-purchase", "browser-automation", "unapproved-scraping"],
+    },
+    offers: {
+      cachedLinksOnly: true,
+      checkoutAllowed: false,
+      requireObservedAt: true,
+      requireExpiresAt: true,
+      requireProviderSku: true,
+    },
+  },
 ];

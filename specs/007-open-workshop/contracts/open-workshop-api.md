@@ -21,8 +21,9 @@ hazard, learner-mode, battery, or voltage value produces rejection.
 ## Workshop lesson
 
 `POST /api/discovery/{operationId}/select` returns the selected cited lesson.
-Every step contains `title`, `instruction`, `completionCondition`, `citations`,
-symbolic mating selections when applicable, and `skills`.
+Every step contains `title`, `instruction`, `whyItMatters`, named `concepts`,
+`completionCondition`, `citations`, symbolic mating selections when applicable,
+and `skills`.
 
 ```json
 {
@@ -32,6 +33,13 @@ symbolic mating selections when applicable, and `skills`.
       "sourceUrl": "https://example.test/usb-led-guide",
       "locator": "Assembly",
       "relevance": "Explains the power connection used in this step"
+    }
+  ],
+  "whyItMatters": "Explains the purpose of the action using the cited source.",
+  "concepts": [
+    {
+      "title": "Power path",
+      "explanation": "Names the documented source and destination of the connection."
     }
   ]
 }

@@ -36,7 +36,8 @@ allowlisted external sources in the background. All model boundaries remain
 JSON/Zod validated, retried once, and deterministically fall back. Workshop
 steps cannot be locked or require learner answers.
 
-**Scale/Scope**: One open discovery flow, the existing five-tab Workshop, a
+**Scale/Scope**: One open discovery flow, the four-tab Workshop experience with
+the former Build view combined into Workshop, a
 fixture-backed initial skills library, and no checkout, authentication, or
 runtime vendor calls
 
@@ -84,7 +85,7 @@ apps/web/
 ├── src/discovery.ts          # discovery and guided lesson generation
 ├── src/workshop.ts           # direct Workshop step access
 ├── src/server.ts             # typed discovery and Workshop HTTP routes
-├── src/sandbox.tsx           # five-tab learner experience
+├── src/sandbox.tsx           # four-tab learner experience
 ├── src/demo-flow.ts          # deterministic open-workshop fixture data
 └── tests/                    # node:test contract and integration coverage
 packages/schemas/
@@ -102,7 +103,7 @@ lesson and skills-link payloads only.
    classification and cited skill-link contracts.
 2. Deliver open relevant discovery and typed relevance/malicious rejections.
 3. Remove Workshop answer/grading/locking behavior end to end.
-4. Render skills links and direct step navigation in the five-tab UI.
+4. Render skills links and direct step navigation in the four-tab UI.
 5. Update fixtures, documentation, automated tests, and browser verification.
 
 ## Complexity Tracking
