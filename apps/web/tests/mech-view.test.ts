@@ -9,6 +9,7 @@ import {
   disassemblyTransitionRatio,
   exponentialDisassemblyFactor,
   explodeFromFocus,
+  fixturePartMaterialState,
   isPartSelectable,
   LOCAL_DISASSEMBLY_RADIUS_MM,
   localDisassemblyFactor,
@@ -68,6 +69,38 @@ test("automatic enclosure mode removes only container parts from selection", () 
   assert.equal(isPartSelectable({ isContainer: true }, false), false);
   assert.equal(isPartSelectable({ isContainer: false }, false), true);
   assert.equal(isPartSelectable({ isContainer: true }, true), true);
+});
+
+test("enclosures remain wireframed and transparent in every selection state", () => {
+  const unselectableEnclosure = fixturePartMaterialState({ isContainer: true }, false, false);
+  const selectableEnclosure = fixturePartMaterialState({ isContainer: true }, false, true);
+  const dimmedEnclosure = fixturePartMaterialState({ isContainer: true }, true, false);
+  const ordinaryPart = fixturePartMaterialState({ isContainer: false }, false, true);
+
+  assert.deepEqual(unselectableEnclosure, {
+    transparent: true,
+    opacity: 0.14,
+    depthWrite: false,
+    wireframe: true,
+  });
+  assert.deepEqual(selectableEnclosure, {
+    transparent: true,
+    opacity: 0.28,
+    depthWrite: false,
+    wireframe: true,
+  });
+  assert.deepEqual(dimmedEnclosure, {
+    transparent: true,
+    opacity: UNFOCUSED_PART_OPACITY,
+    depthWrite: false,
+    wireframe: true,
+  });
+  assert.deepEqual(ordinaryPart, {
+    transparent: false,
+    opacity: 1,
+    depthWrite: true,
+    wireframe: false,
+  });
 });
 
 test("enclosure hit testing restores the inherited mesh raycast when selection is enabled", () => {

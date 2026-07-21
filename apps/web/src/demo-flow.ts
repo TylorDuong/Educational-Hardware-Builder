@@ -108,10 +108,70 @@ export const demoPipelineStages = [
 ] as const;
 
 export const demoParts = [
-  { name: "ESP32 DevKit", role: "Compute controller", status: "In inventory" },
-  { name: "BME280 breakout", role: "Temperature, pressure, and humidity sensor", status: "In inventory" },
-  { name: "Breadboard and jumpers", role: "Prototype wiring", status: "In inventory" },
-  { name: "L-bracket", role: "Validated sensor support", status: "Template ready" },
+  {
+    name: "Weatherproof enclosure",
+    role: "Provides the fixture's validated container boundary.",
+    status: "Kit part",
+    estimatedPrice: 12.99,
+    imageUrl: "/images/parts/weatherproof-enclosure.jpg",
+    imageAlt: "Sample weatherproof electrical enclosure",
+  },
+  {
+    name: "Mini breadboard",
+    role: "Provides temporary, solder-free connections during prototyping.",
+    status: "Kit part",
+    estimatedPrice: 4.99,
+    imageUrl: "/images/parts/mini-breadboard.jpg",
+    imageAlt: "Sample solderless breadboard",
+  },
+  {
+    name: "ESP32 microcontroller (ESP32 DevKit)",
+    role: "Runs the weather-station program and reads the sensor over I2C.",
+    status: "Kit part",
+    estimatedPrice: 9.99,
+    imageUrl: "/images/parts/esp32-devkit.jpg",
+    imageAlt: "ESP32 DevKit microcontroller board",
+  },
+  {
+    name: "BME280 sensor",
+    role: "Measures temperature, humidity, and pressure for the weather station.",
+    status: "Kit part",
+    estimatedPrice: 6.99,
+    imageUrl: "/images/parts/bme280-sensor.jpg",
+    imageAlt: "Sample BME280 sensor breakout board",
+  },
+  {
+    name: "AA battery pack",
+    role: "Provides the build's portable power source after inspection.",
+    status: "Kit part",
+    estimatedPrice: 5.99,
+    imageUrl: "/images/parts/aa-battery-pack.jpg",
+    imageAlt: "Sample AA battery holder",
+  },
+  {
+    name: "3D-printed L-bracket",
+    role: "Provides the validated mechanical support for the sensor mount.",
+    status: "3D-printable part",
+    estimatedPrice: 3.5,
+    imageUrl: "/images/parts/l-bracket.jpg",
+    imageAlt: "Sample L-bracket support",
+  },
+  {
+    name: "M3 fastener",
+    role: "Secures the enclosure and bracket at approved mounting points.",
+    status: "Kit hardware",
+    estimatedPrice: 2.49,
+    imageUrl: "/images/parts/m3-fastener.png",
+    imageAlt: "Sample M3 fastener",
+  },
+  {
+    name: "Weatherproof grommet",
+    role: "Protects the cable where it enters the enclosure.",
+    status: "Kit hardware",
+    estimatedPrice: 1.99,
+    imageUrl: undefined,
+    imageAlt: undefined,
+  },
 ] as const;
 
 export const demoSubstitution = {

@@ -272,7 +272,6 @@ small {
   border: 2px solid var(--ink);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 0.6rem 1.4rem rgb(27 40 56 / 0.12);
 }
 
 .tab {
@@ -314,7 +313,6 @@ small {
   border: 2px solid var(--ink);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 0.9rem 2.75rem rgb(27 40 56 / 0.2);
   transform: translateX(-50%);
 }
 
@@ -1573,7 +1571,6 @@ pre {
   border: 2px solid var(--ink);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 0.9rem 2.75rem rgb(27 40 56 / 0.2);
   transform: translateX(-50%);
 }
 

@@ -16,7 +16,20 @@ import { discoverBuild, generateGuidedLesson } from "../src/discovery.js";
 test("the fixture demo defines visible pipeline, parts, and substitution stages", () => {
   assert.deepEqual(demoPipelineStages.map((entry) => entry.stage), ["queued", "classifying", "retrieving", "generating", "ready"]);
   assert.equal(demoPipelineStages.at(-1)?.percent, 100);
-  assert.ok(demoParts.some((part) => part.name === "ESP32 DevKit"));
+  assert.deepEqual(demoParts.map(({ name, role }) => ({ name, role })), [
+    { name: "Weatherproof enclosure", role: "Provides the fixture's validated container boundary." },
+    { name: "Mini breadboard", role: "Provides temporary, solder-free connections during prototyping." },
+    { name: "ESP32 microcontroller (ESP32 DevKit)", role: "Runs the weather-station program and reads the sensor over I2C." },
+    { name: "BME280 sensor", role: "Measures temperature, humidity, and pressure for the weather station." },
+    { name: "AA battery pack", role: "Provides the build's portable power source after inspection." },
+    { name: "3D-printed L-bracket", role: "Provides the validated mechanical support for the sensor mount." },
+    { name: "M3 fastener", role: "Secures the enclosure and bracket at approved mounting points." },
+    { name: "Weatherproof grommet", role: "Protects the cable where it enters the enclosure." },
+  ]);
+  assert.equal(demoParts.find((part) => part.name === "ESP32 microcontroller (ESP32 DevKit)")?.imageUrl, "/images/parts/esp32-devkit.jpg");
+  assert.equal(demoParts.find((part) => part.name === "3D-printed L-bracket")?.status, "3D-printable part");
+  assert.equal(demoParts.find((part) => part.name === "Weatherproof grommet")?.imageUrl, undefined);
+  assert.equal(Number(demoParts.reduce((total, part) => total + part.estimatedPrice, 0).toFixed(2)), 48.93);
   assert.match(demoSubstitution.justification, /deterministic validation/i);
 });
 
