@@ -14,10 +14,10 @@ async function redesignCss(): Promise<string> {
   return readFile(new URL("../src/redesign.css", import.meta.url), "utf8");
 }
 
-test("Dashboard preserves discovery behavior, four-tab navigation, and section help", async () => {
+test("Dashboard preserves discovery behavior, five-tab navigation, and section help", async () => {
   const [source, css, redesign] = await Promise.all([sandboxSource(), sandboxCss(), redesignCss()]);
 
-  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Workshop"\] as const/);
+  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Workshop", "Gallery"\] as const/);
   assert.match(source, /function PageHeading/);
   assert.match(source, /function AppTabs/);
   assert.match(source, /aria-label="Primary navigation"/);
@@ -53,7 +53,7 @@ test("Dashboard preserves discovery behavior, four-tab navigation, and section h
   assert.match(source, /Previous: /);
   assert.match(source, /Next: /);
   assert.doesNotMatch(source, /workflow-navigation-actions[\s\S]*tabs\.map/);
-  assert.match(source, /activeTab !== "Workshop" \? \(/);
+  assert.match(source, /hasFloatingWorkflowNavigation \? \(/);
   assert.match(css, /\.app-tabs[\s\S]*position: sticky/);
   assert.match(css, /\.workflow-navigation[\s\S]*position: fixed/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
@@ -144,4 +144,7 @@ test("Dashboard preserves discovery behavior, four-tab navigation, and section h
   assert.match(source, /Fit check/);
   assert.match(source, /solveSelectedProposalParts/);
   assert.match(source, /role="alert"/);
+  assert.match(source, /function GalleryPanel/);
+  assert.match(source, /Share to Gallery/);
+  assert.match(source, /3D view/);
 });
