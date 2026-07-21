@@ -21,7 +21,7 @@ function quickstartDependencies(staticDir: string): ApiDependencies {
   };
 }
 
-test("quickstart serves fixture-safe discovery, SSE, static assets, and the five-tab Workshop shell", async () => {
+test("quickstart serves fixture-safe discovery, SSE, static assets, and the four-tab Workshop shell", async () => {
   const staticDir = await mkdtemp(join(tmpdir(), "hardware-builder-quickstart-"));
   await mkdir(join(staticDir, "assets"));
   await writeFile(join(staticDir, "index.html"), "<!doctype html><main id=\"root\"></main><script type=\"module\" src=\"/assets/workshop.js\"></script>");
@@ -62,7 +62,7 @@ test("quickstart serves fixture-safe discovery, SSE, static assets, and the five
     }
 
     const sandbox = await readFile(new URL("../src/sandbox.tsx", import.meta.url), "utf8");
-    assert.match(sandbox, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Workshop"\] as const/);
+    assert.match(sandbox, /const tabs = \["Dashboard", "Research", "Parts", "Workshop"\] as const/);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await rm(staticDir, { recursive: true, force: true });

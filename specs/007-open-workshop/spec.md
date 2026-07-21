@@ -116,9 +116,10 @@ step.
 - **FR-008**: The system MUST not expose raw spatial coordinates or transform
   matrices from model output; deterministic solver output remains the only
   spatial transform source.
-- **FR-009**: The learner experience MUST remain within the existing five-tab
-  information architecture and show typed progress for work lasting more than
-  two seconds.
+- **FR-009**: The learner experience MUST use the four-tab Dashboard, Research,
+  Parts, and Workshop information architecture, with the Workshop combining the
+  former Build view, and show typed progress for work lasting more than two
+  seconds.
 - **FR-010**: Fixture mode MUST provide deterministic open-discovery,
   self-directed Workshop, and skills-library responses without local
   infrastructure or model availability.

@@ -47,6 +47,10 @@ test("the scene preserves checked flexible routes outside rigid proxy interiors"
 
   for (const route of scene.routes) {
     assert.ok(route.pointsMm.length >= 2);
+    const connection = weatherStationSchematicRequest.graph.connections.find((candidate) => candidate.id === route.id);
+    assert.ok(connection, `route ${route.id} has a graph connection`);
+    assert.equal(route.fromPartId, connection.fromPartId);
+    assert.equal(route.toPartId, connection.toPartId);
     for (const point of route.pointsMm) {
       assert.equal(occupied.has(voxelKey(point)), false, `route ${route.id} crosses a rigid proxy`);
     }

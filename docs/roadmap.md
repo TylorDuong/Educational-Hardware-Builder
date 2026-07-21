@@ -4,7 +4,7 @@ The original MVP, superseded authored-build sprint, and safety-gated discovery s
 
 ## Now: complete the Agentic Build Discovery handoff
 
-1. **Keep the fixture path repeatable.** `DEMO_SAFE_MODE=true` must complete safe discovery, source selection, and a cited lesson with no Docker, GPU, live model, or vendor request. The quickstart smoke protects discovery routes, typed SSE, static assets, and the five-tab shell.
+1. **Keep the fixture path repeatable.** `DEMO_SAFE_MODE=true` must complete safe discovery, source selection, and a cited lesson with no Docker, GPU, live model, or vendor request. The quickstart smoke protects discovery routes, typed SSE, static assets, and the four-tab shell.
 2. **Verify the local-stack boundary.** Compose must validate before startup; n8n may use only its ingestion API credential and `POST /api/ingest/v2/upsert`, while `ingestion/source-policy.yml` limits documentation and vendor refreshes to allowlisted HTTPS records.
 3. **Record the human evidence.** A developer must separately confirm the n8n API-only smoke, local-Ollama timing measurements, and browser flow. These are release gates, not claims made by fixture tests.
 

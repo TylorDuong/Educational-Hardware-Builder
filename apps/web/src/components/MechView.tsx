@@ -1,13 +1,27 @@
 import { useFrame, Canvas } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 
 /** The view is scaled once as a scene; all part data stays in solver-owned millimetres. */
 const SCENE_MM_SCALE = 1 / 25;
 /** At 60 fps this reaches 99% of the requested disassembly distance in roughly half a second. */
 export const DISASSEMBLY_TRANSITION_SECONDS = 0.5;
 export const MAX_DISASSEMBLY_FACTOR = 0.8;
+/** Only nearby parts separate during inspection; distant context stays in its assembled location. */
+export const LOCAL_DISASSEMBLY_RADIUS_MM = 56;
+/** Routes stay visible while inspection moves their endpoints. */
+export const DISASSEMBLED_ROUTE_OPACITY = 0.58;
+/** Non-focused parts remain visible as 20% transparent context while a part is selected. */
+export const UNFOCUSED_PART_OPACITY = 0.8;
 const HOVER_PROXIMITY_RADIUS_NDC = 0.5;
+type RaycastableMesh = {
+  constructor: {
+    prototype: {
+      raycast: (raycaster: unknown, intersections: unknown[]) => void;
+    };
+  };
+};
+const disabledRaycast = () => undefined;
 
 export type MillimetrePoint = [number, number, number];
 
@@ -29,6 +43,9 @@ export type MechViewRoute = {
   id: string;
   pointsMm: MillimetrePoint[];
   color?: string;
+  /** Route endpoints are retained so the visual wire can follow inspected parts. */
+  fromPartId?: string;
+  toPartId?: string;
 };
 
 export type MechViewProps = {
@@ -37,7 +54,7 @@ export type MechViewProps = {
   highlightIds: string[];
   /** Only a clicked part is selected; hover remains a transient preview. */
   selectedPartId?: string;
-  /** The closest selectable part near the pointer, used only for hover-preview copy and route visibility. */
+  /** The closest selectable part near the pointer, used for hover-preview copy and route emphasis. */
   hoveredPartId?: string;
   /** Enables exponentially scaled proximity preview; selection still requires a click. */
   disassembleOnHover?: boolean;
@@ -46,7 +63,8 @@ export type MechViewProps = {
   cameraTarget: MillimetrePoint;
   /** Remounts the view with its initial camera position and model-centred target. */
   resetViewKey?: number;
-  onSelect: (partId: string) => void;
+  /** Passing no part clears the current inspection and reassembles the view. */
+  onSelect: (partId?: string) => void;
   onHover?: (partId: string | undefined) => void;
 };
 
@@ -77,8 +95,64 @@ export function explodeFromFocus(center: MillimetrePoint, focusCenter: Millimetr
   ];
 }
 
+/** Containers remain spatial context. Selecting one still highlights it, but never separates the model. */
+export function canDisassembleFromFocus(part: Pick<MechViewPart, "isContainer"> | undefined): boolean {
+  return part?.isContainer !== true && part !== undefined;
+}
+
+/**
+ * Tapers an exploded view inside a small world-space neighbourhood. This avoids
+ * pulling unrelated parts across the whole build while preserving a smooth edge.
+ */
+export function localDisassemblyFactor(
+  center: MillimetrePoint,
+  focusCenter: MillimetrePoint,
+  factor: number,
+  radiusMm: number = LOCAL_DISASSEMBLY_RADIUS_MM,
+): number {
+  if (factor <= 0 || radiusMm <= 0) return 0;
+  const distance = Math.hypot(
+    center[0] - focusCenter[0],
+    center[1] - focusCenter[1],
+    center[2] - focusCenter[2],
+  );
+  if (distance >= radiusMm) return 0;
+  const normalizedDistance = distance / radiusMm;
+  return factor * (1 - normalizedDistance ** 2);
+}
+
+/** Blends the route's endpoint translations through its existing solver-owned path. */
+export function reconnectRoutePoints(
+  points: readonly MillimetrePoint[],
+  fromOffset: MillimetrePoint,
+  toOffset: MillimetrePoint,
+): MillimetrePoint[] {
+  const lastIndex = Math.max(points.length - 1, 1);
+  return points.map((point, index) => {
+    const progress = index / lastIndex;
+    return [
+      point[0] + fromOffset[0] * (1 - progress) + toOffset[0] * progress,
+      point[1] + fromOffset[1] * (1 - progress) + toOffset[1] * progress,
+      point[2] + fromOffset[2] * (1 - progress) + toOffset[2] * progress,
+    ];
+  });
+}
+
 export function isPartSelectable(part: Pick<MechViewPart, "isContainer">, selectEnclosures: boolean): boolean {
   return selectEnclosures || part.isContainer !== true;
+}
+
+/**
+ * Keep a concrete raycast function in both toggle states. Replacing a disabled
+ * raycast with `undefined` can leave an instance without its inherited Mesh
+ * raycast method after the enclosure toggle changes.
+ */
+function enabledRaycast(this: RaycastableMesh, raycaster: unknown, intersections: unknown[]): void {
+  this.constructor.prototype.raycast.call(this, raycaster, intersections);
+}
+
+export function raycastForSelection(selectable: boolean) {
+  return selectable ? enabledRaycast : disabledRaycast;
 }
 
 export function exponentialDisassemblyFactor(pointerDistanceNdc: number): number {
@@ -126,6 +200,7 @@ function projectSolverPointToNdc(point: MillimetrePoint, camera: CameraMatrices)
 }
 
 type HoverPreview = { partId?: string; factor: number };
+type VisualPartPositions = { current: Map<string, MillimetrePoint> };
 
 function FixturePart({
   part,
@@ -135,6 +210,7 @@ function FixturePart({
   sceneCenter,
   partsById,
   hoverPreviewRef,
+  visualPartPositionsRef,
   selectable,
   onSelect,
 }: {
@@ -145,37 +221,47 @@ function FixturePart({
   sceneCenter: MillimetrePoint;
   partsById: ReadonlyMap<string, MechViewPart>;
   hoverPreviewRef: { current: HoverPreview };
+  visualPartPositionsRef: VisualPartPositions;
   selectable: boolean;
   onSelect: (partId: string) => void;
 }) {
   const meshRef = useRef<{ position: { x: number; y: number; z: number } } | null>(null);
   const center = partCenterMm(part);
   const transparentContainer = part.isContainer === true && !highlighted;
+  const containerSelectionReady = part.isContainer === true && selectable;
   const transparent = dimmed || transparentContainer;
   useFrame((_state, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
     const hoverPreview = hoverPreviewRef.current;
     const hoverPart = hoverPreview.partId ? partsById.get(hoverPreview.partId) : undefined;
-    const focusCenter = selectedFocusCenter ?? (hoverPart ? partCenterMm(hoverPart) : sceneCenter);
-    const explodeFactor = selectedFocusCenter ? MAX_DISASSEMBLY_FACTOR : hoverPreview.factor;
-    const targetPosition = solverPointToThreePoint(explodeFromFocus(center, focusCenter, explodeFactor));
+    const hoverFocusCenter = hoverPart && canDisassembleFromFocus(hoverPart) ? partCenterMm(hoverPart) : undefined;
+    const focusCenter = selectedFocusCenter ?? hoverFocusCenter;
+    const explodeFactor = selectedFocusCenter
+      ? MAX_DISASSEMBLY_FACTOR
+      : hoverFocusCenter ? hoverPreview.factor : 0;
+    const localFactor = focusCenter
+      ? localDisassemblyFactor(center, focusCenter, explodeFactor)
+      : 0;
+    const targetPosition = solverPointToThreePoint(explodeFromFocus(center, focusCenter ?? sceneCenter, localFactor));
     const deltaX = targetPosition[0] - mesh.position.x;
     const deltaY = targetPosition[1] - mesh.position.y;
     const deltaZ = targetPosition[2] - mesh.position.z;
     const distance = Math.hypot(deltaX, deltaY, deltaZ);
-    if (distance <= 0.0001) return;
-    const ratio = disassemblyTransitionRatio(delta);
-    mesh.position.x += deltaX * ratio;
-    mesh.position.y += deltaY * ratio;
-    mesh.position.z += deltaZ * ratio;
+    if (distance > 0.0001) {
+      const ratio = disassemblyTransitionRatio(delta);
+      mesh.position.x += deltaX * ratio;
+      mesh.position.y += deltaY * ratio;
+      mesh.position.z += deltaZ * ratio;
+    }
+    visualPartPositionsRef.current.set(part.id, [mesh.position.x, mesh.position.y, mesh.position.z]);
   });
   return (
     <mesh
       ref={meshRef}
       position={solverPointToThreePoint(center)}
       castShadow
-      raycast={selectable ? undefined : () => undefined}
+      raycast={raycastForSelection(selectable)}
       onClick={selectable ? (event) => {
         event.stopPropagation();
         onSelect(part.id);
@@ -186,7 +272,7 @@ function FixturePart({
         color={highlighted ? "#e65f54" : part.color ?? "#0172e4"}
         emissive={highlighted ? "#54231f" : "#000000"}
         transparent={transparent}
-        opacity={dimmed ? 0.16 : transparentContainer ? 0.14 : 1}
+        opacity={dimmed ? UNFOCUSED_PART_OPACITY : transparentContainer ? containerSelectionReady ? 0.28 : 0.14 : 1}
         depthWrite={!transparent}
         wireframe={transparentContainer}
       />
@@ -194,9 +280,63 @@ function FixturePart({
   );
 }
 
-function SchematicRoute({ route }: { route: MechViewRoute }) {
+type RenderedRouteLine = {
+  geometry: { setPositions: (positions: number[]) => void };
+  computeLineDistances: () => void;
+};
+
+function visualOffsetForPart(
+  partId: string | undefined,
+  partsById: ReadonlyMap<string, MechViewPart>,
+  visualPartPositionsRef: VisualPartPositions,
+): MillimetrePoint {
+  const part = partId ? partsById.get(partId) : undefined;
+  const visualPosition = partId ? visualPartPositionsRef.current.get(partId) : undefined;
+  if (!part || !visualPosition) return [0, 0, 0];
+  const initialPosition = solverPointToThreePoint(partCenterMm(part));
+  return [
+    visualPosition[0] - initialPosition[0],
+    visualPosition[1] - initialPosition[1],
+    visualPosition[2] - initialPosition[2],
+  ];
+}
+
+function SchematicRoute({
+  route,
+  partsById,
+  visualPartPositionsRef,
+  disassembled,
+}: {
+  route: MechViewRoute;
+  partsById: ReadonlyMap<string, MechViewPart>;
+  visualPartPositionsRef: VisualPartPositions;
+  disassembled: boolean;
+}) {
+  const lineRef = useRef<RenderedRouteLine | null>(null);
+  const basePoints = useMemo(() => route.pointsMm.map(solverPointToThreePoint), [route.pointsMm]);
+  useFrame(() => {
+    const line = lineRef.current;
+    if (!line) return;
+    const points = reconnectRoutePoints(
+      basePoints,
+      visualOffsetForPart(route.fromPartId, partsById, visualPartPositionsRef),
+      visualOffsetForPart(route.toPartId, partsById, visualPartPositionsRef),
+    );
+    line.geometry.setPositions(points.flat());
+    line.computeLineDistances();
+  });
   if (route.pointsMm.length < 2) return null;
-  return <Line points={route.pointsMm.map(solverPointToThreePoint)} color={route.color ?? "#f59e0b"} lineWidth={1.5} />;
+  return (
+    <Line
+      ref={(line: unknown) => { lineRef.current = line as RenderedRouteLine | null; }}
+      points={basePoints}
+      color={route.color ?? "#f59e0b"}
+      lineWidth={1.5}
+      transparent
+      opacity={disassembled ? DISASSEMBLED_ROUTE_OPACITY : 0.86}
+      depthWrite={false}
+    />
+  );
 }
 
 function HoverPreviewTracker({
@@ -231,7 +371,7 @@ function HoverPreviewTracker({
     let closestPartId: string | undefined;
     let closestDistance = Number.POSITIVE_INFINITY;
     for (const part of parts) {
-      if (!isPartSelectable(part, selectEnclosures)) continue;
+      if (!isPartSelectable(part, selectEnclosures) || !canDisassembleFromFocus(part)) continue;
       const projected = projectSolverPointToNdc(partCenterMm(part), state.camera as CameraMatrices);
       if (!projected.visible) continue;
       const distance = Math.hypot(projected.x - state.pointer.x, projected.y - state.pointer.y);
@@ -268,9 +408,10 @@ export function MechView({
 }: MechViewProps) {
   const centroid = sceneCentroid(parts);
   const selectedPart = parts.find((part) => part.id === selectedPartId);
-  const selectedFocusCenter = selectedPart ? partCenterMm(selectedPart) : undefined;
+  const selectedFocusCenter = selectedPart && canDisassembleFromFocus(selectedPart) ? partCenterMm(selectedPart) : undefined;
   const partsById = new Map(parts.map((part) => [part.id, part]));
   const hoverPreviewRef = useRef<HoverPreview>({ factor: 0 });
+  const visualPartPositionsRef = useRef<Map<string, MillimetrePoint>>(new Map());
   const pointerInsideRef = useRef(false);
   const lastPreviewPartIdRef = useRef<string | undefined>(undefined);
   const highlightedPartIds = new Set(highlightIds);
@@ -292,6 +433,7 @@ export function MechView({
       shadows
       onPointerMove={() => { pointerInsideRef.current = true; }}
       onPointerLeave={clearHoverPreview}
+      onPointerMissed={() => onSelect(undefined)}
     >
       <color attach="background" args={["#fffdf5"]} />
       <ambientLight intensity={0.85} />
@@ -317,11 +459,20 @@ export function MechView({
             sceneCenter={centroid}
             partsById={partsById}
             hoverPreviewRef={hoverPreviewRef}
+            visualPartPositionsRef={visualPartPositionsRef}
             selectable={isPartSelectable(part, selectEnclosures)}
             onSelect={onSelect}
           />
         ))}
-        {selectedPartId === undefined && hoveredPartId === undefined ? routes.map((route) => <SchematicRoute key={route.id} route={route} />) : null}
+        {routes.map((route) => (
+          <SchematicRoute
+            key={route.id}
+            route={route}
+            partsById={partsById}
+            visualPartPositionsRef={visualPartPositionsRef}
+            disassembled={selectedPartId !== undefined || hoveredPartId !== undefined}
+          />
+        ))}
       </group>
       <OrbitControls enablePan enableRotate enableZoom target={target} />
     </Canvas>

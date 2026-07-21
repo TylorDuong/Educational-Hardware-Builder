@@ -153,6 +153,14 @@ small {
   padding: clamp(1rem, 3vw, 2.75rem);
 }
 
+.app-shell.has-floating-workshop-timeline {
+  padding-bottom: clamp(12.5rem, 23dvh, 16.5rem);
+}
+
+.app-shell.has-floating-workflow-navigation {
+  padding-bottom: clamp(7.5rem, 14dvh, 9.5rem);
+}
+
 .hero {
   position: relative;
   display: grid;
@@ -255,12 +263,16 @@ small {
 .app-tabs {
   display: flex;
   gap: 0.45rem;
-  margin: 1rem 0 clamp(1.75rem, 3vw, 3.25rem);
+  position: sticky;
+  z-index: 20;
+  top: max(0.65rem, env(safe-area-inset-top));
+  margin: 0 0 clamp(1.25rem, 2.6vw, 2.25rem);
   padding: 0.55rem;
   overflow-x: auto;
   border: 2px solid var(--ink);
   border-radius: var(--radius);
   background: var(--surface);
+  box-shadow: 0 0.6rem 1.4rem rgb(27 40 56 / 0.12);
 }
 
 .tab {
@@ -285,6 +297,75 @@ small {
 .tab.active {
   background: var(--blue);
   color: #fffdf5;
+}
+
+.workflow-navigation {
+  position: fixed;
+  z-index: 25;
+  bottom: calc(0.85rem + env(safe-area-inset-bottom));
+  left: 50%;
+  width: min(calc(100vw - 2rem), 76rem);
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1.3fr);
+  gap: 1rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.9rem;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 0.9rem 2.75rem rgb(27 40 56 / 0.2);
+  transform: translateX(-50%);
+}
+
+.workflow-navigation .eyebrow {
+  margin-bottom: 0.2rem;
+}
+
+.workflow-navigation-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.workflow-navigation-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.workflow-navigation-button {
+  min-width: 0;
+  min-height: 2.7rem;
+  padding: 0.65rem 1rem;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.workflow-navigation-button:hover:not(:disabled) {
+  background: var(--yellow-soft);
+}
+
+.workflow-navigation-button.primary {
+  border-color: var(--blue-strong);
+  background: var(--blue);
+  color: #fffdf5;
+}
+
+.workflow-navigation-button.primary:hover:not(:disabled) {
+  background: var(--blue-strong);
+}
+
+.workflow-navigation-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .tab:active:not(:disabled),
@@ -860,8 +941,7 @@ dd {
 }
 
 .part-list,
-.source-list,
-.plan-list {
+.source-list {
   display: grid;
   gap: 0.7rem;
   padding: 0;
@@ -873,8 +953,7 @@ dd {
   gap: 0.22rem;
 }
 
-.part-list > li,
-.plan-list > li {
+.part-list > li {
   display: grid;
   gap: 0.3rem;
   padding: 0.85rem;
@@ -883,7 +962,6 @@ dd {
 }
 
 .part-list span,
-.plan-list span,
 .source-list span {
   color: var(--muted);
 }
@@ -939,89 +1017,6 @@ dd {
   font-size: 0.78rem;
 }
 
-.build-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
-  gap: 1rem;
-}
-
-.build-plan {
-  border-color: var(--coral);
-  background: var(--coral-soft);
-}
-
-.build-plan::before {
-  background: var(--coral);
-}
-
-.build-plan .plan-list {
-  max-height: 34rem;
-  overflow: auto;
-}
-
-.solver-console {
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-  border-color: var(--blue);
-  background: var(--blue-soft);
-}
-
-.solver-console::before {
-  background: var(--blue);
-}
-
-.solver-flow {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
-  gap: 0.55rem;
-  align-items: center;
-}
-
-.solver-node {
-  padding: 1.1rem 0.65rem;
-  border: 2px solid var(--ink);
-  border-radius: 9px;
-  background: var(--surface);
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1.4;
-  text-align: center;
-}
-
-.solver-node.active {
-  border-color: var(--blue-strong);
-  background: var(--blue);
-  color: #fffdf5;
-}
-
-.solver-node.success {
-  border-color: var(--green);
-  background: var(--green-soft);
-  color: #18533f;
-}
-
-.flow-arrow {
-  color: var(--blue-strong);
-  font-family: var(--mono);
-  font-size: 1.2rem;
-  font-weight: 800;
-}
-
-.solver-deny {
-  padding: 0.8rem;
-  border: 2px solid var(--coral);
-  border-radius: 9px;
-  background: var(--coral-soft);
-  color: #923731;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.035em;
-}
-
 pre {
   max-width: 100%;
   margin-bottom: 0;
@@ -1034,18 +1029,6 @@ pre {
   font-family: var(--mono);
   font-size: 0.76rem;
   line-height: 1.6;
-}
-
-.next-action {
-  display: flex;
-  justify-content: flex-start;
-  margin-top: 1rem;
-  border-color: var(--blue);
-  background: var(--blue-soft);
-}
-
-.next-action::before {
-  background: var(--blue);
 }
 
 .workshop-layout {
@@ -1580,10 +1563,18 @@ pre {
 }
 
 .workshop-timeline {
+  position: fixed;
+  z-index: 25;
+  bottom: calc(0.85rem + env(safe-area-inset-bottom));
+  left: 50%;
+  width: min(calc(100vw - 2rem), 86rem);
+  margin: 0;
   padding: clamp(1rem, 2vw, 1.45rem);
   border: 2px solid var(--ink);
   border-radius: var(--radius);
   background: var(--surface);
+  box-shadow: 0 0.9rem 2.75rem rgb(27 40 56 / 0.2);
+  transform: translateX(-50%);
 }
 
 .timeline-heading {
@@ -1595,9 +1586,9 @@ pre {
 }
 
 .timeline-heading h2 {
-  max-width: 19ch;
+  max-width: 27ch;
   margin: 0;
-  font-size: clamp(1.55rem, 2.8vw, 2.35rem);
+  font-size: clamp(1.15rem, 2.1vw, 1.7rem);
   line-height: 1.02;
 }
 
@@ -1653,6 +1644,7 @@ pre {
 }
 
 .timeline-track {
+  position: relative;
   display: flex;
   gap: 0.45rem;
   margin: 0;
@@ -1662,6 +1654,12 @@ pre {
   scroll-behavior: smooth;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
+}
+
+.timeline-track > li {
+  flex: 0 0 auto;
+  min-inline-size: 0;
+  scroll-snap-align: center;
 }
 
 .timeline-track::-webkit-scrollbar {
@@ -1674,6 +1672,8 @@ pre {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.42rem;
   align-items: center;
+  inline-size: fit-content;
+  max-inline-size: min(32rem, 72vw);
   min-height: 2.85rem;
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--line);
@@ -1684,13 +1684,17 @@ pre {
   font-weight: 800;
   line-height: 1.2;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
 }
 
 .timeline-step {
-  flex: 0 0 clamp(8rem, 11vw, 10.5rem);
-  scroll-snap-align: center;
+  max-inline-size: min(32rem, 72vw);
+}
+
+.timeline-step-title {
+  min-inline-size: 0;
 }
 
 .timeline-arrow {
@@ -2135,28 +2139,17 @@ pre {
   font-size: 0.78rem;
 }
 
-.workshop-footer-navigation {
+.workshop-completion-action {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
+  justify-content: flex-end;
   margin-top: 1.35rem;
   padding-top: 1rem;
   border-top: 1px solid var(--line);
 }
 
-.workshop-footer-navigation button:not(.primary) {
-  border-color: var(--ink);
-  background: var(--surface);
-  color: var(--ink);
-}
-
-.workshop-footer-navigation button:not(.primary):hover:not(:disabled) {
-  background: var(--yellow);
-}
-
 .skill-modal-backdrop {
   position: fixed;
-  z-index: 20;
+  z-index: 40;
   inset: 0;
   display: grid;
   place-items: center;
@@ -2200,8 +2193,7 @@ pre {
   .hero,
   .dashboard-grid,
   .research-layout,
-  .parts-layout,
-  .build-layout {
+  .parts-layout {
     grid-template-columns: 1fr;
   }
 
@@ -2236,6 +2228,14 @@ pre {
     padding: 0.85rem;
   }
 
+  .app-shell.has-floating-workshop-timeline {
+    padding-bottom: clamp(15.5rem, 31dvh, 20rem);
+  }
+
+  .app-shell.has-floating-workflow-navigation {
+    padding-bottom: clamp(10.5rem, 22dvh, 13.5rem);
+  }
+
   .hero {
     gap: 1rem;
     min-height: 0;
@@ -2260,11 +2260,26 @@ pre {
   }
 
   .app-tabs {
-    justify-content: flex-start;
+    gap: 0.25rem;
+    padding: 0.38rem;
+    overflow-x: visible;
+  }
+
+  .workflow-navigation {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+    bottom: calc(0.55rem + env(safe-area-inset-bottom));
+    width: calc(100vw - 1.1rem);
+    padding: 0.75rem;
   }
 
   .tab {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 2.45rem;
+    padding: 0.5rem 0.32rem;
+    font-size: 0.62rem;
+    white-space: nowrap;
   }
 
   .research-card-grid {
@@ -2283,15 +2298,6 @@ pre {
     grid-column: auto;
   }
 
-  .solver-flow {
-    grid-template-columns: 1fr;
-  }
-
-  .flow-arrow {
-    justify-self: center;
-    transform: rotate(90deg);
-  }
-
   .workshop-layout {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -2305,8 +2311,8 @@ pre {
   }
 
   .timeline-heading h2 {
-    max-width: 24ch;
-    font-size: 1.45rem;
+    max-width: 26ch;
+    font-size: 1.12rem;
   }
 
   .timeline-heading {
@@ -2323,12 +2329,15 @@ pre {
     grid-template-columns: auto auto minmax(0, 1fr) auto;
   }
 
-  .timeline-step {
-    flex-basis: 8.25rem;
+  .workshop-timeline {
+    bottom: calc(0.55rem + env(safe-area-inset-bottom));
+    width: calc(100vw - 1.1rem);
+    padding: 0.9rem;
   }
 
   .timeline-overview,
   .timeline-step {
+    max-inline-size: 74vw;
     min-height: 2.6rem;
     padding: 0.5rem 0.62rem;
     font-size: 0.7rem;

@@ -166,6 +166,7 @@ test("guided lesson generation gives the lesson agent local cited excerpts to di
   assert.match(prompt, /Grounded local source excerpts/);
   assert.match(prompt, /LED module on the USB power path/);
   assert.match(prompt, /sourceDigest/);
+  assert.match(prompt, /ESP32 microcontroller/);
 });
 
 test("guided lesson generation uses the deterministic cited fixture fallback in safe mode", async () => {

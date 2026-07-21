@@ -6,16 +6,23 @@ async function sandboxSource(): Promise<string> {
   return readFile(new URL("../src/sandbox.tsx", import.meta.url), "utf8");
 }
 
-test("Dashboard preserves discovery behavior, five-tab navigation, and section help", async () => {
-  const source = await sandboxSource();
+async function sandboxCss(): Promise<string> {
+  return readFile(new URL("../src/sandbox.css", import.meta.url), "utf8");
+}
 
-  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Build", "Workshop"\] as const/);
+test("Dashboard preserves discovery behavior, four-tab navigation, and section help", async () => {
+  const [source, css] = await Promise.all([sandboxSource(), sandboxCss()]);
+
+  assert.match(source, /const tabs = \["Dashboard", "Research", "Parts", "Workshop"\] as const/);
   assert.match(source, /function PageHeading/);
+  assert.match(source, /function AppTabs/);
+  assert.match(source, /aria-label="Primary navigation"/);
   assert.match(source, /function SectionHelpModal/);
   assert.match(source, /className="help-trigger"/);
   assert.match(source, /const sectionGuides/);
 
   assert.match(source, /DiscoveryRequestSchema\.parse/);
+  assert.match(source, /parseApiJson/);
   assert.match(source, /inventoryPartIds: ownedInventoryPartIds/);
   assert.match(source, /fetch\("\/api\/discovery"/);
   assert.match(source, /new EventSource\("\/api\/discovery\/" \+ payload\.operationId \+ "\/events"\)/);
@@ -32,9 +39,21 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /Potential use cases/);
   assert.match(source, /Alternative builds/);
   assert.match(source, /Saved parts data/);
-  assert.match(source, /See the research/);
-  assert.match(source, /onOpenBuild=\{\(\) => setActiveTab\("Research"\)\}/);
-  assert.match(source, /setActiveTab\("Parts"\)/);
+  assert.match(source, /activeTab === "Dashboard"/);
+  assert.match(source, /const shellClassName = hasFloatingWorkshopTimeline/);
+  assert.match(source, /has-floating-workflow-navigation/);
+  assert.match(source, /function WorkflowNavigation/);
+  assert.match(source, /aria-label="Section navigation"/);
+  assert.match(source, /YOUR PATH/);
+  assert.match(source, /Previous: /);
+  assert.match(source, /Next: /);
+  assert.doesNotMatch(source, /workflow-navigation-actions[\s\S]*tabs\.map/);
+  assert.match(source, /activeTab !== "Workshop" \? \(/);
+  assert.match(css, /\.app-tabs[\s\S]*position: sticky/);
+  assert.match(css, /\.workflow-navigation[\s\S]*position: fixed/);
+  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.workshop-timeline[\s\S]*position: fixed/);
+  assert.match(css, /\.app-shell\.has-floating-workshop-timeline/);
 
   assert.match(source, /function PartsPanel/);
   assert.match(source, /What parts do you have\? \(optional\)/);
@@ -50,8 +69,9 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /thumbnailDataUrl/);
   assert.match(source, /Other options/);
   assert.match(source, /Open \{offer\.provider\}/);
-  assert.match(source, /See the build/);
-  assert.match(source, /onOpenWorkshop=\{\(\) => setActiveTab\("Build"\)\}/);
+  assert.match(source, /startSelectedWorkshop/);
+  assert.doesNotMatch(source, /function BuildPanel/);
+  assert.doesNotMatch(source, /activeTab === "Build"/);
   assert.match(source, /See source/);
   assert.match(source, /Saved option needs a check/);
 
@@ -76,12 +96,14 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /hoveredPartId=\{hoveredPart\?\.id\}/);
   assert.match(source, /disassembleOnHover=\{disassembleOnHover\}/);
   assert.match(source, /selectEnclosures=\{selectEnclosures\}/);
+  assert.match(source, /nextSelectedPartId/);
   assert.match(source, /onHover=\{previewPart\}/);
   assert.match(source, /const \[disassembleOnHover, setDisassembleOnHover\] = useState\(false\)/);
   assert.match(source, /Disassemble on hover/);
   assert.match(source, /Hover preview is off; click a part to select and inspect it/);
   assert.match(source, /Select enclosures/);
   assert.match(source, /Automatic: click through enclosures to the parts inside/);
+  assert.match(source, /Enclosures can be selected and inspected without separating the model/);
   assert.match(source, /Center &amp; reset model/);
   assert.match(source, /disabled=\{part\.isContainer === true && !selectEnclosures\}/);
   assert.match(source, /className=\{part\.id === selectedPart\?\.id \? "part-picker active" : "part-picker"\}/);
@@ -89,9 +111,20 @@ test("Dashboard preserves discovery behavior, five-tab navigation, and section h
   assert.match(source, /function WorkshopTimeline/);
   assert.match(source, /timelineTrackRef/);
   assert.match(source, /scrollTo\(/);
+  assert.match(source, /data-timeline-step=\{index\}/);
+  assert.match(source, /timeline-step-title/);
+  assert.match(css, /\.timeline-track > li/);
+  assert.match(css, /inline-size: fit-content/);
+  assert.doesNotMatch(css, /flex-basis: 8\.25rem/);
   assert.match(source, /role="progressbar"/);
   assert.match(source, /Mark complete and continue/);
+  assert.match(source, /workshop-completion-action/);
+  assert.doesNotMatch(source, /workshop-footer-navigation/);
   assert.match(source, /Full 3D build overview/);
+  assert.match(source, /LEARNING PLAN/);
+  assert.match(source, /See the whole build, then zoom into each action\./);
+  assert.match(source, /learnerFriendlyText/);
+  assert.match(source, /learnerPartName/);
   assert.match(source, /In plain language/);
   assert.match(source, /Why this matters/);
   assert.match(source, /Concepts to notice/);

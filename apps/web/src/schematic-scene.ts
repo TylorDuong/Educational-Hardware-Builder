@@ -178,6 +178,7 @@ export function createSchematicScene(request: SchematicLayoutRequest = weatherSt
 
   const assetByPartId = new Map(request.cadAssets.map((asset) => [asset.partId, asset]));
   const nodeByPartId = new Map(request.graph.nodes.map((node) => [node.partId, node]));
+  const connectionById = new Map(request.graph.connections.map((connection) => [connection.id, connection]));
   const parts = layout.placements.map((placement) => {
     const presentation = fixturePartPresentation.get(placement.partId) ?? {
       name: "Verified schematic component",
@@ -197,11 +198,19 @@ export function createSchematicScene(request: SchematicLayoutRequest = weatherSt
       isContainer: nodeByPartId.get(placement.partId)?.role === "container",
     } satisfies MechViewPart;
   });
-  const routes = layout.routes.map((route, index) => ({
-    id: route.connectionId,
-    pointsMm: route.points,
-    color: index % 2 === 0 ? "#f59e0b" : "#f43f5e",
-  } satisfies MechViewRoute));
+  const routes = layout.routes.map((route, index) => {
+    const connection = connectionById.get(route.connectionId);
+    if (!connection) {
+      throw new Error(`Ready schematic route ${route.connectionId} has no source connection.`);
+    }
+    return {
+      id: route.connectionId,
+      pointsMm: route.points,
+      fromPartId: connection.fromPartId,
+      toPartId: connection.toPartId,
+      color: index % 2 === 0 ? "#f59e0b" : "#f43f5e",
+    } satisfies MechViewRoute;
+  });
 
   return {
     outcome: "ready",

@@ -22,7 +22,7 @@ function WiringCanvas({ layout, selectedNet }: { layout: WiringLayout; selectedN
       aria-label="Orthogonal wiring diagram for the weather station sensor harness"
     >
       <title>Weather station sensor harness</title>
-      <desc>Four checked connections join the BME280 sensor breakout to the ESP32 DevKit.</desc>
+      <desc>Four checked connections join the BME280 sensor breakout to the ESP32 microcontroller board.</desc>
       <g className="wiring-routes">
         {layout.routes.map((route) => {
           const active = !selectedNet || selectedNet === route.netName;

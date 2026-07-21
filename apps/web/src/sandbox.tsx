@@ -17,17 +17,20 @@ import {
 } from "@educational-hardware-builder/schemas";
 
 import { weatherStationGoldenSteps } from "../fixtures/weather-station.js";
+import { parseApiJson } from "./api-response.js";
 import {
   demoParts,
   demoSubstitution,
   runSolverRetryDemo,
   type SolverRetryDemo,
 } from "./demo-flow.js";
-import type { MechViewPart, MechViewRoute } from "./components/MechView.js";
+import { type MechViewPart, type MechViewRoute } from "./components/MechView.js";
 import { matchedInventoryPartIds, parseOwnedParts, type OwnedPartInput } from "./owned-parts.js";
 import { createSchematicScene } from "./schematic-scene.js";
 import { applicationSourcePolicies } from "./source-policies.js";
 import { solveSelectedProposalParts } from "./spatial-integration.js";
+import { nextSelectedPartId } from "./workshop-selection.js";
+import { learnerFriendlyText, learnerPartName } from "./learner-language.js";
 import { weatherStationWiringNetlist } from "../../../packages/schemas/fixtures/weather-station-wiring.js";
 import { WiringDiagram } from "./components/WiringDiagram.js";
 
@@ -35,7 +38,7 @@ import "./sandbox.css";
 
 const sessionId = "workshop-demo";
 const discoveryUserId = "40000000-0000-4000-8000-000000000001";
-const tabs = ["Dashboard", "Research", "Parts", "Build", "Workshop"] as const;
+const tabs = ["Dashboard", "Research", "Parts", "Workshop"] as const;
 const LazyMechView = lazy(async () => ({
   default: (await import("./components/MechView.js")).MechView,
 }));
@@ -186,7 +189,9 @@ function researchBriefFor(proposal?: BuildProposal): ResearchBrief {
     "Build a working prototype you can inspect, adapt, and improve.",
   ];
   const alternatives = proposal.billOfMaterials.flatMap((entry) => (
-    entry.alternatives.map((alternative) => `${alternative.name} in place of ${entry.part.name} when the cited catalog marks it as compatible.`)
+    entry.alternatives.map((alternative) => (
+      `${learnerPartName(alternative.name, alternative.category)} in place of ${learnerPartName(entry.part.name, entry.part.category)} when the cited catalog marks it as compatible.`
+    ))
   ));
 
   return {
@@ -264,13 +269,9 @@ const sectionGuides: Record<Tab, SectionGuide> = {
     title: "Checking your parts",
     detail: "See the parts you already have, the parts you may need, and saved sourcing details. No live shopping happens here.",
   },
-  Build: {
-    title: "Checking the fit",
-    detail: "The planner suggests named connections. A deterministic solver checks them before the 3D view uses them.",
-  },
   Workshop: {
     title: "Using the workshop",
-    detail: "Choose any step in any order. Use the 3D view to inspect parts, then open a skill reference whenever you want more detail.",
+    detail: "The Workshop combines the build plan, fit checks, 3D inspection, and step-by-step guidance. Choose any step in any order.",
   },
 };
 
@@ -280,12 +281,6 @@ const boundaryPolicies = [
   ["LIVE SHOPPING", "SAVED DATA ONLY"],
   ["SOURCES", "REQUIRED"],
 ] as const;
-
-const symbolicMatingPreview = JSON.stringify({
-  partA: "sensor",
-  partB: "base",
-  mate_type: "snap_fit",
-}, null, 2);
 
 const discoveryPipelineStages: readonly Progress[] = [
   { stage: "queued", message: "Queueing your discovery request", percent: 0 },
@@ -304,7 +299,13 @@ async function requestStep(
     ? new URLSearchParams({ sessionId: selected.sessionId, buildId: selected.buildId })
     : new URLSearchParams({ sessionId });
   const response = await fetch("/api/workshop/steps/" + stepId + "?" + query.toString());
-  return response.ok ? {} : { error: (await response.json() as { error: string }).error };
+  if (response.ok) return {};
+  try {
+    const payload = await parseApiJson<{ error?: unknown }>(response);
+    return { error: typeof payload.error === "string" ? payload.error : "Workshop step could not be opened." };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Workshop step could not be opened." };
+  }
 }
 
 function AppTabs({
@@ -317,7 +318,7 @@ function AppTabs({
   onSelect: (tab: Tab) => void;
 }) {
   return (
-    <nav className="app-tabs" aria-label="Workshop sections" data-flow-ready={hasStarted ? "true" : "false"}>
+    <nav className="app-tabs" aria-label="Primary navigation" data-flow-ready={hasStarted ? "true" : "false"}>
       {tabs.map((tab) => (
         <button
           key={tab}
@@ -330,6 +331,47 @@ function AppTabs({
           {tab}
         </button>
       ))}
+    </nav>
+  );
+}
+
+function WorkflowNavigation({
+  active,
+  hasStarted,
+  onSelect,
+}: {
+  active: Tab;
+  hasStarted: boolean;
+  onSelect: (tab: Tab) => void;
+}) {
+  const activeIndex = tabs.indexOf(active);
+  const previousTab = activeIndex > 0 ? tabs[activeIndex - 1] : undefined;
+  const nextTab = activeIndex < tabs.length - 1 ? tabs[activeIndex + 1] : undefined;
+
+  return (
+    <nav className="workflow-navigation" aria-label="Section navigation" data-flow-ready={hasStarted ? "true" : "false"}>
+      <div>
+        <p className="eyebrow">YOUR PATH</p>
+        <p className="workflow-navigation-copy">Move between Dashboard, Research, Parts, and Workshop.</p>
+      </div>
+      <div className="workflow-navigation-actions">
+        <button
+          type="button"
+          className="workflow-navigation-button"
+          disabled={previousTab === undefined || (!hasStarted && previousTab !== "Dashboard")}
+          onClick={() => previousTab && onSelect(previousTab)}
+        >
+          {previousTab ? "Previous: " + previousTab : "Previous"}
+        </button>
+        <button
+          type="button"
+          className="workflow-navigation-button primary"
+          disabled={nextTab === undefined || !hasStarted}
+          onClick={() => nextTab && onSelect(nextTab)}
+        >
+          {nextTab ? "Next: " + nextTab : "Next"}
+        </button>
+      </div>
     </nav>
   );
 }
@@ -427,13 +469,13 @@ function DiscoverySummary({ discovery }: { discovery: DiscoveryView }) {
   return (
     <section className="discovery-summary">
       <p className="eyebrow">YOUR IDEA</p>
-      <h3>{interpretedRequest}</h3>
+      <h3>{learnerFriendlyText(interpretedRequest)}</h3>
       <p><strong>Status:</strong> {classification.outcome}</p>
       <p className="message">{classification.outcome === "approved" ? classification.reason : classification.message}</p>
       {proposal ? (
         <>
           <p className="eyebrow">YOUR PLAN</p>
-          <h3>{proposal.summary}</h3>
+          <h3>{learnerFriendlyText(proposal.summary)}</h3>
           <p>{proposal.billOfMaterials.length} parts, with saved source details.</p>
           <ul className="source-list">
             {proposal.citations.map((citation) => (
@@ -460,7 +502,6 @@ function Dashboard({
   onPromptChange,
   onOwnedPartsChange,
   onStart,
-  onOpenBuild,
   onOpenHelp,
 }: {
   prompt: string;
@@ -473,7 +514,6 @@ function Dashboard({
   onPromptChange: (value: string) => void;
   onOwnedPartsChange: (value: string) => void;
   onStart: () => void;
-  onOpenBuild: () => void;
   onOpenHelp: (section: Tab) => void;
 }) {
   const complete = progress.stage === "ready";
@@ -521,7 +561,7 @@ function Dashboard({
           {!error && rejected ? <p className="message" role="alert">This request cannot make a hardware plan.</p> : null}
           {discovery ? <DiscoverySummary discovery={discovery} /> : null}
           {complete && discovery?.proposal
-            ? <button className="primary" type="button" onClick={onOpenBuild}>See the research</button>
+            ? <p className="helper">Your plan is ready. Continue to Research below to review it.</p>
             : <p className="helper">Your plan will appear here.</p>}
         </section>
 
@@ -550,8 +590,8 @@ function ResearchPanel({
       <div className="research-layout">
         <section className="research-content">
           <div className="research-context">
-            <h3>{title}</h3>
-            <p className="research-purpose">{brief.build}</p>
+            <h3>{learnerFriendlyText(title)}</h3>
+            <p className="research-purpose">{learnerFriendlyText(brief.build)}</p>
             {proposal ? (
               <section className="catalog-provenance">
                 <h4>Saved parts data</h4>
@@ -578,7 +618,7 @@ function ResearchPanel({
             <header>
               <p className="eyebrow">BUILD BRIEF</p>
               <h2 id="research-brief-title">What you will make</h2>
-              <p>{brief.build}</p>
+              <p>{learnerFriendlyText(brief.build)}</p>
             </header>
             <div className="research-brief-grid">
               <section>
@@ -601,7 +641,7 @@ function ResearchPanel({
               <section>
                 <h3>Alternative builds</h3>
                 <ul className="research-brief-list">
-                  {brief.alternativeBuilds.map((alternative) => <li key={alternative}>{alternative}</li>)}
+                  {brief.alternativeBuilds.map((alternative) => <li key={alternative}>{learnerFriendlyText(alternative)}</li>)}
                 </ul>
               </section>
             </div>
@@ -635,55 +675,6 @@ function ResearchPanel({
   );
 }
 
-function BuildPanel({
-  onOpenWorkshop,
-  isStartingWorkshop,
-  onOpenHelp,
-}: {
-  onOpenWorkshop: () => void;
-  isStartingWorkshop: boolean;
-  onOpenHelp: (section: Tab) => void;
-}) {
-  return (
-    <section className="build-view">
-      <PageHeading section="Build" title="How the parts fit" caption="Every connection gets a quick fit check." onOpenHelp={onOpenHelp} />
-      <div className="build-layout">
-        <section className="panel build-plan">
-          <p className="eyebrow">YOUR BUILD</p>
-          <h3>ESP32 weather station</h3>
-          <ol className="plan-list">
-            {weatherStationGoldenSteps.map((step) => (
-              <li key={step.id}>
-                <strong>{step.title}</strong>
-                <span>{step.instruction}</span>
-              </li>
-            ))}
-          </ol>
-          <button className="primary" type="button" onClick={onOpenWorkshop} disabled={isStartingWorkshop}>
-            {isStartingWorkshop ? "Opening workshop" : "Open workshop"}
-          </button>
-        </section>
-
-        <section className="panel solver-console">
-          <div className="panel-heading">
-            <p className="eyebrow">FIT CHECK</p>
-            <span className="status-indicator">CHECKED</span>
-          </div>
-          <div className="solver-flow" aria-label="Symbolic selection validation flow">
-            <div className="solver-node">IDEA</div>
-            <span className="flow-arrow" aria-hidden="true">&gt;</span>
-            <div className="solver-node active">CHECK</div>
-            <span className="flow-arrow" aria-hidden="true">&gt;</span>
-            <div className="solver-node success">FIT</div>
-          </div>
-          <div className="solver-deny">RAW COORDINATES: BLOCKED</div>
-          <pre aria-label="Example symbolic mating selection">{symbolicMatingPreview}</pre>
-        </section>
-      </div>
-    </section>
-  );
-}
-
 function ReportedOwnedParts({ ownedParts }: { ownedParts: readonly OwnedPartInput[] }) {
   if (ownedParts.length === 0) return null;
   return (
@@ -695,7 +686,7 @@ function ReportedOwnedParts({ ownedParts }: { ownedParts: readonly OwnedPartInpu
         {ownedParts.map((part) => (
           <li key={part.label}>
             <strong>{part.label}</strong>
-            <span>{part.matchedName ? "Matches " + part.matchedName + "." : "Check this part before you use it."}</span>
+            <span>{part.matchedName ? "Matches " + learnerPartName(part.matchedName) + "." : "Check this part before you use it."}</span>
             <em>{part.matchedName ? "Ready for planning" : "Needs a check"}</em>
           </li>
         ))}
@@ -719,7 +710,7 @@ function ComponentBreakdown({ onOpenHelp }: { onOpenHelp: (section: Tab) => void
           <div className="inventory-row" role="row" key={part.name}>
             <div className="inventory-component" role="cell">
               <div className="part-thumbnail" aria-hidden="true">{part.name.slice(0, 3).toUpperCase()}</div>
-              <span><strong>{part.name}</strong><small>{part.status}</small></span>
+              <span><strong>{learnerPartName(part.name)}</strong><small>{part.status}</small></span>
             </div>
             <span role="cell">{part.role}</span>
             <span role="cell">{part.name === "ESP32 DevKit" ? "USD 9.99 saved" : "No saved price"}</span>
@@ -752,13 +743,7 @@ function OfferCard({ offer }: { offer: BuildProposal["billOfMaterials"][number][
   );
 }
 
-function PartsDetails({
-  discovery,
-  onOpenWorkshop,
-}: {
-  discovery?: DiscoveryView;
-  onOpenWorkshop: () => void;
-}) {
+function PartsDetails({ discovery }: { discovery?: DiscoveryView }) {
   const proposal = discovery?.proposal;
 
   if (proposal) {
@@ -770,8 +755,8 @@ function PartsDetails({
           <ul className="part-list">
             {proposal.billOfMaterials.map((entry) => (
               <li key={entry.part.id}>
-                <strong>{entry.part.name} x {entry.quantity}</strong>
-                <span>{entry.rationale}</span>
+                <strong>{learnerPartName(entry.part.name, entry.part.category)} x {entry.quantity}</strong>
+                <span>{learnerFriendlyText(entry.rationale)}</span>
                 <em className={entry.freshness === "stale" ? "freshness stale" : "freshness fresh"}>
                   {entry.freshness === "stale" ? "Saved option needs a check" : "Saved option is ready"}
                 </em>
@@ -795,7 +780,7 @@ function PartsDetails({
                     <ul className="source-list">
                       {entry.alternatives.map((alternative) => (
                         <li key={alternative.id}>
-                          <strong>{alternative.name}</strong>
+                          <strong>{learnerPartName(alternative.name, alternative.category)}</strong>
                           <span>{alternative.category}</span>
                           {alternative.datasheetUrl
                             ? <a href={alternative.datasheetUrl} target="_blank" rel="noreferrer">See compatible part</a>
@@ -813,8 +798,7 @@ function PartsDetails({
         <section className="panel substitution">
           <p className="eyebrow">YOUR CHOICE</p>
           <h2>Use saved options</h2>
-          <p>Everything here comes from a saved local record.</p>
-          <button className="primary" type="button" onClick={onOpenWorkshop}>See the build</button>
+          <p>Everything here comes from a saved local record. Open the Workshop below when you are ready to build.</p>
         </section>
       </section>
     );
@@ -828,7 +812,7 @@ function PartsDetails({
         <ul className="part-list">
           {demoParts.map((part) => (
             <li key={part.name}>
-              <strong>{part.name}</strong>
+              <strong>{learnerPartName(part.name)}</strong>
               <span>{part.role}</span>
               <em>{part.status}</em>
             </li>
@@ -840,7 +824,6 @@ function PartsDetails({
         <h2>{demoSubstitution.selected}</h2>
         <p><strong>Instead of:</strong> {demoSubstitution.requested}</p>
         <p>{demoSubstitution.justification}</p>
-        <button className="primary" type="button" onClick={onOpenWorkshop}>See the build</button>
       </section>
     </section>
   );
@@ -849,19 +832,17 @@ function PartsDetails({
 function PartsPanel({
   discovery,
   ownedParts,
-  onOpenWorkshop,
   onOpenHelp,
 }: {
   discovery?: DiscoveryView;
   ownedParts: readonly OwnedPartInput[];
-  onOpenWorkshop: () => void;
   onOpenHelp: (section: Tab) => void;
 }) {
   return (
     <>
       <ReportedOwnedParts ownedParts={ownedParts} />
       <ComponentBreakdown onOpenHelp={onOpenHelp} />
-      <PartsDetails discovery={discovery} onOpenWorkshop={onOpenWorkshop} />
+      <PartsDetails discovery={discovery} />
     </>
   );
 }
@@ -884,7 +865,7 @@ function SkillReferenceList({
               <article className="skill-reference">
                 <div>
                   <h4>{skill.title}</h4>
-                  <p>{skill.relevance}</p>
+                  <p>{learnerFriendlyText(skill.relevance)}</p>
                   <span>Find it: {skill.locator}</span>
                 </div>
                 <div className="source-actions">
@@ -916,7 +897,7 @@ function SkillReferenceModal({ skill, onClose }: { skill?: SkillReference; onClo
           <button type="button" className="icon-button" aria-label="Close skill reference" onClick={onClose}>CLOSE</button>
         </div>
         <h2 id="skill-reference-title">{skill.title}</h2>
-        <p>{skill.relevance}</p>
+        <p>{learnerFriendlyText(skill.relevance)}</p>
         <dl>
           <div><dt>FIND IT</dt><dd>{skill.locator}</dd></div>
           <div><dt>SOURCE</dt><dd><a href={skill.sourceUrl} target="_blank" rel="noreferrer">OPEN SOURCE</a></dd></div>
@@ -961,7 +942,7 @@ function InteractiveAssemblyViewer({
     : parts;
 
   if (parts.length === 0) {
-    return <section className="viewer panel"><h2>{heading}</h2><p className="helper" role="alert">{layoutMessage}</p></section>;
+    return <section className="viewer panel"><h2>{learnerFriendlyText(heading)}</h2><p className="helper" role="alert">{learnerFriendlyText(layoutMessage)}</p></section>;
   }
 
   const modelCenter = parts.reduce<[number, number, number]>((sum, part) => [
@@ -983,9 +964,9 @@ function InteractiveAssemblyViewer({
     return part !== undefined && (selectEnclosures || part.isContainer !== true);
   }
 
-  function selectPart(partId: string): void {
-    if (!canSelectPart(partId)) return;
-    setSelectedPartId(partId);
+  function selectPart(partId: string | undefined): void {
+    if (partId !== undefined && !canSelectPart(partId)) return;
+    setSelectedPartId((current) => nextSelectedPartId(current, partId));
     setHoveredPartId(undefined);
   }
 
@@ -1008,7 +989,7 @@ function InteractiveAssemblyViewer({
 
   return (
     <section className="viewer panel">
-      <h2>{heading}</h2>
+      <h2>{learnerFriendlyText(heading)}</h2>
       <div className="viewer-stage">
         <div className="canvas">
           <Suspense fallback={<p>Loading the 3D view...</p>}>
@@ -1031,23 +1012,26 @@ function InteractiveAssemblyViewer({
           <p className="eyebrow">{focusLabel}</p>
           {selectedPart ? (
             <>
-              <h3>{selectedPart.name}</h3>
-              <p>{selectedPart.purpose}</p>
-              <p className="focus-hint">The selected part stays solid while the rest of the model spreads out for inspection.</p>
+              <h3>{learnerPartName(selectedPart.name)}</h3>
+              <p>{learnerFriendlyText(selectedPart.purpose)}</p>
+              <p className="focus-hint">{selectedPart.isContainer
+                ? "The enclosure stays anchored so the complete build remains in place. Click it again, or click empty space, to clear the inspection."
+                : "Nearby parts separate for inspection while the rest of the model stays anchored. Click it again, or click empty space, to reassemble."}
+              </p>
             </>
-          ) : hoveredPart ? <p>Previewing {hoveredPart.name}. Click it to select and centre it.</p> : guide ? <p>{guide.description}</p> : <p>{disassembleOnHover ? "Hover over a part to preview it, or select one to keep it centred." : "Hover preview is off; click a part to select and inspect it."}</p>}
+          ) : hoveredPart ? <p>Previewing {learnerPartName(hoveredPart.name)}. Click it to select and centre it.</p> : guide ? <p>{learnerFriendlyText(guide.description)}</p> : <p>{disassembleOnHover ? "Hover over a part to preview it, or select one to keep it centred." : "Hover preview is off; click a part to select and inspect it."}</p>}
           <label className="hover-toggle">
             <input type="checkbox" checked={disassembleOnHover} onChange={(event) => {
               setDisassembleOnHover(event.target.checked);
               if (!event.target.checked) setHoveredPartId(undefined);
             }} />
             <span>Disassemble on hover</span>
-            <small>{disassembleOnHover ? "Automatic: move closer to a part for a faster, capped disassembly preview." : "Hover preview is off; click a part to select and inspect it."}</small>
+            <small>{disassembleOnHover ? "Automatic: nearby parts separate as you move closer, while distant parts stay anchored." : "Hover preview is off; click a part to select and inspect it."}</small>
           </label>
           <label className="enclosure-toggle">
             <input type="checkbox" checked={selectEnclosures} onChange={(event) => changeSelectEnclosures(event.target.checked)} />
             <span>Select enclosures</span>
-            <small>{selectEnclosures ? "Enclosures can be selected." : "Automatic: click through enclosures to the parts inside."}</small>
+            <small>{selectEnclosures ? "Enclosures can be selected and inspected without separating the model." : "Automatic: click through enclosures to the parts inside."}</small>
           </label>
           <button type="button" className="view-reset" onClick={resetModelView}>Center &amp; reset model</button>
         </aside>
@@ -1065,15 +1049,15 @@ function InteractiveAssemblyViewer({
                   disabled={part.isContainer === true && !selectEnclosures}
                   onClick={() => selectPart(part.id)}
                 >
-                  <strong>{part.name}</strong>
-                  <span>{part.purpose}</span>
+                  <strong>{learnerPartName(part.name)}</strong>
+                  <span>{learnerFriendlyText(part.purpose)}</span>
                 </button>
               </li>
             ))}
           </ul>
         </section>
       ) : null}
-      <p className="helper">{layoutMessage} {guide?.description ?? `Showing step ${stepOrder}.`}</p>
+      <p className="helper">{learnerFriendlyText(layoutMessage)} {learnerFriendlyText(guide?.description ?? `Showing step ${stepOrder}.`)}</p>
     </section>
   );
 }
@@ -1082,7 +1066,7 @@ function SourceDigestBlock({ sourceDigest }: { sourceDigest: SourceDigest }) {
   return (
     <section className="learning-block source-digest-block">
       <h3>In plain language</h3>
-      <p>{sourceDigest.summary}</p>
+      <p>{learnerFriendlyText(sourceDigest.summary)}</p>
       <span className="source-digest-citation">Based on {sourceDigest.citation.title}, {sourceDigest.citation.locator}.</span>
     </section>
   );
@@ -1137,7 +1121,7 @@ function WorkshopTimeline({
       track.scrollTo({ left: 0, behavior: reduceMotion ? "auto" : "smooth" });
       return;
     }
-    const currentStep = track.querySelector<HTMLElement>(`[data-timeline-step="${activeIndex}"]`);
+    const currentStep = track.querySelector<HTMLLIElement>(`[data-timeline-step="${activeIndex}"]`);
     if (!currentStep) return;
     track.scrollTo({
       left: Math.max(0, currentStep.offsetLeft - (track.clientWidth - currentStep.offsetWidth) / 2),
@@ -1183,7 +1167,7 @@ function WorkshopTimeline({
           onClick={onShowOverview}
         >
           <span className="timeline-step-number">VIEW</span>
-          <span>Assembly</span>
+          <span className="timeline-step-title">Assembly</span>
         </button>
         <button type="button" className="timeline-arrow" aria-label="Go to previous Workshop step" disabled={showingOverview || activeIndex === 0} onClick={moveToPrevious}>
           <span aria-hidden="true">‹</span>
@@ -1195,17 +1179,16 @@ function WorkshopTimeline({
             const current = !showingOverview && activeIndex === index;
             const status = current ? "current" : completed ? "completed" : "available";
             return (
-              <li key={step.id}>
+              <li key={step.id} data-timeline-step={index}>
                 <button
                   type="button"
                   className={`timeline-step ${status}`}
-                  data-timeline-step={index}
                   aria-current={current ? "step" : undefined}
-                  aria-label={`Step ${step.order}: ${step.title}. ${status}.`}
+                  aria-label={`Step ${step.order}: ${learnerFriendlyText(step.title)}. ${status}.`}
                   onClick={() => onMove(index)}
                 >
                   <span className="timeline-step-number">{String(step.order).padStart(2, "0")}</span>
-                  <span>{step.title}</span>
+                  <span className="timeline-step-title">{learnerFriendlyText(step.title)}</span>
                 </button>
               </li>
             );
@@ -1239,13 +1222,13 @@ function WorkshopOverview({
     <section className="workshop-overview">
       <div className="overview-introduction panel">
         <p className="eyebrow">START WITH THE ASSEMBLY</p>
-        <h2>{lessonTitle}</h2>
+        <h2>{learnerFriendlyText(lessonTitle)}</h2>
         <p>Orient yourself with the complete model first. Then use the plan above to move freely between the practical actions, visual guides, explanations, and cited reading.</p>
         <dl className="overview-notes">
           <div><dt>Model</dt><dd>Source-backed component proxies and deterministic connection routes.</dd></div>
           <div><dt>Plan</dt><dd>Every step is available now. Reviewing a step does not lock or grade the next one.</dd></div>
         </dl>
-        <button className="primary" type="button" onClick={onOpenFirstStep}>Open step {firstStep.order}: {firstStep.title}</button>
+        <button className="primary" type="button" onClick={onOpenFirstStep}>Open step {firstStep.order}: {learnerFriendlyText(firstStep.title)}</button>
       </div>
       <InteractiveAssemblyViewer
         parts={parts}
@@ -1278,13 +1261,13 @@ function WorkshopStepVisual({
 }) {
   const guide = visualGuideForStep(step);
   return (
-    <section className="workshop-step-visual" aria-label={`Visual guide for ${step.title}`}>
+    <section className="workshop-step-visual" aria-label={`Visual guide for ${learnerFriendlyText(step.title)}`}>
       {guide.kind === "diagram" ? (
         <section className="step-diagram panel">
           <header>
             <p className="eyebrow">VISUAL GUIDE</p>
-            <h2>{guide.title}</h2>
-            <p>{guide.description}</p>
+            <h2>{learnerFriendlyText(guide.title)}</h2>
+            <p>{learnerFriendlyText(guide.description)}</p>
           </header>
           <WiringDiagram key={`${step.id}:${guide.initialNet ?? "all"}`} netlist={weatherStationWiringNetlist} initialNet={guide.initialNet} />
         </section>
@@ -1307,21 +1290,15 @@ function WorkshopStepVisual({
 
 function WorkshopStepDetails({
   step,
-  activeIndex,
   totalSteps,
   message,
-  onMove,
-  onShowOverview,
   onComplete,
   onOpenSkill,
   supplement,
 }: {
   step: WorkshopStepView;
-  activeIndex: number;
   totalSteps: number;
   message: string;
-  onMove: (index: number) => void;
-  onShowOverview: () => void;
   onComplete: () => void;
   onOpenSkill: (skill: SkillReference) => void;
   supplement?: ReactNode;
@@ -1336,25 +1313,25 @@ function WorkshopStepDetails({
     <article className="lesson-details panel">
       <header className="lesson-details-heading">
         <p className="step-count">Step {step.order} of {totalSteps}</p>
-        <h2>{step.title}</h2>
+        <h2>{learnerFriendlyText(step.title)}</h2>
       </header>
 
       <section className="learning-block action-block">
         <h3>What to do</h3>
-        <p>{step.instruction}</p>
+        <p>{learnerFriendlyText(step.instruction)}</p>
       </section>
 
       <SourceDigestBlock sourceDigest={step.sourceDigest} />
 
       <section className="learning-block why-block">
         <h3>Why this matters</h3>
-        <p>{whyItMatters}</p>
+        <p>{learnerFriendlyText(whyItMatters)}</p>
       </section>
 
       {step.safetyCallout ? (
         <aside className="preparation-note">
           <h3>Before you begin</h3>
-          <p>{step.safetyCallout}</p>
+          <p>{learnerFriendlyText(step.safetyCallout)}</p>
         </aside>
       ) : null}
 
@@ -1364,8 +1341,8 @@ function WorkshopStepDetails({
           <ul className="concept-list">
             {concepts.map((concept) => (
               <li key={concept.title}>
-                <h4>{concept.title}</h4>
-                {concept.explanation !== whyItMatters ? <p>{concept.explanation}</p> : <p>Use the cited source below to explore this idea in more detail.</p>}
+                <h4>{learnerFriendlyText(concept.title)}</h4>
+                {concept.explanation !== whyItMatters ? <p>{learnerFriendlyText(concept.explanation)}</p> : <p>Use the cited source below to explore this idea in more detail.</p>}
               </li>
             ))}
           </ul>
@@ -1374,7 +1351,7 @@ function WorkshopStepDetails({
 
       <section className="completion-condition">
         <h3>Finish this step when</h3>
-        <p>{completionCondition}</p>
+        <p>{learnerFriendlyText(completionCondition)}</p>
       </section>
 
       <CitationList citations={step.citations} />
@@ -1382,14 +1359,11 @@ function WorkshopStepDetails({
       {supplement}
 
       <p className="message" aria-live="polite">{message}</p>
-      <nav className="workshop-footer-navigation" aria-label="Step navigation">
-        <button type="button" disabled={activeIndex === 0} onClick={() => onMove(activeIndex - 1)}>Previous</button>
-        <button type="button" onClick={onShowOverview}>Build overview</button>
-        <button type="button" disabled={activeIndex === totalSteps - 1} onClick={() => onMove(activeIndex + 1)}>Next</button>
+      <div className="workshop-completion-action">
         <button className="primary" type="button" onClick={onComplete}>
           {activeIndex === totalSteps - 1 ? "Finish build" : "Mark complete and continue"}
         </button>
-      </nav>
+      </div>
     </article>
   );
 }
@@ -1436,24 +1410,16 @@ function WorkshopExperience({
     return (
       <section className="completion panel">
         <p className="eyebrow">BUILD REVIEW</p>
-        <h2>{lessonTitle}</h2>
+        <h2>{learnerFriendlyText(lessonTitle)}</h2>
         <p>You can return to the full model or revisit any step whenever you need it.</p>
-        <button className="primary" type="button" onClick={onShowOverview}>Return to build overview</button>
+        <button className="primary" type="button" onClick={onShowOverview}>Return to Workshop overview</button>
       </section>
     );
   }
 
   return (
     <section className="workshop-view">
-      <PageHeading section="Workshop" title="Build with a visual learning plan" caption="Start with the complete assembly, then choose any step for its action guide, explanation, and cited reading." onOpenHelp={onOpenHelp} />
-      <WorkshopTimeline
-        steps={steps}
-        activeIndex={activeIndex}
-        completedStepIds={completedStepIds}
-        showingOverview={showingOverview}
-        onMove={onMove}
-        onShowOverview={onShowOverview}
-      />
+      <PageHeading section="Workshop" title="Build with a visual learning plan" caption="The Workshop combines the build plan, fit checks, 3D inspection, and step-by-step guidance." onOpenHelp={onOpenHelp} />
       {showingOverview ? (
         <WorkshopOverview
           lessonTitle={lessonTitle}
@@ -1474,17 +1440,22 @@ function WorkshopExperience({
           />
           <WorkshopStepDetails
             step={step}
-            activeIndex={activeIndex}
             totalSteps={steps.length}
             message={message}
-            onMove={onMove}
-            onShowOverview={onShowOverview}
             onComplete={onComplete}
             onOpenSkill={onOpenSkill}
             supplement={lessonSupplement?.(step)}
           />
         </div>
       )}
+      <WorkshopTimeline
+        steps={steps}
+        activeIndex={activeIndex}
+        completedStepIds={completedStepIds}
+        showingOverview={showingOverview}
+        onMove={onMove}
+        onShowOverview={onShowOverview}
+      />
     </section>
   );
 }
@@ -1523,8 +1494,8 @@ function Troubleshooting({ entries }: { entries: PublicGuidedLesson["troubleshoo
       <h3>When something does not work</h3>
       {entries.map((item) => (
         <article key={item.problem}>
-          <h4>{item.problem}</h4>
-          <p>{item.explanation}</p>
+          <h4>{learnerFriendlyText(item.problem)}</h4>
+          <p>{learnerFriendlyText(item.explanation)}</p>
           <CitationList citations={item.citations} heading="Troubleshooting source" />
         </article>
       ))}
@@ -1693,7 +1664,7 @@ function Workshop() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(request),
       });
-      const payload = await response.json() as { operationId?: unknown; error?: unknown };
+      const payload = await parseApiJson<{ operationId?: unknown; error?: unknown }>(response);
       if (!response.ok || typeof payload.operationId !== "string") {
         throw new Error(typeof payload.error === "string" ? payload.error : "Discovery could not be started.");
       }
@@ -1742,12 +1713,12 @@ function Workshop() {
   async function loadDiscoveryResult(operationId: string) {
     try {
       const response = await fetch("/api/discovery/" + operationId);
-      const payload = await response.json() as {
+      const payload = await parseApiJson<{
         status?: unknown;
         classification?: unknown;
         proposal?: unknown;
         error?: unknown;
-      };
+      }>(response);
       if (!response.ok || (payload.status !== "ready" && payload.status !== "rejected")) {
         throw new Error(typeof payload.error === "string" ? payload.error : "Discovery status could not be loaded.");
       }
@@ -1814,7 +1785,7 @@ function Workshop() {
     setMessage("Opening your lesson.");
     try {
       const response = await fetch("/api/discovery/" + discovery.operationId + "/select", { method: "POST" });
-      const payload = WorkshopPromotionResponseSchema.parse(await response.json());
+      const payload = WorkshopPromotionResponseSchema.parse(await parseApiJson(response));
       setSelectedWorkshop(payload);
       setActiveIndex(0);
       setComplete(false);
@@ -1863,6 +1834,15 @@ function Workshop() {
     setShowingOverview(true);
   }
 
+  function selectTab(tab: Tab) {
+    if (isStartingWorkshop) return;
+    if (tab === "Workshop" && discovery?.proposal && !selectedWorkshop) {
+      void startSelectedWorkshop();
+      return;
+    }
+    setActiveTab(tab);
+  }
+
   const content = activeTab === "Dashboard"
     ? (
       <Dashboard
@@ -1876,80 +1856,83 @@ function Workshop() {
         onPromptChange={setProjectPrompt}
         onOwnedPartsChange={setOwnedPartsText}
         onStart={() => void startDiscovery()}
-        onOpenBuild={() => setActiveTab("Research")}
         onOpenHelp={setSelectedHelp}
       />
     )
     : activeTab === "Research"
-      ? (
-        <>
-          <ResearchPanel discovery={discovery} onOpenHelp={setSelectedHelp} />
-          <section className="next-action panel">
-            <button className="primary" type="button" onClick={() => setActiveTab("Parts")}>See the parts</button>
-          </section>
-        </>
-      )
-      : activeTab === "Build"
-        ? <BuildPanel onOpenWorkshop={() => void startSelectedWorkshop()} isStartingWorkshop={isStartingWorkshop} onOpenHelp={setSelectedHelp} />
-        : activeTab === "Parts"
-          ? <PartsPanel discovery={discovery} ownedParts={ownedParts} onOpenWorkshop={() => setActiveTab("Build")} onOpenHelp={setSelectedHelp} />
-          : isStartingWorkshop
+      ? <ResearchPanel discovery={discovery} onOpenHelp={setSelectedHelp} />
+      : activeTab === "Parts"
+        ? <PartsPanel discovery={discovery} ownedParts={ownedParts} onOpenHelp={setSelectedHelp} />
+        : isStartingWorkshop
+          ? (
+            <section className="completion panel">
+              <p className="eyebrow">WORKSHOP</p>
+              <h2>Opening your lesson...</h2>
+              <p>{message}</p>
+            </section>
+          )
+          : selectedWorkshop
             ? (
-              <section className="completion panel">
-                <p className="eyebrow">WORKSHOP</p>
-                <h2>Opening your lesson...</h2>
-                <p>{message}</p>
-              </section>
+              <SelectedWorkshopPanel
+                workshop={selectedWorkshop}
+                activeIndex={activeIndex}
+                complete={complete}
+                showingOverview={showingOverview}
+                completedStepIds={completedStepIds}
+                message={message}
+                onMove={(index) => void moveSelectedTo(index)}
+                onShowOverview={showWorkshopOverview}
+                onComplete={() => void completeSelectedStep()}
+                onOpenSkill={setSelectedSkill}
+                onOpenHelp={setSelectedHelp}
+              />
             )
-            : selectedWorkshop
-              ? (
-                <SelectedWorkshopPanel
-                  workshop={selectedWorkshop}
-                  activeIndex={activeIndex}
-                  complete={complete}
-                  showingOverview={showingOverview}
-                  completedStepIds={completedStepIds}
-                  message={message}
-                  onMove={(index) => void moveSelectedTo(index)}
-                  onShowOverview={showWorkshopOverview}
-                  onComplete={() => void completeSelectedStep()}
-                  onOpenSkill={setSelectedSkill}
-                  onOpenHelp={setSelectedHelp}
-                />
-              )
-              : (
-                <WorkshopPanel
-                  activeIndex={activeIndex}
-                  complete={complete}
-                  showingOverview={showingOverview}
-                  completedStepIds={completedStepIds}
-                  message={message}
-                  retryDemo={retryDemo}
-                  onMove={(index) => void moveTo(index)}
-                  onShowOverview={showWorkshopOverview}
-                  onRetry={() => setRetryDemo(runSolverRetryDemo())}
-                  onComplete={() => void completeFixtureStep()}
-                  onOpenSkill={setSelectedSkill}
-                  onOpenHelp={setSelectedHelp}
-                />
+            : (
+              <WorkshopPanel
+                activeIndex={activeIndex}
+                complete={complete}
+                showingOverview={showingOverview}
+                completedStepIds={completedStepIds}
+                message={message}
+                retryDemo={retryDemo}
+                onMove={(index) => void moveTo(index)}
+                onShowOverview={showWorkshopOverview}
+                onRetry={() => setRetryDemo(runSolverRetryDemo())}
+                onComplete={() => void completeFixtureStep()}
+                onOpenSkill={setSelectedSkill}
+                onOpenHelp={setSelectedHelp}
+              />
               );
 
+  const hasFloatingWorkshopTimeline = activeTab === "Workshop" && hasStarted && !isStartingWorkshop && !complete;
+  const hasFloatingWorkflowNavigation = activeTab !== "Workshop";
+  const shellClassName = hasFloatingWorkshopTimeline
+    ? "app-shell has-floating-workshop-timeline"
+    : hasFloatingWorkflowNavigation
+      ? "app-shell has-floating-workflow-navigation"
+      : "app-shell";
+
   return (
-    <main className="app-shell">
-      <header className="hero">
-        <div className="hero-copy">
-          <p className="brand-name">EDUCATIONAL HARDWARE BUILDER</p>
-          <h1>Build something real.</h1>
-          <p>Tell us what you want to make.</p>
-        </div>
-        <output className="system-output" aria-live="polite">
-          <strong>{progress.stage}</strong>
-          <span>{progress.message}</span>
-          <small>DEMO MODE</small>
-        </output>
-      </header>
-      <AppTabs active={activeTab} hasStarted={hasStarted} onSelect={setActiveTab} />
+    <main className={shellClassName}>
+      <AppTabs active={activeTab} hasStarted={hasStarted} onSelect={selectTab} />
+      {activeTab === "Dashboard" ? (
+        <header className="hero">
+          <div className="hero-copy">
+            <p className="brand-name">EDUCATIONAL HARDWARE BUILDER</p>
+            <h1>Build something real.</h1>
+            <p>Tell us what you want to make.</p>
+          </div>
+          <output className="system-output" aria-live="polite">
+            <strong>{progress.stage}</strong>
+            <span>{progress.message}</span>
+            <small>DEMO MODE</small>
+          </output>
+        </header>
+      ) : null}
       {content}
+      {activeTab !== "Workshop" ? (
+        <WorkflowNavigation active={activeTab} hasStarted={hasStarted} onSelect={selectTab} />
+      ) : null}
       <SectionHelpModal section={selectedHelp} onClose={() => setSelectedHelp(undefined)} />
       <SkillReferenceModal skill={selectedSkill} onClose={() => setSelectedSkill(undefined)} />
     </main>

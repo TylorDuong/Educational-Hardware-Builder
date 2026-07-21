@@ -285,7 +285,7 @@ export async function runLesson(step: StepPlan, dependencies: AgentDependencies)
   return callModel({
     schema: LessonSchema,
     jsonSchema: lessonJsonSchema,
-    prompt: `Write a concise beginner lesson for this cited reference step: ${JSON.stringify(step)}`,
+    prompt: `Write a concise beginner lesson for this cited reference step. Pair abbreviated part names with a plain-language role, for example "ESP32 microcontroller" rather than only "ESP32": ${JSON.stringify(step)}`,
     model: "llama3.1:8b",
     temperature: 0.7,
     fallback: () => step.lesson,
