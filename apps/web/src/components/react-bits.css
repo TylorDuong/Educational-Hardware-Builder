@@ -1,0 +1,237 @@
+.shape-grid {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.border-glow-card {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.border-glow-card::before,
+.border-glow-card::after {
+  display: none;
+}
+
+.border-glow-card__inner {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+
+.split-text {
+  display: block;
+  margin: 0;
+}
+
+.split-text__clip {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.split-text__word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.split-text__character {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.scroll-reveal {
+  margin: 0;
+  color: inherit;
+}
+
+.scroll-reveal__word {
+  display: inline-block;
+  margin-right: 0.23em;
+  will-change: transform, opacity, filter;
+}
+
+.card-spotlight {
+  --spotlight-x: 50%;
+  --spotlight-y: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-spotlight::before {
+  display: none;
+}
+
+.card-spotlight:hover::before,
+.card-spotlight:focus-within::before {
+  display: none;
+}
+
+.card-spotlight > * {
+  position: relative;
+  z-index: 1;
+}
+
+.line-sidebar {
+  min-width: 0;
+}
+
+.line-sidebar__list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line-sidebar__item {
+  --line-effect: 0;
+  display: grid;
+  grid-template-columns: 2.9rem 2rem minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.45rem 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) calc(60% + var(--line-effect) * 40%), var(--blue));
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: left;
+  transform: translateX(calc(var(--line-effect) * 8px));
+  transition: color 120ms ease, transform 120ms ease;
+}
+
+.line-sidebar__item:hover,
+.line-sidebar__item.active {
+  color: var(--blue-strong);
+}
+
+.line-sidebar__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.line-sidebar__marker {
+  height: 1px;
+  background: color-mix(in srgb, var(--line-strong) calc(55% - var(--line-effect) * 55%), var(--blue));
+  transform-origin: left;
+  transform: scaleX(calc(0.42 + var(--line-effect) * 0.58));
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.line-sidebar__item.active .line-sidebar__marker {
+  background: var(--blue);
+  transform: scaleX(1);
+}
+
+.line-sidebar__number {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+}
+
+.tilted-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 100%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.tilted-card > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tilted-card__reflection {
+  display: none;
+}
+
+.tilted-card:hover .tilted-card__reflection {
+  display: none;
+}
+
+.specular-button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--coral);
+  color: #0b1824;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.specular-button:hover:not(:disabled) {
+  background: var(--coral-strong);
+  transform: translateY(-1px);
+}
+
+.specular-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+.specular-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.specular-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.specular-button--sm {
+  min-height: 2.2rem;
+  padding: 0.42rem 0.78rem;
+  font-size: 0.76rem;
+}
+
+.specular-button--md {
+  min-height: 2.75rem;
+  padding: 0.62rem 1rem;
+  font-size: 0.86rem;
+}
+
+.specular-button--lg {
+  min-height: 3.25rem;
+  padding: 0.8rem 1.2rem;
+  font-size: 0.94rem;
+}
+
+.specular-button__shine {
+  display: none;
+}
+
+.specular-button:hover:not(:disabled) .specular-button__shine {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .specular-button__shine,
+  .tilted-card__reflection,
+  .border-glow-card::before,
+  .border-glow-card::after,
+  .line-sidebar__item,
+  .line-sidebar__marker {
+    transition: none;
+  }
+}

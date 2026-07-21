@@ -33,8 +33,27 @@ import { nextSelectedPartId } from "./workshop-selection.js";
 import { learnerFriendlyText, learnerPartName } from "./learner-language.js";
 import { weatherStationWiringNetlist } from "../../../packages/schemas/fixtures/weather-station-wiring.js";
 import { WiringDiagram } from "./components/WiringDiagram.js";
+import {
+  BorderGlow,
+  LineSidebar,
+  ScrollReveal,
+  ShapeGrid,
+  SpecularButton,
+  SplitText,
+  SpotlightCard,
+  TiltedCard,
+} from "./components/react-bits.js";
+import {
+  AnimatedList,
+  CountUp,
+  CurvedInput,
+  Masonry,
+  Stepper,
+  TextType,
+} from "./components/experience-primitives.js";
 
 import "./sandbox.css";
+import "./redesign.css";
 
 const sessionId = "workshop-demo";
 const discoveryUserId = "40000000-0000-4000-8000-000000000001";
@@ -45,6 +64,11 @@ const LazyMechView = lazy(async () => ({
 
 type Tab = typeof tabs[number];
 type Progress = Omit<DiscoveryProgressEvent, "operationId">;
+type DiscoveryOptions = {
+  maxBudget?: number;
+  preferredMicrocontroller?: string;
+  formFactor?: string;
+};
 type DiscoveryView = {
   operationId: string;
   prompt: string;
@@ -95,6 +119,36 @@ type SectionGuide = {
   title: string;
   detail: string;
 };
+
+const rotatingPromptExamples = [
+  "Build an automated plant watering system with a water pump, under $40, no soldering.",
+  "Design a smart garage door opener using a Raspberry Pi Pico that connects to WiFi.",
+  "Create an indoor air quality monitor with an OLED screen to track CO2 and humidity, beginner-friendly.",
+  "Build a motion-activated LED stair lighting system, intermediate level.",
+  "Design a custom 6-key macropad with a rotary encoder for video editing, under $50.",
+  "Build a physical Pomodoro timer with a satisfying mechanical reset switch and a digital display.",
+  "Create a sound-reactive LED matrix for my desk using an ESP32 and WS2812B strips.",
+  "Design a live subscriber counter for YouTube using an e-ink display.",
+  "Build a handheld retro gaming console using a Raspberry Pi Zero, must run on battery power.",
+  "Create a digital D&D dice roller with an LCD screen and a physical shake sensor.",
+  "Design a mini tabletop arcade cabinet using a 5-inch screen and generic USB arcade buttons.",
+  "Design a glowing, sound-reactive cyberpunk visor, battery-powered and lightweight.",
+  "Build a wearable heart-rate monitor using sewable components and a LilyPad Arduino.",
+  "Create a light-up Iron Man arc reactor prop, under $30, no soldering required.",
+  "Build a portable, solar-powered weather station that logs temperature and barometric pressure.",
+  "Design a digital tape measure using an ultrasonic sensor and a 7-segment display.",
+  "Create a motion-activated wildlife camera trap, battery-powered for outdoor use.",
+  "Build an RFID-triggered secret drawer lock, intermediate level.",
+] as const;
+
+const commonPromptModifiers = [
+  { label: "+ Battery powered", value: "battery-powered" },
+  { label: "+ No soldering", value: "no soldering" },
+  { label: "+ Under $50", value: "under $50" },
+  { label: "+ Use Arduino", value: "use an Arduino" },
+  { label: "+ Beginner friendly", value: "beginner-friendly" },
+  { label: "+ Fits a shoebox", value: "fits in a shoebox" },
+] as const;
 
 const fixtureWorkshopSteps: readonly WorkshopStepView[] = weatherStationGoldenSteps.map((step) => ({
   id: step.id,
@@ -258,8 +312,8 @@ function visualGuideForStep(step: WorkshopStepView): StepVisualGuide {
 
 const sectionGuides: Record<Tab, SectionGuide> = {
   Dashboard: {
-    title: "Starting a project",
-    detail: "Describe what you want to make. The app checks local parts and learning sources, then creates a cited plan.",
+    title: "How SparkBuild works",
+    detail: "Tell SparkBuild what you want to build. It researches real, cited parts and generates a hands-on, self-paced build guide so you learn the skills as you go.",
   },
   Research: {
     title: "Using the research",
@@ -328,7 +382,7 @@ function AppTabs({
           disabled={tab !== "Dashboard" && !hasStarted}
           onClick={() => onSelect(tab)}
         >
-          {tab}
+          {tab === "Dashboard" ? "Home" : tab}
         </button>
       ))}
     </nav>
@@ -347,12 +401,13 @@ function WorkflowNavigation({
   const activeIndex = tabs.indexOf(active);
   const previousTab = activeIndex > 0 ? tabs[activeIndex - 1] : undefined;
   const nextTab = activeIndex < tabs.length - 1 ? tabs[activeIndex + 1] : undefined;
+  const displayTab = (tab?: Tab) => tab === "Dashboard" ? "Home" : tab;
 
   return (
     <nav className="workflow-navigation" aria-label="Section navigation" data-flow-ready={hasStarted ? "true" : "false"}>
       <div>
         <p className="eyebrow">YOUR PATH</p>
-        <p className="workflow-navigation-copy">Move between Dashboard, Research, Parts, and Workshop.</p>
+        <p className="workflow-navigation-copy">Move from an idea to sources, parts, and the hands-on Workshop.</p>
       </div>
       <div className="workflow-navigation-actions">
         <button
@@ -361,7 +416,7 @@ function WorkflowNavigation({
           disabled={previousTab === undefined || (!hasStarted && previousTab !== "Dashboard")}
           onClick={() => previousTab && onSelect(previousTab)}
         >
-          {previousTab ? "Previous: " + previousTab : "Previous"}
+          {previousTab ? "Previous: " + displayTab(previousTab) : "Previous"}
         </button>
         <button
           type="button"
@@ -369,7 +424,7 @@ function WorkflowNavigation({
           disabled={nextTab === undefined || !hasStarted}
           onClick={() => nextTab && onSelect(nextTab)}
         >
-          {nextTab ? "Next: " + nextTab : "Next"}
+          {nextTab ? "Next: " + displayTab(nextTab) : "Next"}
         </button>
       </div>
     </nav>
@@ -387,10 +442,11 @@ function PageHeading({
   caption: string;
   onOpenHelp: (section: Tab) => void;
 }) {
+  const displaySection = section === "Dashboard" ? "Home" : section;
   return (
     <header className="page-heading">
       <div className="heading-row">
-        <p className="eyebrow">{section}</p>
+        <p className="eyebrow">{displaySection}</p>
         <button
           type="button"
           className="help-trigger"
@@ -513,60 +569,252 @@ function Dashboard({
   isDiscovering: boolean;
   onPromptChange: (value: string) => void;
   onOwnedPartsChange: (value: string) => void;
-  onStart: () => void;
+  onStart: (options: DiscoveryOptions) => void;
   onOpenHelp: (section: Tab) => void;
 }) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [budget, setBudget] = useState("");
+  const [microcontroller, setMicrocontroller] = useState("");
+  const [formFactor, setFormFactor] = useState("");
   const complete = progress.stage === "ready";
   const rejected = progress.stage === "rejected";
+  const parsedBudget = Number(budget);
+
+  const addModifier = (modifier: string) => {
+    const existing = prompt.trim();
+    if (existing.toLowerCase().includes(modifier.toLowerCase())) return;
+    const base = existing || "Build a beginner-friendly hardware project";
+    const joiner = /[.!?]$/.test(base) ? " " : ", ";
+    onPromptChange(base + joiner + modifier + (/[.!?]$/.test(base) ? "" : "."));
+  };
+
+  const startWithParameters = () => {
+    onStart({
+      maxBudget: Number.isFinite(parsedBudget) && parsedBudget > 0 ? parsedBudget : undefined,
+      preferredMicrocontroller: microcontroller || undefined,
+      formFactor: formFactor.trim() || undefined,
+    });
+  };
 
   return (
-    <section className="dashboard-view">
-      <PageHeading section="Dashboard" title="Start a project" caption="Tell us what you want to build." onOpenHelp={onOpenHelp} />
-      <div className="dashboard-grid">
-        <section className="panel prompt-panel prompt-console">
-          <div className="panel-heading">
-            <p className="eyebrow">YOUR IDEA</p>
-            <span className="status-indicator">READY</span>
-          </div>
-          <label htmlFor="project-prompt">What do you want to build?</label>
-          <textarea
-            id="project-prompt"
-            value={prompt}
-            onChange={(event) => onPromptChange(event.target.value)}
-            placeholder={'e.g., "Build a USB desk light"'}
-            disabled={isDiscovering}
-          />
-          <label htmlFor="owned-parts">What parts do you have? (optional)</label>
-          <textarea
-            id="owned-parts"
-            value={ownedPartsText}
-            onChange={(event) => onOwnedPartsChange(event.target.value)}
-            placeholder="For example: ESP32 starter kit, BME280 sensor, breadboard and jumpers"
-            disabled={isDiscovering}
-          />
-          <p className="helper">Add one part or kit per line.</p>
-          <button className="primary" type="button" onClick={onStart} disabled={isDiscovering || prompt.trim().length === 0}>
-            {isDiscovering ? "Making your plan" : "Make my plan"}
+    <section className="landing-view">
+      <section className="landing-hero">
+        <ShapeGrid
+          className="landing-hero__grid"
+          direction="left"
+          speed={0.22}
+          squareSize={46}
+          borderColor="rgb(216 207 182 / 0.82)"
+          hoverFillColor="#0172E4"
+          hoverTrailAmount={4}
+        />
+        <div className="landing-hero__wash" aria-hidden="true" />
+        <div className="landing-hero__copy">
+          <p className="eyebrow">SPARKBUILD</p>
+          <SplitText text="Ignite your next tech project." className="landing-title" tag="h1" />
+          <p className="landing-lede">Tell SparkBuild what you want to build. It researches real, cited parts and generates a hands-on, self-paced build guide so you actually learn the skills as you go.</p>
+          <button type="button" className="landing-help-link" onClick={() => onOpenHelp("Dashboard")}>
+            How SparkBuild works
           </button>
-        </section>
+        </div>
 
-        <section className="panel discovery-log" aria-live="polite">
-          <div className="panel-heading">
-            <p className="eyebrow">YOUR PLAN</p>
-            <span className="status-indicator">LIVE</span>
+        <BorderGlow
+          className="landing-prompt"
+          backgroundColor="#FFFDF5"
+          glowColor="210 99% 45%"
+          borderRadius={14}
+          glowRadius={0}
+          glowIntensity={0}
+        >
+          <div className="landing-prompt__heading">
+            <div>
+              <p className="eyebrow">START WITH A SPARK</p>
+              <h2>What do you want to make?</h2>
+            </div>
+            <span className="landing-prompt__state">{isDiscovering ? "SOURCING" : "READY"}</span>
           </div>
-          <h3 className="typed-status">{progress.message}</h3>
+          <label className="landing-prompt__label" htmlFor="project-prompt">Describe the project, outcome, or problem you want to solve.</label>
+          <div className="idea-input-wrap">
+            <textarea
+              id="project-prompt"
+              value={prompt}
+              onChange={(event) => onPromptChange(event.target.value)}
+              aria-describedby="project-prompt-help"
+              placeholder=""
+              disabled={isDiscovering}
+              rows={4}
+            />
+            {!prompt ? <TextType examples={rotatingPromptExamples} /> : null}
+          </div>
+          <p id="project-prompt-help" className="landing-prompt__helper">Use the examples to see how budget, skill level, power, and size can shape a plan.</p>
+
+          <div className="prompt-modifiers" aria-label="Common project constraints">
+            {commonPromptModifiers.map((modifier) => {
+              const applied = prompt.toLowerCase().includes(modifier.value.toLowerCase());
+              return (
+                <SpecularButton
+                  key={modifier.value}
+                  type="button"
+                  size="sm"
+                  className={applied ? "prompt-modifier active" : "prompt-modifier"}
+                  aria-pressed={applied}
+                  disabled={isDiscovering}
+                  onClick={() => addModifier(modifier.value)}
+                >
+                  {modifier.label}
+                </SpecularButton>
+              );
+            })}
+          </div>
+
+          <button
+            className="advanced-toggle"
+            type="button"
+            aria-expanded={advancedOpen}
+            aria-controls="advanced-parameters"
+            onClick={() => setAdvancedOpen((open) => !open)}
+          >
+            <span>Advanced parameters</span>
+            <span aria-hidden="true">{advancedOpen ? "-" : "+"}</span>
+          </button>
+          {advancedOpen ? (
+            <div id="advanced-parameters" className="advanced-parameters">
+              <CurvedInput
+                label="Max budget ($)"
+                type="number"
+                min="1"
+                inputMode="decimal"
+                value={budget}
+                onChange={(event) => setBudget(event.target.value)}
+                placeholder="50"
+                disabled={isDiscovering}
+                helper="Optional. Saved catalog prices only."
+              />
+              <label className="curved-input">
+                <span>Preferred microcontroller</span>
+                <select value={microcontroller} onChange={(event) => setMicrocontroller(event.target.value)} disabled={isDiscovering}>
+                  <option value="">No preference</option>
+                  <option value="Arduino">Arduino</option>
+                  <option value="Raspberry Pi">Raspberry Pi</option>
+                  <option value="ESP32">ESP32</option>
+                </select>
+              </label>
+              <CurvedInput
+                label="Form factor"
+                type="text"
+                value={formFactor}
+                onChange={(event) => setFormFactor(event.target.value)}
+                placeholder="Fits in a shoebox"
+                disabled={isDiscovering}
+              />
+              <label className="owned-parts-input" htmlFor="owned-parts">
+                <span>What parts do you have? (optional)</span>
+                <textarea
+                  id="owned-parts"
+                  value={ownedPartsText}
+                  onChange={(event) => onOwnedPartsChange(event.target.value)}
+                  placeholder="ESP32 starter kit, BME280 sensor, breadboard and jumpers"
+                  disabled={isDiscovering}
+                  rows={3}
+                />
+                <small>One part or kit per line.</small>
+              </label>
+            </div>
+          ) : null}
+
+          <SpecularButton
+            size="lg"
+            type="button"
+            onClick={startWithParameters}
+            disabled={isDiscovering || prompt.trim().length === 0}
+          >
+            {isDiscovering ? "Making your plan" : "Make my plan"}
+          </SpecularButton>
+        </BorderGlow>
+      </section>
+
+      <section className="landing-result" aria-live="polite">
+        <div className="landing-result__heading">
+          <p className="eyebrow">DISCOVERY STATUS</p>
+          <h2>{progress.message}</h2>
+        </div>
+        <div className="landing-result__body">
           <Pipeline stages={stages} />
           {error ? <p className="message" role="alert">{error}</p> : null}
           {!error && rejected ? <p className="message" role="alert">This request cannot make a hardware plan.</p> : null}
           {discovery ? <DiscoverySummary discovery={discovery} /> : null}
           {complete && discovery?.proposal
-            ? <p className="helper">Your plan is ready. Continue to Research below to review it.</p>
-            : <p className="helper">Your plan will appear here.</p>}
-        </section>
+            ? <p className="helper">Your plan is ready. Research, Parts, and Workshop are now open.</p>
+            : <p className="helper">Your sources, parts, and build steps will appear here when discovery is ready.</p>}
+        </div>
+      </section>
 
-        <ServerStatus />
-      </div>
+      <section className="how-it-works">
+        <div className="how-it-works__intro">
+          <p className="eyebrow">FROM IDEA TO BENCH</p>
+          <ScrollReveal>One clear prompt becomes a source-backed path to a real build.</ScrollReveal>
+        </div>
+        <div className="how-it-works__steps">
+          <article>
+            <span>01</span>
+            <h3>Describe what matters</h3>
+            <p>Say what you want, then add the constraints that make it yours.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Review the plan</h3>
+            <p>Check cited concepts, compatible parts, and saved sourcing details.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Build at your pace</h3>
+            <p>Use the 3D model and open any step whenever it helps.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="template-section">
+        <div className="template-section__intro">
+          <p className="eyebrow">STARTING POINTS</p>
+          <h2>Try a build with a little personality.</h2>
+        </div>
+        <div className="template-grid">
+          <SpotlightCard className="template-card template-card--plant">
+            <span className="template-card__type">Smart Home</span>
+            <h3>Plant guardian</h3>
+            <p>Water a plant only when it needs it, with a pump and a simple controller.</p>
+            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[0])}>Use this prompt</button>
+          </SpotlightCard>
+          <SpotlightCard className="template-card template-card--macro">
+            <span className="template-card__type">Desk Upgrade</span>
+            <h3>Editing macropad</h3>
+            <p>Make a tactile six-key controller with a rotary encoder for focused work.</p>
+            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[4])}>Use this prompt</button>
+          </SpotlightCard>
+          <SpotlightCard className="template-card template-card--lamp">
+            <img src="/images/lumos-smart-lamp.jpg" alt="LUMOS smart lamp project reference" loading="lazy" />
+            <div>
+              <span className="template-card__type">Referenced project</span>
+              <h3>Smart light study</h3>
+              <p>Explore an open hardware lighting project before shaping your own version.</p>
+              <a href="https://www.hackster.io/JontyDIY/lumos-smart-lamp-for-better-sleep-d5987e" target="_blank" rel="noreferrer">View source</a>
+              <small>Image: Jonty, CC BY via Hackster</small>
+            </div>
+          </SpotlightCard>
+          <SpotlightCard className="template-card template-card--retro">
+            <span className="template-card__type">Retro Gaming</span>
+            <h3>Pocket arcade</h3>
+            <p>Plan a compact cabinet with a small screen and familiar arcade controls.</p>
+            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[10])}>Use this prompt</button>
+          </SpotlightCard>
+          <SpotlightCard className="template-card template-card--utility">
+            <span className="template-card__type">Practical Utility</span>
+            <h3>Wildlife camera trap</h3>
+            <p>Combine a motion trigger, a battery, and a weather-ready housing.</p>
+            <button type="button" onClick={() => onPromptChange(rotatingPromptExamples[16])}>Use this prompt</button>
+          </SpotlightCard>
+        </div>
+      </section>
     </section>
   );
 }
@@ -583,92 +831,120 @@ function ResearchPanel({
   const title = proposal ? proposal.intent.normalizedGoal : "Weather station";
   const offers = proposal?.billOfMaterials.flatMap((entry) => entry.offers) ?? [];
   const brief = researchBriefFor(proposal);
+  const categories = ["Concepts", "Pinouts", "External Links"] as const;
+  const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>("Concepts");
 
   return (
-    <section className="research-view">
-      <PageHeading section="Research" title="Understand the build first" caption="Start with the plain-language plan. Sources are ready when you want to go deeper." onOpenHelp={onOpenHelp} />
-      <div className="research-layout">
-        <section className="research-content">
-          <div className="research-context">
-            <h3>{learnerFriendlyText(title)}</h3>
-            <p className="research-purpose">{learnerFriendlyText(brief.build)}</p>
-            {proposal ? (
-              <section className="catalog-provenance">
-                <h4>Saved parts data</h4>
-                <p className={proposal.freshness === "stale" ? "freshness stale" : "freshness fresh"}>
-                  {proposal.freshness === "stale" ? "Some saved options need checking." : "Saved options are ready to use."}
-                </p>
-                {offers.length > 0 ? (
-                  <ul className="source-list compact-list">
-                    {offers.map((offer) => (
-                      <li key={offer.externalId}>
-                        <strong>{offer.provider} / {offer.providerSku}</strong>
-                        <span>Saved {new Date(offer.observedAt).toLocaleDateString()} / {offer.availability.replaceAll("_", " ")}</span>
-                        <a href={offer.sourceUrl} target="_blank" rel="noreferrer">Open source record</a>
-                        <span>{offer.citation.locator}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : <p className="helper">No saved offer is ready right now.</p>}
-              </section>
-            ) : null}
-          </div>
+    <section className="research-view research-view--redesigned">
+      <header className="research-hero">
+        <div>
+          <p className="eyebrow">RESEARCH LIBRARY</p>
+          <h1>{learnerFriendlyText(title)}</h1>
+          <p>Understand the concepts first, then follow the cited detail when you need it.</p>
+        </div>
+        <button type="button" className="landing-help-link" onClick={() => onOpenHelp("Research")}>How to use research</button>
+      </header>
 
-          <section className="research-brief" aria-labelledby="research-brief-title">
-            <header>
-              <p className="eyebrow">BUILD BRIEF</p>
-              <h2 id="research-brief-title">What you will make</h2>
-              <p>{learnerFriendlyText(brief.build)}</p>
-            </header>
-            <div className="research-brief-grid">
-              <section>
-                <h3>Conceptual parts you need</h3>
-                <ul className="research-brief-list">
+      <div className="research-workspace">
+        <aside className="research-category-nav">
+          <LineSidebar
+            items={categories}
+            activeIndex={categories.indexOf(activeCategory)}
+            onItemClick={(_, label) => setActiveCategory(label as (typeof categories)[number])}
+          />
+        </aside>
+        <section className="research-reader" aria-live="polite">
+          {activeCategory === "Concepts" ? (
+            <>
+              <header className="research-reader__heading">
+                <p className="eyebrow">BUILD BRIEF</p>
+                <h2>What you will make</h2>
+                <p>{learnerFriendlyText(brief.build)}</p>
+              </header>
+              <div className="research-concept-grid">
+                <section>
+                  <h3>Conceptual parts you need</h3>
                   {brief.conceptualParts.map((part) => (
-                    <li key={part.title}>
-                      <strong>{part.title}</strong>
-                      <span>{part.detail}</span>
-                    </li>
+                    <article key={part.title}>
+                      <h4>{part.title}</h4>
+                      <p>{part.detail}</p>
+                    </article>
                   ))}
-                </ul>
-              </section>
-              <section>
-                <h3>Potential use cases</h3>
-                <ul className="research-brief-list">
-                  {brief.useCases.map((useCase) => <li key={useCase}>{useCase}</li>)}
-                </ul>
-              </section>
-              <section>
-                <h3>Alternative builds</h3>
-                <ul className="research-brief-list">
-                  {brief.alternativeBuilds.map((alternative) => <li key={alternative}>{learnerFriendlyText(alternative)}</li>)}
-                </ul>
-              </section>
-            </div>
-          </section>
+                </section>
+                <section>
+                  <h3>Potential use cases</h3>
+                  {brief.useCases.map((useCase) => <p className="research-note" key={useCase}>{useCase}</p>)}
+                  <h3 className="research-subheading">Alternative builds</h3>
+                  {brief.alternativeBuilds.map((alternative) => <p className="research-note" key={alternative}>{learnerFriendlyText(alternative)}</p>)}
+                </section>
+              </div>
+            </>
+          ) : null}
 
-          <div className="research-card-grid">
-            {citations.map((citation, index) => (
-              <article className="research-card" key={citation.sourceUrl + ":" + citation.locator}>
-                <span className="citation-code">SOURCE {String(index + 1).padStart(2, "0")}</span>
-                <h3>{citation.title}</h3>
-                <p>Used in this plan.</p>
-                <a href={citation.sourceUrl} target="_blank" rel="noreferrer">Open source</a>
-                <span className="locator">Find it: {citation.locator}</span>
-              </article>
-            ))}
-          </div>
+          {activeCategory === "Pinouts" ? (
+            <>
+              <header className="research-reader__heading">
+                <p className="eyebrow">CONNECTION REFERENCE</p>
+                <h2>Follow the named signals.</h2>
+                <p>Pin and wiring guidance stays tied to its source. Use the Workshop visual guide when you are ready to make a connection.</p>
+              </header>
+              <div className="pinout-source-stack">
+                {citations.map((citation, index) => (
+                  <article key={citation.sourceUrl + ":" + citation.locator}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <div>
+                      <h3>{citation.title}</h3>
+                      <p>Find the named connection detail at {citation.locator}.</p>
+                    </div>
+                    <a href={citation.sourceUrl} target="_blank" rel="noreferrer">Open source</a>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {activeCategory === "External Links" ? (
+            <>
+              <header className="research-reader__heading">
+                <p className="eyebrow">SAVED SOURCES</p>
+                <h2>Every recommendation has a trail.</h2>
+                <p>Open a source record when you want more detail than the plain-language build brief provides.</p>
+              </header>
+              <div className="source-card-grid">
+                {citations.map((citation, index) => (
+                  <article key={citation.sourceUrl + ":" + citation.locator}>
+                    <span>Source {String(index + 1).padStart(2, "0")}</span>
+                    <h3>{citation.title}</h3>
+                    <p>{citation.locator}</p>
+                    <a href={citation.sourceUrl} target="_blank" rel="noreferrer">Open reference</a>
+                  </article>
+                ))}
+              </div>
+              {proposal ? (
+                <section className="saved-offers">
+                  <h3>Saved parts data</h3>
+                  <p className={proposal.freshness === "stale" ? "freshness stale" : "freshness fresh"}>
+                    {proposal.freshness === "stale" ? "Some saved options need checking." : "Saved options are ready to use."}
+                  </p>
+                  {offers.length > 0 ? offers.map((offer) => (
+                    <a key={offer.externalId} href={offer.sourceUrl} target="_blank" rel="noreferrer">
+                      {offer.provider} / {offer.providerSku} <span>{offer.citation.locator}</span>
+                    </a>
+                  )) : <p className="helper">No saved offer is ready right now.</p>}
+                </section>
+              ) : null}
+            </>
+          ) : null}
         </section>
-
-        <aside className="panel policy-panel">
-          <p className="eyebrow">SOURCE RULES</p>
-          <h3>Local first</h3>
+        <aside className="research-policy">
+          <p className="eyebrow">LOCAL FIRST</p>
+          <h2>Saved, cited, and ready when you are.</h2>
           <dl>
             {boundaryPolicies.map(([label, value]) => (
               <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
             ))}
           </dl>
-          <p className="helper">{applicationSourcePolicies.length} rules keep sources saved and cited.</p>
+          <p>{applicationSourcePolicies.length} source rules keep this learning material grounded.</p>
         </aside>
       </div>
     </section>
@@ -829,6 +1105,59 @@ function PartsDetails({ discovery }: { discovery?: DiscoveryView }) {
   );
 }
 
+type PartCardView = {
+  id: string;
+  name: string;
+  category: string;
+  role: string;
+  quantity: number;
+  price?: number;
+  currency?: string;
+  thumbnailDataUrl?: string;
+  sourceUrl?: string;
+  sourceLabel?: string;
+  freshness?: "fresh" | "stale";
+  alternatives: readonly { id: string; name: string; category: string }[];
+};
+
+function partCardsFor(discovery?: DiscoveryView): readonly PartCardView[] {
+  if (discovery?.proposal) {
+    return discovery.proposal.billOfMaterials.map((entry) => {
+      const primaryOffer = entry.offers.find((offer) => offer.price !== undefined && offer.currency === "USD") ?? entry.offers[0];
+      return {
+        id: entry.part.id,
+        name: learnerPartName(entry.part.name, entry.part.category),
+        category: entry.part.category,
+        role: learnerFriendlyText(entry.rationale),
+        quantity: entry.quantity,
+        price: primaryOffer?.currency === "USD" ? primaryOffer.price : undefined,
+        currency: primaryOffer?.currency,
+        thumbnailDataUrl: primaryOffer?.thumbnailDataUrl,
+        sourceUrl: primaryOffer?.sourceUrl,
+        sourceLabel: primaryOffer ? primaryOffer.provider + " / " + primaryOffer.providerSku : undefined,
+        freshness: entry.freshness,
+        alternatives: entry.alternatives.map((alternative) => ({
+          id: alternative.id,
+          name: learnerPartName(alternative.name, alternative.category),
+          category: alternative.category,
+        })),
+      };
+    });
+  }
+
+  return demoParts.map((part, index) => ({
+    id: part.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    name: learnerPartName(part.name),
+    category: "saved demo part",
+    role: part.role,
+    quantity: 1,
+    price: part.name === "ESP32 DevKit" ? 9.99 : undefined,
+    currency: part.name === "ESP32 DevKit" ? "USD" : undefined,
+    freshness: "fresh",
+    alternatives: [{ id: "demo-" + index, name: demoSubstitution.selected, category: "compatible saved option" }],
+  }));
+}
+
 function PartsPanel({
   discovery,
   ownedParts,
@@ -838,12 +1167,93 @@ function PartsPanel({
   ownedParts: readonly OwnedPartInput[];
   onOpenHelp: (section: Tab) => void;
 }) {
+  const parts = partCardsFor(discovery);
+  const savedTotal = parts.reduce((sum, part) => sum + (part.price ?? 0) * part.quantity, 0);
+  const pricedCount = parts.filter((part) => part.price !== undefined).length;
+
   return (
-    <>
-      <ReportedOwnedParts ownedParts={ownedParts} />
-      <ComponentBreakdown onOpenHelp={onOpenHelp} />
-      <PartsDetails discovery={discovery} />
-    </>
+    <section className="parts-view parts-view--redesigned">
+      <header className="parts-hero">
+        <div>
+          <p className="eyebrow">PARTS DESK</p>
+          <h1>Everything your build needs.</h1>
+          <p>Review saved parts, see what you already own, and keep the estimate in view while you compare options.</p>
+        </div>
+        <button type="button" className="landing-help-link" onClick={() => onOpenHelp("Parts")}>How saved sourcing works</button>
+      </header>
+
+      <div className="parts-workspace">
+        <section className="parts-sourcing">
+          <div className="parts-sourcing__heading">
+            <div>
+              <p className="eyebrow">SOURCING QUEUE</p>
+              <h2>{parts.length} parts in this plan</h2>
+            </div>
+            <span>Saved records only</span>
+          </div>
+          <AnimatedList
+            items={parts}
+            getKey={(part) => part.id}
+            renderItem={(part) => (
+              <TiltedCard className="part-card" rotateAmplitude={4} scaleOnHover={1.015}>
+                <div className="part-card__visual">
+                  {part.thumbnailDataUrl
+                    ? <img src={part.thumbnailDataUrl} alt={part.name + " listing thumbnail"} loading="lazy" />
+                    : <span>{part.name.slice(0, 3).toUpperCase()}</span>}
+                </div>
+                <div className="part-card__copy">
+                  <div className="part-card__title">
+                    <span>{part.category}</span>
+                    <strong>{part.name}</strong>
+                  </div>
+                  <p>{part.role}</p>
+                  <div className="part-card__meta">
+                    <span>Qty {part.quantity}</span>
+                    <span className={part.freshness === "stale" ? "freshness stale" : "freshness fresh"}>
+                      {part.freshness === "stale" ? "Needs a price check" : "Saved option ready"}
+                    </span>
+                  </div>
+                  <div className="part-card__source">
+                    {part.price !== undefined ? <strong>{"$" + part.price.toFixed(2)}</strong> : <strong>Price not saved</strong>}
+                    {part.sourceUrl && part.sourceLabel ? <a href={part.sourceUrl} target="_blank" rel="noreferrer">{part.sourceLabel}</a> : null}
+                  </div>
+                  {part.alternatives.length > 0 ? (
+                    <details>
+                      <summary>Compatible alternatives</summary>
+                      <ul>
+                        {part.alternatives.map((alternative) => (
+                          <li key={alternative.id}>{alternative.name} <span>{alternative.category}</span></li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : null}
+                </div>
+              </TiltedCard>
+            )}
+          />
+        </section>
+
+        <aside className="parts-summary">
+          <BorderGlow backgroundColor="#FFFDF5" glowColor="210 99% 45%" borderRadius={14} glowRadius={0} glowIntensity={0}>
+            <section className="parts-summary__inner">
+              <p className="eyebrow">SAVED TOTAL</p>
+              <h2>{pricedCount > 0 ? <CountUp value={savedTotal} prefix="$" /> : "Estimate in progress"}</h2>
+              <p>{pricedCount} of {parts.length} parts have a USD price in the saved catalog.</p>
+              <dl>
+                <div><dt>Included</dt><dd>{pricedCount} priced records</dd></div>
+                <div><dt>Still needed</dt><dd>{parts.length - pricedCount} price checks</dd></div>
+                <div><dt>Source mode</dt><dd>Local records</dd></div>
+              </dl>
+            </section>
+          </BorderGlow>
+          <ReportedOwnedParts ownedParts={ownedParts} />
+          <section className="parts-summary__note">
+            <h3>Keep the estimate honest.</h3>
+            <p>Totals only use prices saved with a source record. Missing or stale prices stay visible instead of being guessed.</p>
+          </section>
+        </aside>
+      </div>
+    </section>
   );
 }
 
@@ -1291,6 +1701,7 @@ function WorkshopStepVisual({
 function WorkshopStepDetails({
   step,
   totalSteps,
+  isLastStep,
   message,
   onComplete,
   onOpenSkill,
@@ -1298,6 +1709,7 @@ function WorkshopStepDetails({
 }: {
   step: WorkshopStepView;
   totalSteps: number;
+  isLastStep: boolean;
   message: string;
   onComplete: () => void;
   onOpenSkill: (skill: SkillReference) => void;
@@ -1361,10 +1773,52 @@ function WorkshopStepDetails({
       <p className="message" aria-live="polite">{message}</p>
       <div className="workshop-completion-action">
         <button className="primary" type="button" onClick={onComplete}>
-          {activeIndex === totalSteps - 1 ? "Finish build" : "Mark complete and continue"}
+          {isLastStep ? "Finish build" : "Mark complete and continue"}
         </button>
       </div>
     </article>
+  );
+}
+
+function SimilarProjects({ steps }: { steps: readonly WorkshopStepView[] }) {
+  const citations = steps.flatMap((step) => step.citations)
+    .filter((citation, index, values) => values.findIndex((value) => value.sourceUrl === citation.sourceUrl && value.locator === citation.locator) === index)
+    .slice(0, 3);
+
+  return (
+    <section className="similar-projects">
+      <header>
+        <p className="eyebrow">SIMILAR PROJECTS</p>
+        <h2>References for your next iteration.</h2>
+        <p>Browse a mix of documented ideas, diagrams, and source links without leaving the build context.</p>
+      </header>
+      <Masonry className="similar-projects__grid">
+        <SpotlightCard className="similar-project similar-project--photo">
+          <img src="/images/lumos-smart-lamp.jpg" alt="LUMOS smart lamp project reference" loading="lazy" />
+          <div>
+            <span>Referenced project</span>
+            <h3>LUMOS smart lamp</h3>
+            <p>A lighting project with open source files, a clear physical form, and an electronics assembly story.</p>
+            <a href="https://www.hackster.io/JontyDIY/lumos-smart-lamp-for-better-sleep-d5987e" target="_blank" rel="noreferrer">Open project</a>
+            <small>Image: Jonty, CC BY via Hackster</small>
+          </div>
+        </SpotlightCard>
+        <SpotlightCard className="similar-project similar-project--diagram">
+          <span>Working diagram</span>
+          <h3>Named signal paths</h3>
+          <p>Use the same visual language when you compare a source-backed connection with your own build.</p>
+          <WiringDiagram netlist={weatherStationWiringNetlist} initialNet="I2C_SDA" />
+        </SpotlightCard>
+        {citations.map((citation) => (
+          <SpotlightCard className="similar-project similar-project--reference" key={citation.sourceUrl + ":" + citation.locator}>
+            <span>Source link</span>
+            <h3>{citation.title}</h3>
+            <p>Find the relevant detail at {citation.locator}.</p>
+            <a href={citation.sourceUrl} target="_blank" rel="noreferrer">Open reference</a>
+          </SpotlightCard>
+        ))}
+      </Masonry>
+    </section>
   );
 }
 
@@ -1418,44 +1872,68 @@ function WorkshopExperience({
   }
 
   return (
-    <section className="workshop-view">
-      <PageHeading section="Workshop" title="Build with a visual learning plan" caption="The Workshop combines the build plan, fit checks, 3D inspection, and step-by-step guidance." onOpenHelp={onOpenHelp} />
-      {showingOverview ? (
-        <WorkshopOverview
-          lessonTitle={lessonTitle}
-          firstStep={steps[0]!}
-          onOpenFirstStep={() => onMove(0)}
-          parts={schematicScene.parts}
-          routes={schematicScene.routes}
-          layoutMessage={schematicScene.message}
-        />
-      ) : (
-        <div className="workshop-step-layout">
-          <WorkshopStepVisual
-            step={step}
-            parts={schematicScene.parts}
-            routes={schematicScene.routes}
-            layoutMessage={schematicScene.message}
-            supplement={visualSupplement?.(step)}
-          />
-          <WorkshopStepDetails
-            step={step}
-            totalSteps={steps.length}
-            message={message}
-            onComplete={onComplete}
-            onOpenSkill={onOpenSkill}
-            supplement={lessonSupplement?.(step)}
-          />
+    <section className="workshop-view workshop-view--redesigned">
+      <header className="workshop-hero">
+        <div>
+          <p className="eyebrow">WORKSHOP</p>
+          <h1>Build with confidence.</h1>
+          <p>Move freely between the 3D model, cited instructions, and the exact action you want to understand next.</p>
         </div>
-      )}
-      <WorkshopTimeline
-        steps={steps}
-        activeIndex={activeIndex}
-        completedStepIds={completedStepIds}
-        showingOverview={showingOverview}
-        onMove={onMove}
-        onShowOverview={onShowOverview}
-      />
+        <button type="button" className="landing-help-link" onClick={() => onOpenHelp("Workshop")}>How to use the Workshop</button>
+      </header>
+      <div className="workshop-experience__layout">
+        <aside className="workshop-stepper">
+          <div className="workshop-stepper__heading">
+            <p className="eyebrow">BUILD PATH</p>
+            <h2>Make it one action at a time.</h2>
+            <p>{completedStepIds.size} of {steps.length} steps complete. Every step is available now.</p>
+          </div>
+          <Stepper
+            steps={steps.map((workshopStep) => ({
+              id: workshopStep.id,
+              title: learnerFriendlyText(workshopStep.title),
+              order: workshopStep.order,
+            }))}
+            activeIndex={activeIndex}
+            completedStepIds={completedStepIds}
+            showingOverview={showingOverview}
+            onSelect={onMove}
+            onShowOverview={onShowOverview}
+          />
+        </aside>
+        <div className="workshop-experience__content">
+          {showingOverview ? (
+            <WorkshopOverview
+              lessonTitle={lessonTitle}
+              firstStep={steps[0]!}
+              onOpenFirstStep={() => onMove(0)}
+              parts={schematicScene.parts}
+              routes={schematicScene.routes}
+              layoutMessage={schematicScene.message}
+            />
+          ) : (
+            <div className="workshop-step-layout">
+              <WorkshopStepVisual
+                step={step}
+                parts={schematicScene.parts}
+                routes={schematicScene.routes}
+                layoutMessage={schematicScene.message}
+                supplement={visualSupplement?.(step)}
+              />
+              <WorkshopStepDetails
+                step={step}
+                totalSteps={steps.length}
+                isLastStep={activeIndex === steps.length - 1}
+                message={message}
+                onComplete={onComplete}
+                onOpenSkill={onOpenSkill}
+                supplement={lessonSupplement?.(step)}
+              />
+            </div>
+          )}
+          <SimilarProjects steps={steps} />
+        </div>
+      </div>
     </section>
   );
 }
@@ -1633,7 +2111,7 @@ function Workshop() {
 
   useEffect(() => () => eventSource.current?.close(), []);
 
-  async function startDiscovery() {
+  async function startDiscovery(options: DiscoveryOptions = {}) {
     eventSource.current?.close();
     setHasStarted(false);
     setComplete(false);
@@ -1652,12 +2130,17 @@ function Workshop() {
     setPipelineStages([]);
 
     try {
+      const advancedConstraints = [
+        options.preferredMicrocontroller ? "Preferred microcontroller: " + options.preferredMicrocontroller : undefined,
+        options.formFactor ? "Form factor: " + options.formFactor : undefined,
+      ].filter((constraint): constraint is string => constraint !== undefined);
       const request = DiscoveryRequestSchema.parse({
         prompt: projectPrompt,
         mode: "beginner",
         userId: discoveryUserId,
         inventoryPartIds: ownedInventoryPartIds,
-        constraints: ["local catalog only"],
+        budget: options.maxBudget ? { currency: "USD", maxAmount: options.maxBudget } : undefined,
+        constraints: ["local catalog only", ...advancedConstraints],
       });
       const response = await fetch("/api/discovery", {
         method: "POST",
@@ -1855,7 +2338,7 @@ function Workshop() {
         isDiscovering={isDiscovering}
         onPromptChange={setProjectPrompt}
         onOwnedPartsChange={setOwnedPartsText}
-        onStart={() => void startDiscovery()}
+        onStart={(options) => void startDiscovery(options)}
         onOpenHelp={setSelectedHelp}
       />
     )
@@ -1904,7 +2387,7 @@ function Workshop() {
               />
               );
 
-  const hasFloatingWorkshopTimeline = activeTab === "Workshop" && hasStarted && !isStartingWorkshop && !complete;
+  const hasFloatingWorkshopTimeline = false;
   const hasFloatingWorkflowNavigation = activeTab !== "Workshop";
   const shellClassName = hasFloatingWorkshopTimeline
     ? "app-shell has-floating-workshop-timeline"
@@ -1915,20 +2398,6 @@ function Workshop() {
   return (
     <main className={shellClassName}>
       <AppTabs active={activeTab} hasStarted={hasStarted} onSelect={selectTab} />
-      {activeTab === "Dashboard" ? (
-        <header className="hero">
-          <div className="hero-copy">
-            <p className="brand-name">EDUCATIONAL HARDWARE BUILDER</p>
-            <h1>Build something real.</h1>
-            <p>Tell us what you want to make.</p>
-          </div>
-          <output className="system-output" aria-live="polite">
-            <strong>{progress.stage}</strong>
-            <span>{progress.message}</span>
-            <small>DEMO MODE</small>
-          </output>
-        </header>
-      ) : null}
       {content}
       {activeTab !== "Workshop" ? (
         <WorkflowNavigation active={activeTab} hasStarted={hasStarted} onSelect={selectTab} />
